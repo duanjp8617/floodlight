@@ -49,43 +49,7 @@ public class NFVTest implements IFloodlightModule, IOFMessageListener {
 	@Override
 	public net.floodlightcontroller.core.IListener.Command receive(
 			IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-		// We only care about packet-in messages
-		if (msg.getType() != OFType.PACKET_IN) { 
-			// Allow the next module to also process this OpenFlow message
-			return Command.CONTINUE;
-		}
-		OFPacketIn pi = (OFPacketIn)msg;
-						
-				// Parse the received packet		
-		        OFMatch match = new OFMatch();
-		        match.loadFromPacket(pi.getPacketData(), pi.getInPort());
-		        
-				// We only care about TCP packets
-				if (match.getDataLayerType() != Ethernet.TYPE_IPv4 && match.getDataLayerType() != Ethernet.TYPE_ARP) {
-					// Allow the next module to also process this OpenFlow message
-				    return Command.CONTINUE;
-				}
-				
-				// We only care about packets which are sent to the logical load balancer
-				if (match.getNetworkDestination() != LOAD_BALANCER_IP) {
-					// Allow the next module to also process this OpenFlow message
-				    return Command.CONTINUE;
-				}
-				
-				if (match.getDataLayerType() == Ethernet.TYPE_ARP) {
-					
-					// Receive an ARP request
-					logger.info("Received an ARP request for the load balancer");
-		        	handleARPRequest(sw, pi, cntx);
-		        	
-		        } else {
-					
-					logger.info("Received an IPv4 packet destined for the load balancer");
-					loadBalanceFlow(sw, pi, cntx);
-		        }
-		       
-				// Do not continue processing this OpenFlow message
-				return Command.STOP;
+			return null;
 	}
 
 	@Override
