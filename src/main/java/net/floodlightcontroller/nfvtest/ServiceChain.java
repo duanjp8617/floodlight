@@ -1,53 +1,61 @@
 package net.floodlightcontroller.nfvtest;
 
-import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.lang.String;
+import java.util.ArrayList;
 
 public abstract class ServiceChain {
-	Collection<String> stages;
-	Map<String, Collection<NFVNode>> nodeMap;
+	//A service chain consists of multiple stages.
+	//Each stage has a type associate with it.
+	//Each type represents a network function.
+	//All middleboxes on the same stage must belong to the stage type.
 	
-	void addStage(String argumentStage){
-		stages.add(argumentStage);
-	}
+	private List<String> stageType;
+	private List<Map<String, NFVNode>> stageNodes;
+	private int stageLength;
 	
-	public enum NodeOnStage{
-		INCORRECTSTAGE,
-		NONODE,
-		HASNODE
-	}
-	
-	NodeOnStage isNodeOnStage(String argumentStage, NFVNode argumentNode){
-		if(!nodeMap.containsKey(argumentStage)){
-			return NodeOnStage.INCORRECTSTAGE;
+	ServiceChain(List<String> argumentStageType){
+		stageLength = argumentStageType.size();
+		
+		stageType = new ArrayList<String>(argumentStageType);
+		
+		stageNodes = new ArrayList<Map<String,NFVNode>>(stageLength);
+		for(int i=0; i<stageLength; i++){
+			Map<String,NFVNode> ref = new HashMap<String,NFVNode>();
+			stageNodes.add(ref);
 		}
-		else{
-			Collection<NFVNode> stageCollection = 
-					nodeMap.get(argumentStage);
-			for( NFVNode node : stageCollection ){
-				if(node.getUUID() == argumentNode.getUUID()){
-					return NodeOnStage.HASNODE;
-				}
-			}
-		}
-		return NodeOnStage.NONODE;
 	}
 	
-	NodeOnStage addNode(String argumentStage, NFVNode argumentNode){
-		NodeOnStage returnVal = isNodeOnStage(argumentStage, argumentNode);
-		if(returnVal == NodeOnStage.NONODE){
-			nodeMap.get(argumentStage).add(argumentNode);
+	public void addNodeToStage(NFVNode node, int stage){
+		if(stage>stageLength){
+			throw new NFVException("Invalid stage length");
 		}
-		return returnVal;
+		if( (node.getType()!=stageType.get(stage))||(!node.getIsInitialized()) ){
+			throw new NFVException("Invalid node");
+		}
+		stageNodes.get(stage).put(node.getNodeIndex(), node);
 	}
 	
-	NodeOnStage deleteNode(String argumentStage, NFVNode argumentNode){
-		NFVNode nodeToDelete = argumentNode;
-		NodeOnStage returnVal = isNodeOnStage(argumentStage, nodeToDelete);
-		if(returnVal == NodeOnStage.HASNODE){
-			nodeMap.get(argumentStage).remove(nodeToDelete);
+	public NFVNode getNodeFromChain(int stage, String nodeIndex){
+		if(stage>stageLength){
+			throw new NFVException("Invalid stage length");
 		}
-		return returnVal;
+		if(!stageNodes.get(stage).containsKey(nodeIndex)){
+			throw new NFVException("Invalid node index");
+		}
+		return stageNodes.get(stage).get(nodeIndex);
 	}
+	
+	public NFVNode deleteNodeFromChain(int stage, String nodeIndex){
+		if(stage>stageLength){
+			throw new NFVException("Invalid stage length");
+		}
+		NFVNode node = stageNodes.get(stage).remove(nodeIndex);
+		if(node == null){
+			throw new NFVException("Invalid node index");
+		}
+		return node;
+	}
+	
 }

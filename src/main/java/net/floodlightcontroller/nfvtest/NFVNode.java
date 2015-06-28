@@ -1,52 +1,111 @@
 package net.floodlightcontroller.nfvtest;
+import java.util.List;
 
-import java.util.Map;
-import java.lang.String;
-import java.util.Collection;
-import java.util.UUID;
-
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.MacAddress;
-import org.projectfloodlight.openflow.types.VlanVid;
 
 
 public abstract class NFVNode {
-	Map<String, String> location;
-	Collection<IPv4Address> ipv4s;
-	Collection<MacAddress> macs;
-	Collection<VlanVid> vlans;
+	private String hypervisorIpAddress;
+	private List<String> nodeIpAddress;
+	private List<String> nodeMacAddress;
+	private List<Short> nodeVlanId;
 	
-	String stage;
-	Integer nodeIndex;
-	UUID uuid;
+	//A service chain may have multiple stages.
+	private int stage;
 	
-	protected abstract void constructLocation(Map<String,String> LocationMap);
+	//Type of the network function
+	private String type;
 	
-	Map<String, String> getLocation(){
-		return location;
+	//Ip address of the management interface
+	private String nodeIndex;
+	
+	private boolean isInitialized;
+	
+	//node state: idel, normal, overload
+	public static final int IDLE = 1;
+	public static final int NORMAL = 2;
+	public static final int OVERLOAD = 3;
+	private int state;
+	
+	NFVNode(){
+		setIsInitialized(false);
 	}
 	
-	Collection<IPv4Address> getIpv4(){
-		return ipv4s;
+	public void setState(int s){
+		state = s;
 	}
 	
-	Collection<MacAddress> getMac(){
-		return macs;
+	public int getState(){
+		return state;
 	}
 	
-	Collection<VlanVid> getVlan(){
-		return vlans;
+	
+	public void setHypervisorIpAddress(String ip){
+		String tmp = new String(ip);
+		hypervisorIpAddress = tmp;
 	}
 	
-	String getStage(){
+	public String getHypervisorIpAddress(){
+		return hypervisorIpAddress;
+	}
+	
+	public void setStage(int stageNum){
+		stage = stageNum;
+	}
+	
+	public int getStage(){
 		return stage;
 	}
 	
-	Integer getNodeIndex(){
+	public void setType(String t){
+		String tmp = new String(t);
+		type = tmp;
+	}
+	
+	public String getType(){
+		return type;
+	}
+	
+	public void setNodeIndex(String index){
+		String tmp = new String(index);
+		nodeIndex = tmp;
+	}
+	
+	public String getNodeIndex(){
 		return nodeIndex;
 	}
 	
-	UUID getUUID(){
-		return uuid;
+	public void setIsInitialized(boolean b){
+		isInitialized = b;
 	}
+	
+	public boolean getIsInitialized(){
+		return isInitialized;
+	}
+	
+	public void addNodeIpAddress(String ip){
+		String tmp = new String(ip);
+		nodeIpAddress.add(tmp);
+	}
+	
+	public void addNodeMacAddress(String m){
+		String tmp = new String(m);
+		nodeMacAddress.add(tmp);
+	}
+	
+	public void addVlanId(short vlanid){
+		nodeVlanId.add(vlanid);
+	}
+	
+	public String getNodeIpAddress(int index){
+		return nodeIpAddress.get(index);
+	}
+	
+	public String getNodeMacAddress(int index){
+		return nodeMacAddress.get(index);
+	}
+	
+	public short getNodeVlanId(int index){
+		return nodeVlanId.get(index);
+	}
+	
 }
