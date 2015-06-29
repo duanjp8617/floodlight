@@ -8,13 +8,13 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class SlaveServiceChain extends NFVServiceChain {
 	//These two strings represent the type of the message:
-	public final String request = "Request";
-	public final String response = "Response";
+	public static final String request = "Request";
+	public static final String response = "Response";
 	
 	//These two strings represent the task of the message:
-	public final String stateTransition = "StateTransition";
-	public final String modifyNode = "ModifyNode";
-	public final String queryProperty = "queryProperty";
+	public static final String stateTransition = "StateTransition";
+	public static final String nodeModification = "NodeModification";
+	public static final String propertyQuery = "PropertyQuery";
 	
 	
 	
@@ -45,7 +45,9 @@ public class SlaveServiceChain extends NFVServiceChain {
 		}
 	}
 	
+	//Accept request sent from MasterServiceChain
 	ConcurrentLinkedQueue<Message> inputQueue;
+	//Return response back to the MasterServiceChain
 	ConcurrentLinkedQueue<Message> outputQueue;
 	
 	SlaveServiceChain(List<String> argumentStageType) {
@@ -54,19 +56,72 @@ public class SlaveServiceChain extends NFVServiceChain {
 		outputQueue = new ConcurrentLinkedQueue<Message>();
 	}
 	
-	public void processInputMessages(){
+	public boolean processRequest(){
 		Message message = inputQueue.poll();
 		if(message == null){
-			return;
+			return false;
+		}
+		if(message.getType() != SlaveServiceChain.request){
+			throw new NFVException("Incorrect type. Should be a request.");
 		}
 		
+		if(message.getTask() == SlaveServiceChain.nodeModification){
+			handleNodeModificationReq(message);
+		}
+		else if(message.getTask() == SlaveServiceChain.propertyQuery){
+			handlePropertyQueryReq(message);
+		}
+		else if(message.getTask() == SlaveServiceChain.stateTransition){
+			handleStateTransitionReq(message);
+		}
+		else{
+			throw new NFVException("Incorrect task.");
+		}
+		return true;
+	}
+	
+	private void handleNodeModificationReq(Message message){
 		
+	}
+	private void handlePropertyQueryReq(Message message){
+		
+	}
+	private void handleStateTransitionReq(Message message){
 		
 	}
 	
+	public boolean processResponse(){
+		Message message = outputQueue.poll();
+		if(message == null){
+			return false;
+		}
+		
+		if(message.getType() != SlaveServiceChain.response){
+			throw new NFVException("Incorrect type. Should be a response.");
+		}
+		
+		if(message.getTask() == SlaveServiceChain.nodeModification){
+			handleNodeModificationRes(message);
+		}
+		else if(message.getTask() == SlaveServiceChain.propertyQuery){
+			handlePropertyQueryRes(message);
+		}
+		else if(message.getTask() == SlaveServiceChain.stateTransition){
+			handleStateTransitionRes(message);
+		}
+		else{
+			throw new NFVException("Incorrect task.");
+		}
+		return true;
+	}
 	
-	
-	
-	
-	
+	private void handleNodeModificationRes(Message message){
+		
+	}
+	private void handlePropertyQueryRes(Message message){
+		
+	}
+	private void handleStateTransitionRes(Message message){
+		
+	}
 }
