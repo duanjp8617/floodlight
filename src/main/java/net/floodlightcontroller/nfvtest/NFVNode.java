@@ -1,4 +1,5 @@
 package net.floodlightcontroller.nfvtest;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -11,23 +12,35 @@ public abstract class NFVNode {
 	
 	//A service chain may have multiple stages.
 	private int stage;
-	
 	//Type of the network function
 	private String type;
-	
 	//Ip address of the management interface
 	private String nodeIndex;
-	
 	private boolean isInitialized;
+	private int state;
 	
 	//node state: idel, normal, overload
 	public static final int IDLE = 1;
 	public static final int NORMAL = 2;
 	public static final int OVERLOAD = 3;
-	private int state;
 	
 	NFVNode(){
 		setIsInitialized(false);
+		nodeIpAddress = new ArrayList<String>();
+		nodeMacAddress = new ArrayList<String>();
+		nodeVlanId = new ArrayList<Short>();
+	}
+	
+	NFVNode(NFVNode n){
+		hypervisorIpAddress = new String(n.getHypervisorIpAddress());
+		nodeIpAddress = new ArrayList<String>(n.getNodeIpAddress());
+		nodeMacAddress = new ArrayList<String>(n.getNodeMacAddress());
+		nodeVlanId = new ArrayList<Short>(n.getNodeVlanId());
+		stage = n.getStage();
+		type = new String(n.getType());
+		nodeIndex = new String(n.getNodeIndex());
+		isInitialized = n.getIsInitialized();
+		state = n.getState();
 	}
 	
 	public void setState(int s){
@@ -100,12 +113,24 @@ public abstract class NFVNode {
 		return nodeIpAddress.get(index);
 	}
 	
+	public List<String> getNodeIpAddress(){
+		return nodeIpAddress;
+	}
+	
 	public String getNodeMacAddress(int index){
 		return nodeMacAddress.get(index);
 	}
 	
+	public List<String> getNodeMacAddress(){
+		return nodeMacAddress;
+	}
+	
 	public short getNodeVlanId(int index){
 		return nodeVlanId.get(index);
+	}
+	
+	public List<Short> getNodeVlanId(){
+		return nodeVlanId;
 	}
 	
 }
