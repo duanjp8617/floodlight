@@ -1,4 +1,4 @@
-package net.floodlightcontroller.nfvtest;
+package net.floodlightcontroller.nfvtest.nfvutils;
 
 import java.util.Objects;
 

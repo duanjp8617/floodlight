@@ -1,4 +1,4 @@
-package net.floodlightcontroller.nfvtest;
+package net.floodlightcontroller.nfvtest.nfvutils;
 
 public class Message {
 	private final String type;

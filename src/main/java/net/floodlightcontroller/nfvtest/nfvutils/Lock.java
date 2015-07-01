@@ -1,4 +1,4 @@
-package net.floodlightcontroller.nfvtest;
+package net.floodlightcontroller.nfvtest.nfvutils;
 
 /*A non-reentrant lock implementation used to protect the 
  * shared service chain storage.

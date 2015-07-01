@@ -1,4 +1,7 @@
-package net.floodlightcontroller.nfvtest;
+package net.floodlightcontroller.nfvtest.nfvslaveservice;
+
+import net.floodlightcontroller.nfvtest.nfvmasterservice.MasterService;
+import net.floodlightcontroller.nfvtest.nfvutils.Message;
 
 import java.lang.String;
 import java.util.concurrent.ConcurrentLinkedQueue;

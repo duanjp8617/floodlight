@@ -1,4 +1,6 @@
-package net.floodlightcontroller.nfvtest;
+package net.floodlightcontroller.nfvtest.nfvcorestructure;
+
+import net.floodlightcontroller.nfvtest.nfvutils.*;
 
 import java.util.HashMap;
 import java.util.List;

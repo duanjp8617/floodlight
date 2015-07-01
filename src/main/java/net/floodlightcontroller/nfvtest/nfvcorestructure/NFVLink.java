@@ -1,4 +1,4 @@
-package net.floodlightcontroller.nfvtest;
+package net.floodlightcontroller.nfvtest.nfvcorestructure;
 
 public class NFVLink {
 	//The NFV service chain is a complete bipartite graph.
