@@ -3,8 +3,8 @@ package net.floodlightcontroller.nfvtest;
 public class NFVLink {
 	//The NFV service chain is a complete bipartite graph.
 	//So the NFV link could be defined as a simple class.
-	private NFVNode srcNode;
-	private NFVNode dstNode;
+	private final NFVNode srcNode;
+	private final NFVNode dstNode;
 	
 	//The link is a doulbe link, meaning that it contains the 
 	//property of both src->dst link and dst->src link.
@@ -16,12 +16,12 @@ public class NFVLink {
 		}
 	}
 	
-	NFVLinkProperty forwardProperty;
-	NFVLinkProperty backwardProperty;
+	private final NFVLinkProperty forwardProperty;
+	private final NFVLinkProperty backwardProperty;
 	
 	NFVLink(NFVNode s, NFVNode d){
-		setSrcNode(s);
-		setDstNode(d);
+		srcNode = s;
+		dstNode = d;
 		forwardProperty = new NFVLinkProperty("p1");
 		backwardProperty = new NFVLinkProperty("p2");
 	}
@@ -30,15 +30,16 @@ public class NFVLink {
 		return srcNode;
 	}
 
-	public void setSrcNode(NFVNode srcNode) {
-		this.srcNode = srcNode;
-	}
-
 	public NFVNode getDstNode() {
 		return dstNode;
 	}
 
-	public void setDstNode(NFVNode dstNode) {
-		this.dstNode = dstNode;
+	public NFVLinkProperty getForwardProperty() {
+		return forwardProperty;
 	}
+
+	public NFVLinkProperty getBackwardProperty() {
+		return backwardProperty;
+	}
+
 }

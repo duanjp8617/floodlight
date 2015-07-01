@@ -5,20 +5,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 
-public abstract class NFVServiceChain {
+public class NFVServiceChainStorage {
 	//A service chain consists of multiple stages.
 	//Each stage has a type associate with it.
 	//Each type represents a network function.
 	//All middleboxes on the same stage must belong to the stage type.
 	
-	private List<String> stageType;
-	private int stageLength;
+	private final List<String> stageType;
+	private final int stageLength;
 	
 	//They will be concurrently updated by other threads,need protection.
-	private List<Map<String, NFVNode>> stageNodes;
-	private List<Map<Pair<String, String>, NFVLink>> links;
+	private final List<Map<String, NFVNode>> stageNodes;
+	private final List<Map<Pair<String, String>, NFVLink>> links;
 	
-	NFVServiceChain(List<String> argumentStageType){
+	//private Lock linkNodeLock;
+	
+	NFVServiceChainStorage(List<String> argumentStageType){
 		stageLength = argumentStageType.size();
 		stageType = new ArrayList<String>(argumentStageType);
 		
@@ -30,9 +32,11 @@ public abstract class NFVServiceChain {
 			Map<Pair<String, String>, NFVLink> ref1 = new HashMap<Pair<String, String>, NFVLink>();
 			links.add(ref1);
 		}
+		
+		//linkNodeLock = new Lock();
 	}
 	
-	public NFVNode getNodeFromChain(int stage, String nodeIndex){
+	public synchronized NFVNode getNodeFromChain(int stage, String nodeIndex){
 		if(stage>stageLength){
 			throw new NFVException("Invalid stage length");
 		}
@@ -42,17 +46,17 @@ public abstract class NFVServiceChain {
 		return stageNodes.get(stage).get(nodeIndex);
 	}
 	
-	public void addNodeToChain(int stage, NFVNode node){
+	public synchronized void addNodeToChain(int stage, NFVNode node){
 		if(stage>stageLength){
 			throw new NFVException("Invalid stage length");
 		}
-		if( (node.getType()!=stageType.get(stage))||(!node.getIsInitialized()) ){
+		if( (node.getType()!=stageType.get(stage)) ){
 			throw new NFVException("Invalid node");
 		}
 		stageNodes.get(stage).put(node.getNodeIndex(), node);
 	}
 	
-	public NFVNode deleteNodeFromChain(int stage, String nodeIndex){
+	public synchronized NFVNode deleteNodeFromChain(int stage, String nodeIndex){
 		if(stage>stageLength){
 			throw new NFVException("Invalid stage length");
 		}
@@ -64,7 +68,7 @@ public abstract class NFVServiceChain {
 	}
 	
 	//srcNodeIndex belongs to previous stage, dstNodeIndex belongs to afterward stage.
-	public NFVLink getLinkFromChain(int stage, String srcNodeIndex, String dstNodeIndex){
+	public synchronized NFVLink getLinkFromChain(int stage, String srcNodeIndex, String dstNodeIndex){
 		if(stage>stageLength){
 			throw new NFVException("Invalid stage length");
 		}
@@ -75,7 +79,7 @@ public abstract class NFVServiceChain {
 		return links.get(stage).get(p);
 	}
 	
-	public void addLinkToChain(int stage, NFVLink l){
+	public synchronized void addLinkToChain(int stage, NFVLink l){
 		if(stage>stageLength){
 			throw new NFVException("Invalid stage length");
 		}
@@ -86,7 +90,7 @@ public abstract class NFVServiceChain {
 		links.get(stage).put(p, l);
 	}
 	
-	public NFVLink deleteLinkFromChain(int stage, String srcNodeIndex, String dstNodeIndex){
+	public synchronized NFVLink deleteLinkFromChain(int stage, String srcNodeIndex, String dstNodeIndex){
 		if(stage>stageLength){
 			throw new NFVException("Invalid stage length");
 		}
@@ -95,5 +99,36 @@ public abstract class NFVServiceChain {
 			throw new NFVException("Link does not exist");
 		}
 		return links.get(stage).remove(p);
+	}
+	
+	/*private void acquireLock() throws InterruptedException{
+		linkNodeLock.lock();
+	}
+	
+	private void releaseLock(){
+		linkNodeLock.unlock();
+	}*/
+	
+	private boolean checkNodeAlive(NFVNode node){
+		if( (node.getState()==NFVNode.IDLE)&&(node.getProperty().getFakeProperty() == "zero") ){
+			return false;
+		}
+		else{
+			return true;
+		}
+	}
+	
+	public synchronized List<NFVNode> pollFlowStatus(){
+		List<NFVNode> deletedNode = new ArrayList<NFVNode>();
+		for(int i=0; i<stageNodes.size(); i++){
+			Map<String, NFVNode> nodeMap = stageNodes.get(i);
+			for(String nodeIndex : nodeMap.keySet()){
+				NFVNode node = nodeMap.get(nodeIndex);
+				if(!checkNodeAlive(node)){
+					deletedNode.add(deleteNodeFromChain(node.getStage(), nodeIndex));
+				}
+			}
+		}
+		return deletedNode;
 	}
 }

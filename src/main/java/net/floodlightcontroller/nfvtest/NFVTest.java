@@ -17,9 +17,6 @@ import net.floodlightcontroller.core.module.IFloodlightService;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import java.util.ArrayList;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.Set;
-import net.floodlightcontroller.packet.Ethernet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
