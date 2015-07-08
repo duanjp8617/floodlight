@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.Map;
 
+import org.zeromq.*;
+
 public class MasterService implements Runnable{
 	
 	public class ServiceThread implements Runnable{
