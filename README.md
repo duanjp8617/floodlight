@@ -119,3 +119,6 @@ https://github.com/floodlight/floodlight/tree/v0.90
 
 To download a pre-built VM appliance, access documentation, and sign up for the mailing list, go to:  
 http://www.projectfloodlight.org/floodlight
+
+By Djp
+Use sshj to interact with each host for vm management. Remember to install BouncyCastle library according to its main website. Otherwise ECDSA based authentication will not be performed.

@@ -1,5 +1,6 @@
 package net.floodlightcontroller.nfvtest.nfvcorestructure;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
  
@@ -20,6 +21,10 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.Set;
 import net.floodlightcontroller.packet.Ethernet;
+import net.schmizz.sshj.SSHClient;
+import net.schmizz.sshj.connection.channel.direct.Session;
+import net.schmizz.sshj.userauth.UserAuthException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
  
@@ -76,6 +81,25 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     @Override
     public void startUp(FloodlightModuleContext context) {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        
+        System.out.println("Start testing sshj");
+        final SSHClient client = new SSHClient();
+        try{
+        	client.loadKnownHosts();
+        	client.connect("net-b7.cs.hku.hk");
+        	try{
+        		client.authPassword("net", "netexplo");
+        		final Session session = client.startSession();
+        	}
+        	catch (UserAuthException e){
+        		System.out.println("failed to authenticate");
+        	}
+        }
+        catch (IOException e){
+        	System.out.println("IO error" + e);
+        }
+        
+        
     }
  
     @Override
