@@ -86,6 +86,7 @@
 	    <include name="jeromq-0.3.5-SNAPSHOT.jar"/>
 	    <include name="libvirt-0.5.1.jar"/>
 	    <include name="jna.jar"/>
+	<include name="sshj-0.11.0.jar"/>
     </patternset>
 
     <path id="classpath">
