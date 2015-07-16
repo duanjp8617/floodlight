@@ -24,6 +24,10 @@ import net.floodlightcontroller.packet.Ethernet;
 import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.connection.channel.direct.Session;
 import net.schmizz.sshj.userauth.UserAuthException;
+import java.util.concurrent.TimeUnit;
+import net.schmizz.sshj.common.IOUtils;
+import net.schmizz.sshj.xfer.FileSystemFile;
+import java.io.File;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,10 +90,22 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         final SSHClient client = new SSHClient();
         try{
         	client.loadKnownHosts();
-        	client.connect("net-b7.cs.hku.hk");
+        	client.connect("net-b5.cs.hku.hk");
         	try{
-        		client.authPassword("net", "netexplo");
+        		client.authPassword("root", "netexplo");
         		final Session session = client.startSession();
+        		try {
+        			 final Session.Command cmd = session.exec("ping -c 1 google.com");
+        			 System.out.println(IOUtils.readFully(cmd.getInputStream()).toString());
+        			 cmd.join(5, TimeUnit.SECONDS);
+        			 System.out.println("\n** exit status: " + cmd.getExitStatus());
+        			 final String fileSrc = "/home/jpduan/Desktop/ubuntu-img/ubuntu-14.04.2-raw.img";
+        			 final String remoteSrc = "/home/net/";
+        			 client.newSCPFileTransfer().upload(new FileSystemFile(fileSrc), remoteSrc);
+        		}
+        		finally{
+        			client.close();
+        		}
         	}
         	catch (UserAuthException e){
         		System.out.println("failed to authenticate");
