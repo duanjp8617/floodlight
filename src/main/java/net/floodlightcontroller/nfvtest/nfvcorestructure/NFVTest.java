@@ -90,22 +90,27 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         final SSHClient client = new SSHClient();
         try{
         	client.loadKnownHosts();
-        	client.connect("net-b5.cs.hku.hk");
+        	client.loadKnownHosts();
+        	client.loadKnownHosts();
+        	client.connect("net-b6.cs.hku.hk");
         	try{
-        		client.authPassword("root", "netexplo");
-        		final Session session = client.startSession();
-        		try {
-        			 final Session.Command cmd = session.exec("ping -c 1 google.com");
-        			 System.out.println(IOUtils.readFully(cmd.getInputStream()).toString());
-        			 cmd.join(5, TimeUnit.SECONDS);
-        			 System.out.println("\n** exit status: " + cmd.getExitStatus());
-        			 final String fileSrc = "/home/jpduan/Desktop/ubuntu-img/ubuntu-14.04.2-raw.img";
-        			 final String remoteSrc = "/home/net/";
-        			 client.newSCPFileTransfer().upload(new FileSystemFile(fileSrc), remoteSrc);
-        		}
-        		finally{
-        			client.close();
-        		}
+        		client.authPassword("net", "netexplo");
+        		
+        		//final Session session = client.startSession();
+        		//final Session.Command cmd = session.exec("sudo -s");
+        		//cmd.join(1, TimeUnit.SECONDS);
+        		//System.out.println(IOUtils.readFully(cmd.getInputStream()).toString());
+        		//System.out.println("\n** exit status: " + cmd.getExitStatus());
+        		
+        		final Session session1 = client.startSession();
+        		final Session.Command cmd1 = session1.exec("virsh create /home/net/domain-xml/img2.xml");	
+        		cmd1.join(1, TimeUnit.SECONDS);
+        		System.out.println(IOUtils.readFully(cmd1.getInputStream()).toString());
+        		System.out.println("\n** exit status: " + cmd1.getExitStatus());
+        		
+        			 //final String fileSrc = "/home/jpduan/Desktop/ubuntu-img/ubuntu-14.04.2-raw.img";
+        			 //final String remoteSrc = "/home/net/";
+        			 //client.newSCPFileTransfer().upload(new FileSystemFile(fileSrc), remoteSrc);
         	}
         	catch (UserAuthException e){
         		System.out.println("failed to authenticate");
