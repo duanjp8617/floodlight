@@ -101,14 +101,26 @@ public class HostServerInstance{
 		}
 	}
 	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+	public boolean createDir(String remoteDir) throws
+	   				IOException, UserAuthException, TransportException{
+		sshClient.loadKnownHosts();
+		sshClient.connect(this.managementIp);
+		sshClient.authPassword(this.userName, this.passWord);
+		
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("mkdir " + remoteDir);
+		command.join(2, TimeUnit.SECONDS);
+		
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			sshClient.disconnect();
+			return true;
+		}
+		else{
+			session.close();
+			sshClient.disconnect();
+			return false;
+		}
+	}
 	
 }
