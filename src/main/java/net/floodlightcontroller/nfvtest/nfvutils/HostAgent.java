@@ -114,4 +114,26 @@ public class HostAgent{
 		
 		sshClient.newSCPFileTransfer().upload(new FileSystemFile(localFilePath), remoteFilePath);
 	}
+	
+	public boolean copyFile(String remoteSrcFile, String remoteDstFile) throws
+		IOException, UserAuthException, TransportException{
+		sshClient.loadKnownHosts();
+		sshClient.connect(this.managementIp);
+		sshClient.authPassword(this.userName, this.passWord);
+		
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("cp "+remoteSrcFile+" "+remoteDstFile);
+		command.join(2, TimeUnit.SECONDS);
+		
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			sshClient.disconnect();
+			return true;
+		}
+		else{
+			session.close();
+			sshClient.disconnect();
+			return false;
+		}
+	}
 }

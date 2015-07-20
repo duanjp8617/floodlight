@@ -105,21 +105,21 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         	try{
         		client.authPassword("", "");
         		
-        		//final Session session = client.startSession();
-        		//final Session.Command cmd = session.exec("sudo -s");
-        		//cmd.join(1, TimeUnit.SECONDS);
-        		//System.out.println(IOUtils.readFully(cmd.getInputStream()).toString());
-        		//System.out.println("\n** exit status: " + cmd.getExitStatus());
+        		final Session session = client.startSession();
+        		final Session.Command cmd = session.exec("sudo -s");
+        		cmd.join(1, TimeUnit.SECONDS);
+        		System.out.println(IOUtils.readFully(cmd.getInputStream()).toString());
+        		System.out.println("\n** exit status: " + cmd.getExitStatus());
         		
-        		//final Session session1 = client.startSession();
-        		//final Session.Command cmd1 = session1.exec("virsh create /home/net/domain-xml/img2.xml");	
-        		//cmd1.join(1, TimeUnit.SECONDS);
-        		//System.out.println(IOUtils.readFully(cmd1.getInputStream()).toString());
-        		//System.out.println("\n** exit status: " + cmd1.getExitStatus());
+        		final Session session1 = client.startSession();
+        		final Session.Command cmd1 = session1.exec("virsh create /home/net/domain-xml/img2.xml");	
+        		cmd1.join(1, TimeUnit.SECONDS);
+        		System.out.println(IOUtils.readFully(cmd1.getInputStream()).toString());
+        		System.out.println("\n** exit status: " + cmd1.getExitStatus());
         		
-        			 //final String fileSrc = "/home/jpduan/Desktop/ubuntu-img/ubuntu-14.04.2-raw.img";
-        			 //final String remoteSrc = "/home/net/";
-        			 //client.newSCPFileTransfer().upload(new FileSystemFile(fileSrc), remoteSrc);
+        	    final String fileSrc = "/home/jpduan/Desktop/ubuntu-img/ubuntu-14.04.2-raw.img";
+        	    final String remoteSrc = "/home/net/";
+        	    client.newSCPFileTransfer().upload(new FileSystemFile(fileSrc), remoteSrc);
         		/*System.out.println("start testing read xml");
         		Document doc;
         		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
