@@ -105,10 +105,10 @@ public class HostServer {
 	final MacAddressAllocator macAllocator;
 	private HostServerAllocation allocation;
 	
-	HostServer(ControllerConfig controllerConfig,
-			   HostServerConfig hostServerConfig,
-			   Map<String, ServiceChainConfig> serviceChainConfigMap,
-			   MacAddressAllocator macAllocator){
+	public HostServer(ControllerConfig controllerConfig,
+			   		  HostServerConfig hostServerConfig,
+			   		  Map<String, ServiceChainConfig> serviceChainConfigMap,
+			   		  MacAddressAllocator macAllocator){
 		this.controllerConfig = controllerConfig;
 		this.hostServerConfig = hostServerConfig;
 		this.serviceChainConfigMap = serviceChainConfigMap;
@@ -119,6 +119,7 @@ public class HostServer {
 	public void initialize(){
 		HostAgent agent = new HostAgent(this.hostServerConfig);
 		try{
+			agent.connect();
 			agent.createDir(hostServerConfig.homeDir);
 			agent.createDir(hostServerConfig.xmlDir);
 			agent.createDir(hostServerConfig.imgDir);
@@ -134,8 +135,10 @@ public class HostServer {
 					agent.uploadFile(imgPath, remotePath);
 				}
 			}
+			agent.disconnect();
 		}
 		catch (Exception e){
+			e.printStackTrace();
 		}
 	}
 	
@@ -160,10 +163,10 @@ public class HostServer {
 			name.setTextContent(vmName);
 			
 			Node memory = doc.getElementsByTagName("memory").item(0);
-			memory.setTextContent(new Integer(vmInfo.mem).toString());
+			memory.setTextContent(new Integer(vmInfo.mem*1024).toString());
 			
 			Node currentMemory = doc.getElementsByTagName("currentMemory").item(0);
-			currentMemory.setTextContent(new Integer(vmInfo.mem).toString());
+			currentMemory.setTextContent(new Integer(vmInfo.mem*1024).toString());
 			
 			Node vcpu = doc.getElementsByTagName("vcpu").item(0);
 			vcpu.setTextContent(new Integer(vmInfo.cpu).toString());
@@ -182,7 +185,7 @@ public class HostServer {
 				}
 			}
 	
-			for(String macAddr : vmInstance.macBridgeMap.keySet()){
+			for(String macAddr : vmInstance.macList){
 				String bridge = vmInstance.macBridgeMap.get(macAddr);
 				
 				Element eInterface = doc.createElement("interface");
@@ -218,12 +221,15 @@ public class HostServer {
 		}
 		catch (Exception e){
 			e.printStackTrace();
+			return "xmlAllocationFailure";
 		}
 		
 		return localXmlFile;
 	}
 	
 	public void createVm(String chainName, int stageIndex){
+		VmInstance failureVm = new VmInstance(this.hostServerConfig, serviceChainConfigMap.get(chainName),
+											  stageIndex, "failure", new ArrayList<String>());
 		if(allocation.allocate(serviceChainConfigMap.get(chainName), stageIndex)){
 			//This host has enough resource to allocate a corresponding vm.
 			ServiceChainConfig chainConfig = serviceChainConfigMap.get(chainName);
@@ -234,21 +240,28 @@ public class HostServer {
 			}
 			
 			String lastMacAddr = new String(macAddrList.get(macAddrList.size()-1));
-			String vmName = chainName+"-"+lastMacAddr;
+			String newStr = lastMacAddr.replace(':', '-');
+			String vmName = chainName+"-"+newStr;
 			VmInstance newVm = new VmInstance(this.hostServerConfig, chainConfig, stageIndex,
 										      vmName,macAddrList);
 			
 			String localXmlFile = this.constructLocalXmlFile(newVm);
-			String remoteXmlFile = this.controllerConfig.xmlDir+"/"+vmName;
-			String remoteImgFile = this.controllerConfig.imgDir+"/"+vmName;
+			String remoteXmlFile = this.hostServerConfig.xmlDir+"/"+vmName;
+			String remoteImgFile = this.hostServerConfig.imgDir+"/"+vmName;
 			String remoteBaseImgFile = this.hostServerConfig.imgDir+"/"+
 			                           chainConfig.getImgNameForStage(stageIndex);
 			
 			HostAgent agent = new HostAgent(this.hostServerConfig);
 			try{
+				agent.connect();
 				agent.uploadFile(localXmlFile, remoteXmlFile);
-				agent.copyFile(remoteBaseImgFile, remoteImgFile);
+				if(!agent.copyFile(remoteBaseImgFile, remoteImgFile)){
+					//a copy failure;
+					allocation.deallocate(serviceChainConfigMap.get(chainName), stageIndex);
+					
+				}
 				agent.createVMFromXml(remoteXmlFile);
+				agent.disconnect();
 			}
 			catch (Exception e){
 				e.printStackTrace();

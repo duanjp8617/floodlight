@@ -7,7 +7,7 @@ public class MacAddressAllocator {
 	private long uniqueValue;
 	final HashMap<String, Long> macUniqueValueMap;
 	
-	MacAddressAllocator(byte[] prefix){
+	public MacAddressAllocator(byte[] prefix){
 		this.prefix = prefix;
 		macUniqueValueMap = new HashMap<String, Long>();
 	}

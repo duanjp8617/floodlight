@@ -5,14 +5,14 @@ import java.util.ArrayList;
 
 public class GlobalConfig {
 	
-	public class ControllerConfig{
+	static public class ControllerConfig{
 		public final String managementIp;
 		public final String homeDir;
 		public final String imgDir;
 		public final String xmlDir;
 		public final String xmlTemplateName;
 		
-		ControllerConfig(String managementIp, String homeDir, String xmlTemplateName){
+		public ControllerConfig(String managementIp, String homeDir, String xmlTemplateName){
 			this.managementIp = managementIp;
 			this.homeDir = homeDir;
 			this.imgDir = homeDir+"/img";
@@ -21,26 +21,26 @@ public class GlobalConfig {
 		}
 	}
 	
-	public class HostServerConfig{
-		final String managementIp;
-		final String internalIp;
-		final String publicIp;
+	static public class HostServerConfig{
+		public final String managementIp;
+		public final String internalIp;
+		public final String publicIp;
 		
-		final int  cpuCapacity;     //in # of cores
-		final long memoryCapacity; //in Mbytes
-		final long storageCapacity; //in Mbytes
-		final long interfaceSpeed; //in Gbps
+		public final int  cpuCapacity;     //in # of cores
+		public final int memoryCapacity; //in Mbytes
+		public final int storageCapacity; //in Mbytes
+		public final int interfaceSpeed; //in Gbps
 		
-		final String userName;
-		final String passWord;
+		public final String userName;
+		public final String passWord;
 		
-		final String homeDir;
-		final String imgDir;
-		final String xmlDir;
+		public final String homeDir;
+		public final String imgDir;
+		public final String xmlDir;
 		
-		HostServerConfig(String managementIp, String internalIp, String publicIp,
-		   		   	     int cpuCapacity, long memoryCapacity, long storageCapacity,
-		                 long interfaceSpeed, String userName, String passWord, String homeDir){
+		public HostServerConfig(String managementIp, String internalIp, String publicIp,
+		   		   	     		int cpuCapacity, int memoryCapacity, int storageCapacity,
+		   		   	     		int interfaceSpeed, String userName, String passWord, String homeDir){
 			this.managementIp = managementIp;
 			this.internalIp = internalIp;
 			this.publicIp = publicIp;
@@ -56,13 +56,13 @@ public class GlobalConfig {
 		}
 	}
 	
-	public class StageVmInfo{
-		final int cpu;
-		final int mem;     //in kB
-		final int storage; //in MB
-		final String imageName;
+	static public class StageVmInfo{
+		public final int cpu;
+		public final int mem;     //in MB
+		public final int storage; //in MB
+		public final String imageName;
 		
-		StageVmInfo(int cpu, int mem, int storage, String imageName){
+		public StageVmInfo(int cpu, int mem, int storage, String imageName){
 			this.cpu = cpu;
 			this.mem = mem;
 			this.storage = storage;
@@ -70,14 +70,14 @@ public class GlobalConfig {
 		}
 	}
 	
-	public class ServiceChainConfig{
-		final String name;
-		final int nVmInterface;
-		final List<StageVmInfo> stages;
-		final List<String> bridges;
+	static public class ServiceChainConfig{
+		public final String name;
+		public final int nVmInterface;
+		public final List<StageVmInfo> stages;
+		public final List<String> bridges;
 		
 		//may need some additional informations.
-		ServiceChainConfig(String name, int nVmInterface, List<StageVmInfo> stages){
+		public ServiceChainConfig(String name, int nVmInterface, List<StageVmInfo> stages){
 			this.name = name;
 			this.nVmInterface = nVmInterface;
 			this.stages = stages;

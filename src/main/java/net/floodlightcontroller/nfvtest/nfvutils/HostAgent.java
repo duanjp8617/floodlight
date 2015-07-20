@@ -24,11 +24,19 @@ public class HostAgent{
 		sshClient = new SSHClient();
 	}
 	
-	public boolean createBridge(String bridgeName) throws
-				   IOException, UserAuthException, TransportException{
+	public void connect() throws
+	   			   IOException, UserAuthException, TransportException{
 		sshClient.loadKnownHosts();
 		sshClient.connect(this.managementIp);
 		sshClient.authPassword(this.userName, this.passWord);
+	}
+	
+	public void disconnect() throws IOException{
+		sshClient.disconnect();
+	}
+	
+	public boolean createBridge(String bridgeName) throws
+				   IOException, UserAuthException, TransportException{
 		boolean returnVal = false;
 		
 		/*
@@ -40,7 +48,7 @@ public class HostAgent{
 		
 		if(command.getExitStatus().intValue() == 2){
 			final Session session_1 = sshClient.startSession();
-			final Session.Command command_1 = session_1.exec("sudo ovs-vsctl br-add " + bridgeName);
+			final Session.Command command_1 = session_1.exec("sudo ovs-vsctl add-br " + bridgeName);
 			command_1.join(2, TimeUnit.SECONDS);
 			if(command_1.getExitStatus().intValue()==0){
 				returnVal = true;
@@ -58,15 +66,11 @@ public class HostAgent{
 		}
 		
 		session.close();
-		sshClient.disconnect();
 		return returnVal;
 	}
 	
 	public boolean createVMFromXml(String remoteXmlFilePath) throws
 				   IOException, UserAuthException, TransportException{
-		sshClient.loadKnownHosts();
-		sshClient.connect(this.managementIp);
-		sshClient.authPassword(this.userName, this.passWord);
 		
 		final Session session = sshClient.startSession();
 		final Session.Command command = session.exec("virsh create "+remoteXmlFilePath);
@@ -74,21 +78,16 @@ public class HostAgent{
 		
 		if(command.getExitStatus().intValue()==0){
 			session.close();
-			sshClient.disconnect();
 			return true;
 		}
 		else{
 			session.close();
-			sshClient.disconnect();
 			return false;
 		}
 	}
 	
 	public boolean createDir(String remoteDir) throws
 	   				IOException, UserAuthException, TransportException{
-		sshClient.loadKnownHosts();
-		sshClient.connect(this.managementIp);
-		sshClient.authPassword(this.userName, this.passWord);
 		
 		final Session session = sshClient.startSession();
 		final Session.Command command = session.exec("mkdir " + remoteDir);
@@ -96,30 +95,22 @@ public class HostAgent{
 		
 		if(command.getExitStatus().intValue()==0){
 			session.close();
-			sshClient.disconnect();
 			return true;
 		}
 		else{
 			session.close();
-			sshClient.disconnect();
 			return false;
 		}
 	}
 	
 	public void uploadFile(String localFilePath, String remoteFilePath) throws
 		IOException, UserAuthException, TransportException{
-		sshClient.loadKnownHosts();
-		sshClient.connect(this.managementIp);
-		sshClient.authPassword(this.userName, this.passWord);
 		
 		sshClient.newSCPFileTransfer().upload(new FileSystemFile(localFilePath), remoteFilePath);
 	}
 	
 	public boolean copyFile(String remoteSrcFile, String remoteDstFile) throws
 		IOException, UserAuthException, TransportException{
-		sshClient.loadKnownHosts();
-		sshClient.connect(this.managementIp);
-		sshClient.authPassword(this.userName, this.passWord);
 		
 		final Session session = sshClient.startSession();
 		final Session.Command command = session.exec("cp "+remoteSrcFile+" "+remoteDstFile);
@@ -127,12 +118,10 @@ public class HostAgent{
 		
 		if(command.getExitStatus().intValue()==0){
 			session.close();
-			sshClient.disconnect();
 			return true;
 		}
 		else{
 			session.close();
-			sshClient.disconnect();
 			return false;
 		}
 	}
