@@ -237,6 +237,39 @@ public class HostServer {
 		return localXmlFile;
 	}
 	
+	public VmInstance allocateVmInstance(String chainName, int stageIndex){
+		VmInstance failureVm = new VmInstance(this.hostServerConfig, serviceChainConfigMap.get(chainName),
+				  stageIndex, "failure", new ArrayList<String>());
+		if(allocation.allocate(serviceChainConfigMap.get(chainName), stageIndex)){
+			//This host has enough resource to allocate a corresponding vm.
+			ServiceChainConfig chainConfig = serviceChainConfigMap.get(chainName);
+
+			ArrayList<String> macAddrList = new ArrayList<String>();
+			for(int i=0; i<chainConfig.nVmInterface; i++){
+				macAddrList.add(this.macAllocator.getMac());
+			}
+
+			String lastMacAddr = new String(macAddrList.get(macAddrList.size()-1));
+			String newStr = lastMacAddr.replace(':', '-');
+			String vmName = chainName+"-"+newStr;
+			VmInstance newVm = new VmInstance(this.hostServerConfig, chainConfig, stageIndex,
+			      vmName,macAddrList);	
+			return newVm;
+		}
+		else{
+			return failureVm;
+		}
+	}
+	
+	public boolean deallocateVmInstance(VmInstance vm){
+		if(this.allocation.deallocate(vm.serviceChainConfig, vm.stageIndex)){
+			return true;
+		}
+		else{
+			return false;
+		}
+	}
+	
 	public VmInstance createVm(String chainName, int stageIndex){
 		VmInstance failureVm = new VmInstance(this.hostServerConfig, serviceChainConfigMap.get(chainName),
 											  stageIndex, "failure", new ArrayList<String>());
