@@ -54,6 +54,15 @@ public class GlobalConfig {
 			this.imgDir = homeDir+"/img";
 			this.xmlDir = homeDir+"/xml";
 		}
+		
+		public boolean equals(HostServerConfig anotherHost){
+			if(this.managementIp == anotherHost.managementIp){
+				return true;
+			}
+			else{
+				return false;
+			}
+		}
 	}
 	
 	static public class StageVmInfo{

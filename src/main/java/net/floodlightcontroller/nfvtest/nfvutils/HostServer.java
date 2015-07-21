@@ -123,18 +123,29 @@ public class HostServer {
 			agent.createDir(hostServerConfig.homeDir);
 			agent.createDir(hostServerConfig.xmlDir);
 			agent.createDir(hostServerConfig.imgDir);
+			agent.removeFilesFromDir(hostServerConfig.xmlDir);
 			
+			ArrayList<String> baseImgList = new ArrayList<String>();
 			for(String chainName : serviceChainConfigMap.keySet()){
 				ServiceChainConfig chainConfig = serviceChainConfigMap.get(chainName);
 				for(int i=0; i<chainConfig.bridges.size(); i++){
 					agent.createBridge(chainConfig.bridges.get(i));
 				}
 				for(int i=0; i<chainConfig.stages.size(); i++){
-					String imgPath = controllerConfig.imgDir+"/"+chainConfig.getImgNameForStage(i);
-					String remotePath = hostServerConfig.imgDir+"/"+chainConfig.getImgNameForStage(i);
-					agent.uploadFile(imgPath, remotePath);
+					baseImgList.add(chainConfig.getImgNameForStage(i));
+					if(!agent.fileExistInDir(hostServerConfig.imgDir, chainConfig.getImgNameForStage(i))){
+						String imgPath = controllerConfig.imgDir+"/"+chainConfig.getImgNameForStage(i);
+						String remotePath = hostServerConfig.imgDir+"/"+chainConfig.getImgNameForStage(i);
+						agent.uploadFile(imgPath, remotePath);
+					}
 				}
 			}
+			
+			String[] unusedImgArray = agent.createSelectedRemoveList(hostServerConfig.imgDir, baseImgList);
+			for(int i=0; i<unusedImgArray.length; i++){
+				agent.removeFile(hostServerConfig.imgDir+"/"+unusedImgArray[i]);
+			}
+			
 			agent.disconnect();
 		}
 		catch (Exception e){
@@ -221,13 +232,12 @@ public class HostServer {
 		}
 		catch (Exception e){
 			e.printStackTrace();
-			return "xmlAllocationFailure";
 		}
 		
 		return localXmlFile;
 	}
 	
-	public void createVm(String chainName, int stageIndex){
+	public VmInstance createVm(String chainName, int stageIndex){
 		VmInstance failureVm = new VmInstance(this.hostServerConfig, serviceChainConfigMap.get(chainName),
 											  stageIndex, "failure", new ArrayList<String>());
 		if(allocation.allocate(serviceChainConfigMap.get(chainName), stageIndex)){
@@ -261,6 +271,31 @@ public class HostServer {
 					
 				}
 				agent.createVMFromXml(remoteXmlFile);
+				agent.disconnect();
+			}
+			catch (Exception e){
+				e.printStackTrace();
+			}
+			return newVm;
+		}
+		else{
+			return failureVm;
+		}
+	}
+	
+	public void destroyVm(VmInstance vm){
+		if(!this.hostServerConfig.equals(vm.hostServerConfig)){
+			return;
+		}
+		if(this.allocation.deallocate(vm.serviceChainConfig, vm.stageIndex)){
+			String remoteXmlPath = this.hostServerConfig.xmlDir+"/"+vm.vmName;
+			String remoteImgPath = this.hostServerConfig.imgDir+"/"+vm.vmName;
+			HostAgent agent = new HostAgent(this.hostServerConfig);
+			try{
+				agent.connect();
+				agent.destroyVm(vm.vmName);
+				agent.removeFile(remoteXmlPath);
+				agent.removeFile(remoteImgPath);
 				agent.disconnect();
 			}
 			catch (Exception e){

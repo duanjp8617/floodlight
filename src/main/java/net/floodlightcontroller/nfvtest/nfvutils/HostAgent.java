@@ -7,9 +7,12 @@ import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.userauth.UserAuthException;
 import net.schmizz.sshj.xfer.FileSystemFile;
 import net.schmizz.sshj.transport.TransportException;
+import net.schmizz.sshj.common.IOUtils;
 import net.schmizz.sshj.connection.channel.direct.Session;
 
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.HostServerConfig;
+
+import java.util.List;
 
 public class HostAgent{
 	final String managementIp;
@@ -39,9 +42,6 @@ public class HostAgent{
 				   IOException, UserAuthException, TransportException{
 		boolean returnVal = false;
 		
-		/*
-		 * First obtain root identity.
-		 */
 		final Session session = sshClient.startSession();
 		final Session.Command command = session.exec("sudo ovs-vsctl br-exists " + bridgeName);
 		command.join(2, TimeUnit.SECONDS);
@@ -125,4 +125,101 @@ public class HostAgent{
 			return false;
 		}
 	}
+	
+	public boolean removeFilesFromDir(String remoteDir) throws
+		IOException, UserAuthException, TransportException{
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("rm -f "+remoteDir+"/*");
+		command.join(2, TimeUnit.SECONDS);
+		
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+		}
+	}
+	
+	public boolean fileExistInDir(String remoteDir, String fileName) throws
+		IOException, UserAuthException, TransportException{
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("ls -1 "+remoteDir+" | grep "+fileName);
+		command.join(2, TimeUnit.SECONDS);
+	
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+		}
+	}
+	
+	public String[] createSelectedRemoveList(String remoteDir, List<String> fileList)throws
+		IOException, UserAuthException, TransportException{
+		
+		String argument = "";
+		for(int i=0; i<fileList.size(); i++){
+			if(i<fileList.size()-1){
+				argument += (fileList.get(i)+"|");
+			}
+			else{
+				argument += fileList.get(i);
+			}
+		}
+		
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("ls -1 "+remoteDir+" | grep -E -v '"+argument+"'");
+		command.join(2, TimeUnit.SECONDS);
+		
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			String result = IOUtils.readFully(command.getInputStream()).toString();
+			String[] resultArray = result.split("\n");
+			return resultArray;
+		}
+		else{
+			session.close();
+			String[] resultArray = new String[0];
+			return resultArray;
+		}
+	}
+	
+	public boolean removeFile(String remoteFilePath)throws
+		IOException, UserAuthException, TransportException{
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("rm -f "+remoteFilePath);
+		command.join(2, TimeUnit.SECONDS);
+	
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+		}
+	}
+	
+	public boolean destroyVm(String vmName)throws
+		IOException, UserAuthException, TransportException{
+		
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("virsh destroy "+vmName);
+		command.join(10, TimeUnit.SECONDS);
+
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+		
+		}
+	}
+	
 }
