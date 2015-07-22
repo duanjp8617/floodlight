@@ -97,11 +97,11 @@ public class GlobalConfig {
 			}
 		}
 		
-		StageVmInfo getStageVmInfo(int stageIndex){
+		public StageVmInfo getStageVmInfo(int stageIndex){
 			return stages.get(stageIndex);
 		}
 		
-		String getImgNameForStage(int stageIndex){
+		public String getImgNameForStage(int stageIndex){
 			return stages.get(stageIndex).imageName;
 		}
 	}

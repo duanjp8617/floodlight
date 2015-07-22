@@ -20,7 +20,7 @@ public class HostAgent{
 	final String passWord;
 	final SSHClient sshClient;
 	
-	HostAgent(HostServerConfig hostConfig){
+	public HostAgent(HostServerConfig hostConfig){
 		this.managementIp = hostConfig.managementIp;
 		this.userName = hostConfig.userName;
 		this.passWord = hostConfig.passWord;
