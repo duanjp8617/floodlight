@@ -38,7 +38,9 @@ public class MessageHub {
 	}
 	
 	public synchronized void sendTo(String messageProcessorId, Message m){
-		while(!messageProcessorMap.get(messageProcessorId).obtainQueue().offer(m)){
+		if(messageProcessorMap.containsKey(messageProcessorId)){
+			while(!messageProcessorMap.get(messageProcessorId).obtainQueue().offer(m)){
+			}
 		}
 	}
 }

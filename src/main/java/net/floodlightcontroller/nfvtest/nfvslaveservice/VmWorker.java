@@ -126,6 +126,8 @@ public class VmWorker extends MessageProcessor{
 			agent.copyFile(remoteBaseImgFile, remoteImgFile);
 			agent.createVMFromXml(remoteXmlFile);
 			agent.disconnect();
+			CreateVmReply reply = new CreateVmReply(this.getId(), request, true);
+			this.mh.sendTo(reply.getRequest().getSourceId(), reply);
 		}
 		catch (Exception e){
 			e.printStackTrace();
