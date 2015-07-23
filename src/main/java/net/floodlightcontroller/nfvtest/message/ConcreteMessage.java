@@ -109,6 +109,30 @@ public class ConcreteMessage {
 		}
 	}
 	
+	static public class DestroyVmReply extends Message {
+		private final String sourceId;
+		private final DestroyVmRequest request;
+		private final boolean isSuccessful;
+		
+		public DestroyVmReply(String sourceId, DestroyVmRequest request, boolean isSuccessful){
+			this.sourceId = sourceId;
+			this.request = request;
+			this.isSuccessful = isSuccessful;
+		}
+		
+		public String getSourceId(){
+			return sourceId;
+		}
+		
+		public DestroyVmRequest getRequest(){
+			return this.request;
+		}
+		
+		public boolean getSuccessful(){
+			return this.isSuccessful;
+		}
+	}
+	
 	/*
 	 * The following requests are sent to the VmAllocator processor.
 	 */
@@ -175,6 +199,24 @@ public class ConcreteMessage {
 		
 		public HostServer getHostServer(){
 			return this.hostServer;
+		}
+	}
+	
+	static public class DeallocateVmRequest extends Message {
+		private final String sourceId;
+		private final VmInstance vmInstance;
+		
+		public DeallocateVmRequest(String sourceId, VmInstance vmInstance){
+			this.sourceId = sourceId;
+			this.vmInstance = vmInstance;
+		}
+		
+		public String getSourceId(){
+			return this.sourceId;
+		}
+		
+		public VmInstance getVmInstance(){
+			return this.vmInstance;
 		}
 	}
 }

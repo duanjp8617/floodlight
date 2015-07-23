@@ -209,7 +209,7 @@ public class HostAgent{
 		
 		final Session session = sshClient.startSession();
 		final Session.Command command = session.exec("virsh destroy "+vmName);
-		command.join(10, TimeUnit.SECONDS);
+		command.join(60, TimeUnit.SECONDS);
 
 		if(command.getExitStatus().intValue()==0){
 			session.close();

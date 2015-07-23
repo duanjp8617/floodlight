@@ -231,6 +231,8 @@ public class VmWorker extends MessageProcessor{
 			agent.removeFile(remoteXmlPath);
 			agent.removeFile(remoteImgPath);
 			agent.disconnect();
+			DestroyVmReply reply = new DestroyVmReply(this.getId(), request, true);
+			this.mh.sendTo(request.getSourceId(), reply);
 		}
 		catch (Exception e){
 			e.printStackTrace();

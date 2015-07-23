@@ -61,6 +61,14 @@ public class VmAllocator extends MessageProcessor {
 			CreateVmReply reply = (CreateVmReply)m;
 			handleCreateVmReply(reply);
 		}
+		else if(m instanceof DeallocateVmRequest){
+			DeallocateVmRequest request = (DeallocateVmRequest)m;
+			deallocateVm(request);
+		}
+		else if(m instanceof DestroyVmReply){
+			DestroyVmReply reply = (DestroyVmReply)m;
+			handleDestroyVmReply(reply);
+		}
 	}
 	
 	private void allocateVm(AllocateVmRequest originalRequest){
@@ -97,5 +105,22 @@ public class VmAllocator extends MessageProcessor {
 	
 	private void addHostServer(AddHostServerRequest request){
 		this.hostServerList.add(request.getHostServer());
+	}
+	
+	private void deallocateVm(DeallocateVmRequest originalRequest){
+		DestroyVmRequest newRequest = new DestroyVmRequest(this.getId(), originalRequest.getVmInstance());
+		Pending pending = new Pending(1, originalRequest);
+		this.pendingMap.put(newRequest.getUUID(), pending);
+		this.mh.sendTo("vmWorker", newRequest);
+	}
+	
+	private void handleDestroyVmReply(DestroyVmReply newReply){
+		DestroyVmRequest newRequest = newReply.getRequest();
+		Pending pending = this.pendingMap.get(newRequest.getUUID());
+		pending.addReply(newReply);
+		
+		if(newReply.getSuccessful()){
+			this.hostServerList.get(0).deallocateVmInstance(newRequest.getVmInstance());
+		}
 	}
 }
