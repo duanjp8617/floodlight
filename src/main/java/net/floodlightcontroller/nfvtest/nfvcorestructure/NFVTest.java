@@ -40,8 +40,6 @@ import javax.xml.transform.dom.*;
 import javax.xml.transform.stream.*;
 import org.xml.sax.*;
 import org.w3c.dom.*;
-
-import net.floodlightcontroller.nfvtest.test.TestHostServer;
  
 public class NFVTest implements IOFMessageListener, IFloodlightModule {
  
