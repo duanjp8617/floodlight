@@ -40,6 +40,8 @@ import javax.xml.transform.dom.*;
 import javax.xml.transform.stream.*;
 import org.xml.sax.*;
 import org.w3c.dom.*;
+
+import net.floodlightcontroller.nfvtest.test.TestHostServer;
  
 public class NFVTest implements IOFMessageListener, IFloodlightModule {
  
@@ -94,116 +96,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     @Override
     public void startUp(FloodlightModuleContext context) {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        
-        System.out.println("Start testing sshj");
-        final SSHClient client = new SSHClient();
-        try{
-        	client.loadKnownHosts();
-        	client.loadKnownHosts();
-        	client.loadKnownHosts();
-        	client.connect("");
-        	try{
-        		client.authPassword("", "");
-        		
-        		final Session session = client.startSession();
-        		final Session.Command cmd = session.exec("sudo -s");
-        		cmd.join(1, TimeUnit.SECONDS);
-        		System.out.println(IOUtils.readFully(cmd.getInputStream()).toString());
-        		System.out.println("\n** exit status: " + cmd.getExitStatus());
-        		
-        		final Session session1 = client.startSession();
-        		final Session.Command cmd1 = session1.exec("virsh create /home/net/domain-xml/img2.xml");	
-        		cmd1.join(1, TimeUnit.SECONDS);
-        		System.out.println(IOUtils.readFully(cmd1.getInputStream()).toString());
-        		System.out.println("\n** exit status: " + cmd1.getExitStatus());
-        		
-        	    final String fileSrc = "/home/jpduan/Desktop/ubuntu-img/ubuntu-14.04.2-raw.img";
-        	    final String remoteSrc = "/home/net/";
-        	    client.newSCPFileTransfer().upload(new FileSystemFile(fileSrc), remoteSrc);
-        		/*System.out.println("start testing read xml");
-        		Document doc;
-        		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        		try{
-        			DocumentBuilder db = dbf.newDocumentBuilder();
-        			String pathToXml = "/home/jpduan/Desktop/newxml/img2.xml";
-        			doc = db.parse(new File(pathToXml));
-        			doc.getDocumentElement().normalize();
-        			
-        			Node devices = doc.getElementsByTagName("devices").item(0);
-        			
-        			Node name = doc.getElementsByTagName("name").item(0);
-        			name.setTextContent("test-name");
-        			
-        			Node memory = doc.getElementsByTagName("memory").item(0);
-        			memory.setTextContent("1000000");
-        			
-        			Node currentMemory = doc.getElementsByTagName("currentMemory").item(0);
-        			currentMemory.setTextContent("1000000");
-        			
-        			Node vcpu = doc.getElementsByTagName("vcpu").item(0);
-        			vcpu.setTextContent("2");
-        			
-        			NodeList diskList = doc.getElementsByTagName("disk");
-        			for(int i=0; i<diskList.getLength(); i++){
-        				Node disk = diskList.item(i);
-        				NamedNodeMap attr = disk.getAttributes();
-        				Node type = attr.getNamedItem("type");
-        				
-        				if(type.getTextContent().equals("file")){
-        					Element eDisk = (Element)disk;
-        					Node source = eDisk.getElementsByTagName("source").item(0);
-        					Element eSource = (Element)source;
-        					eSource.setAttribute("file", "test-path");
-        				}
-        			}
-        	
-        			
-        			Element eInterface = doc.createElement("interface");
-        			eInterface.setAttribute("type", "bridge");
-        			
-        			Element eMac = doc.createElement("mac");
-        			eMac.setAttribute("address", "test-mac-address");
-        			eInterface.appendChild(eMac);
-        			
-        			Element eSource = doc.createElement("source");
-        			eSource.setAttribute("bridge","test-bridge-name");
-        			eInterface.appendChild(eSource);
-        			
-        			Element eVirtualPort = doc.createElement("virtualport");
-        			eVirtualPort.setAttribute("type", "openvswitch");
-        			eInterface.appendChild(eVirtualPort);
-        			
-        			Element eModel = doc.createElement("model");
-        			eModel.setAttribute("type", "virtio");
-        			eInterface.appendChild(eModel);
-        			
-        			devices.appendChild(eInterface);
-        			
-        			doc.getDocumentElement().normalize();
-        			TransformerFactory transformerFactory = TransformerFactory.newInstance();
-        			Transformer transformer = transformerFactory.newTransformer();
-        			StreamResult result = new StreamResult(new File("/home/jpduan/Desktop/newxml/hehe.xml"));
-        			DOMSource source = new DOMSource(doc);
-        			transformer.transform(source, result);
-        			System.out.println("Done");*/
-     
-        		}
-        		catch (Exception e){
-        			e.printStackTrace();
-        		}
-        	}
-        	catch (UserAuthException e){
-        		System.out.println("failed to authenticate");
-        	}
-        	finally{
-        		client.disconnect();
-        	}
-        }
-        catch (IOException e){
-        	System.out.println("IO error" + e);
-        }
-        
-        
     }
  
     @Override
