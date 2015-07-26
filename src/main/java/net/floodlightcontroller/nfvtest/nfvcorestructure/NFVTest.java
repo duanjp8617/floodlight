@@ -99,15 +99,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
                  IFloodlightProviderService.bcStore.get(cntx,
                                              IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
          IPacket pkt = eth.getPayload(); 
-         
-         if( pkt instanceof ARP){
-        	 logger.info("received an arp packet, from {}, on switch {}", 
-        			      eth.getSourceMACAddress(), sw.getId().toString());
-         }
-         if( pkt instanceof ICMP){
-        	 logger.info("received an icmp packet, from {}, on switch {}",
-        			      eth.getSourceMACAddress(), sw.getId().toString());
-         }
   
          Long sourceMACHash = eth.getSourceMACAddress().getLong();
          if (!macAddresses.contains(sourceMACHash)) {
