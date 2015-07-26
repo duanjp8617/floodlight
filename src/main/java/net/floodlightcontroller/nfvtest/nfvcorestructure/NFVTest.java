@@ -8,11 +8,13 @@ import java.util.Map;
  
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
  
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
@@ -36,6 +38,8 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 
+import java.util.Set;
+
 
  
 public class NFVTest implements IOFMessageListener, IFloodlightModule {
@@ -43,6 +47,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	protected IFloodlightProviderService floodlightProvider;
 	protected Set<Long> macAddresses;
 	protected static Logger logger;
+    protected IOFSwitchService switchService;
 	
 	@Override
 	public String getName() {
@@ -78,12 +83,14 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         Collection<Class<? extends IFloodlightService>> l =
             new ArrayList<Class<? extends IFloodlightService>>();
         l.add(IFloodlightProviderService.class);
+        l.add(IOFSwitchService.class);
         return l;
     }
  
     @Override
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
+        switchService = context.getServiceImpl(IOFSwitchService.class);
         macAddresses = new ConcurrentSkipListSet<Long>();
         logger = LoggerFactory.getLogger(NFVTest.class);
     }
@@ -99,6 +106,13 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
                  IFloodlightProviderService.bcStore.get(cntx,
                                              IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
          IPacket pkt = eth.getPayload(); 
+         
+         Set<DatapathId> datapathIdSet = switchService.getAllSwitchDpids();
+         
+         for(DatapathId dpid : datapathIdSet){
+        	 IOFSwitch s = switchService.getActiveSwitch(dpid);
+        	 logger.info("We have a switch with datapathId: {}", s.getId().toString());
+         }
   
          Long sourceMACHash = eth.getSourceMACAddress().getLong();
          if (!macAddresses.contains(sourceMACHash)) {
