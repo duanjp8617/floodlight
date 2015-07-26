@@ -143,11 +143,13 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
                                              IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
          IPacket pkt = eth.getPayload(); 
          
-         IOFSwitch s = switchService.getActiveSwitch(this.testIpsServer.egressIf.attachedSwitch);
-         logger.info("We have a switch with datapathId: {}", s.getId().toString());
+         //IOFSwitch s = switchService.getActiveSwitch(this.testIpsServer.egressIf.attachedSwitch);
+         logger.info("We have a switch with datapathId: {}", 
+        		 this.testIpsServer.egressIf.attachedSwitch.toString());
          
-         s = switchService.getActiveSwitch(this.testIpsServer.ingressIf.attachedSwitch);
-         logger.info("We have a switch with datapathId: {}", s.getId().toString());
+         //s = switchService.getActiveSwitch(this.testIpsServer.ingressIf.attachedSwitch);
+         logger.info("We have a switch with datapathId: {}", 
+        		 this.testIpsServer.egressIf.attachedSwitch.toString());
          
   
          Long sourceMACHash = eth.getSourceMACAddress().getLong();
