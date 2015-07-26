@@ -23,23 +23,20 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.Set;
 import net.floodlightcontroller.packet.Ethernet;
-import net.schmizz.sshj.SSHClient;
-import net.schmizz.sshj.connection.channel.direct.Session;
-import net.schmizz.sshj.userauth.UserAuthException;
-import java.util.concurrent.TimeUnit;
-import net.schmizz.sshj.common.IOUtils;
-import net.schmizz.sshj.xfer.FileSystemFile;
-import java.io.File;
+import net.floodlightcontroller.packet.IPacket;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.xml.parsers.*;
-import javax.xml.transform.*;
-import javax.xml.transform.dom.*;
-import javax.xml.transform.stream.*;
-import org.xml.sax.*;
-import org.w3c.dom.*;
+import net.floodlightcontroller.packet.ARP;
+import net.floodlightcontroller.packet.Ethernet;
+import net.floodlightcontroller.packet.ICMP;
+import net.floodlightcontroller.packet.IPacket;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.TCP;
+import net.floodlightcontroller.packet.UDP;
+
+
  
 public class NFVTest implements IOFMessageListener, IFloodlightModule {
  
@@ -101,6 +98,16 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
          Ethernet eth =
                  IFloodlightProviderService.bcStore.get(cntx,
                                              IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+         IPacket pkt = eth.getPayload(); 
+         
+         if( pkt instanceof ARP){
+        	 logger.info("received an arp packet, from {}, on switch {}", 
+        			      eth.getSourceMACAddress(), sw.getId().toString());
+         }
+         if( pkt instanceof ICMP){
+        	 logger.info("received an icmp packet, from {}, on switch {}",
+        			      eth.getSourceMACAddress(), sw.getId().toString());
+         }
   
          Long sourceMACHash = eth.getSourceMACAddress().getLong();
          if (!macAddresses.contains(sourceMACHash)) {
