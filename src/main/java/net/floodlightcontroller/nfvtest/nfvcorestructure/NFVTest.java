@@ -10,6 +10,7 @@ import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFPort;
  
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFMessageListener;
@@ -39,6 +40,7 @@ import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 
 import java.util.Set;
+import java.util.Collection;
 
 
  
@@ -68,7 +70,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		}
 		
 		public void attachEgressIf(String ipAddress, String macAddress, String dpid){
-			this.ingressIf = new Interface(ipAddress, macAddress, dpid);
+			this.egressIf = new Interface(ipAddress, macAddress, dpid);
 		}
 	}
  
@@ -77,7 +79,12 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	protected static Logger logger;
     protected IOFSwitchService switchService;
     
-    protected IpsServer testIpsServer;
+    protected IpsServer IpsServer1;
+    protected IpsServer IpsServer2;
+    protected IpsServer IpsServer3;
+    
+    private static String dpid_br1 = "00:00:3e:36:fa:a6:3d:4c";
+    private static String dpid_br2 = "00:00:2a:92:11:2c:36:49";
 	
 	@Override
 	public String getName() {
@@ -123,17 +130,29 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         switchService = context.getServiceImpl(IOFSwitchService.class);
         macAddresses = new ConcurrentSkipListSet<Long>();
         logger = LoggerFactory.getLogger(NFVTest.class);
+        
+        this.IpsServer1 = new IpsServer();
+        this.IpsServer1.attachIngressIf("192.168.56.11", 
+        		"52:54:00:69:0e:af", "00:00:3e:36:fa:a6:3d:4c");
+        this.IpsServer1.attachEgressIf("192.168.57.11",
+        		"52:54:00:a7:a0:af", "00:00:2a:92:11:2c:36:49");
+        
+        this.IpsServer2 = new IpsServer();
+        this.IpsServer2.attachIngressIf("192.168.56.12", 
+        		"52:54:00:a6:ec:a7", "00:00:3e:36:fa:a6:3d:4c");
+        this.IpsServer2.attachEgressIf("192.168.57.12",
+        		"52:54:00:7b:45:6b", "00:00:2a:92:11:2c:36:49");
+        
+        this.IpsServer3 = new IpsServer();
+        this.IpsServer3.attachIngressIf("192.168.56.13", 
+        		"52:54:00:6a:7e:06", "00:00:3e:36:fa:a6:3d:4c");
+        this.IpsServer3.attachEgressIf("192.168.57.13",
+        		"52:54:00:36:96:70", "00:00:2a:92:11:2c:36:49");
     }
  
     @Override
     public void startUp(FloodlightModuleContext context) {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        
-        this.testIpsServer = new IpsServer();
-        this.testIpsServer.attachIngressIf("192.168.56.11", 
-        		"52:54:00:69:0e:af", "3e:36:fa:a6:3d:4c");
-        this.testIpsServer.attachEgressIf("192.168.57.11",
-        		"52:54:00:a7:a0:af", "2a:92:11:2c:36:49");
     }
  
     @Override
@@ -143,21 +162,28 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
                                              IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
          IPacket pkt = eth.getPayload(); 
          
-         //IOFSwitch s = switchService.getActiveSwitch(this.testIpsServer.egressIf.attachedSwitch);
-         logger.info("We have a switch with datapathId: {}", 
-        		 this.testIpsServer.egressIf.attachedSwitch.toString());
-         
-         //s = switchService.getActiveSwitch(this.testIpsServer.ingressIf.attachedSwitch);
-         logger.info("We have a switch with datapathId: {}", 
-        		 this.testIpsServer.egressIf.attachedSwitch.toString());
-         
-  
+         /*if(pkt instanceof IPv4){
+        	 IPv4 ip_pkt = (IPv4)pkt;
+        	 if(ip_pkt.getDestinationAddress().toString() == "192.168.57.51"){
+        		 if(ip_pkt.getPayload() instanceof UDP){
+        			 UDP udp_pkt = (UDP) ip_pkt.getPayload();
+        			 
+        			 IOFSwitch switchBr1 = switchService.getSwitch(DatapathId.of(this.dpid_br1));
+        		 }
+        	 }
+         }*/
          Long sourceMACHash = eth.getSourceMACAddress().getLong();
          if (!macAddresses.contains(sourceMACHash)) {
              macAddresses.add(sourceMACHash);
              logger.info("MAC Address: {} seen on switch: {}",
                      eth.getSourceMACAddress().toString(),
                      sw.getId().toString());
+             Collection<OFPort> switchPorts = sw.getEnabledPortNumbers();
+             
+             for(OFPort port : switchPorts){
+            	 logger.info("switch: {} has port number: {}", sw.getId().toString(),
+            			 port.getPortNumber());
+             }
          }
          return Command.CONTINUE;
      }
