@@ -43,11 +43,41 @@ import java.util.Set;
 
  
 public class NFVTest implements IOFMessageListener, IFloodlightModule {
+	
+	public class IpsServer {
+		public class Interface {
+			public int ipAddress;
+			public MacAddress macAddress;
+			public DatapathId attachedSwitch;
+			
+			public Interface(String ipAddress, String macAddress, String dpid){
+				this.ipAddress = IPv4.toIPv4Address(ipAddress);
+				this.macAddress = MacAddress.of(macAddress);
+				this.attachedSwitch = DatapathId.of(dpid);
+			}
+		}
+		
+		public Interface ingressIf;
+		public Interface egressIf;
+		
+		public IpsServer(){
+		}
+		
+		public void attachIngressIf(String ipAddress, String macAddress, String dpid){
+			this.ingressIf = new Interface(ipAddress, macAddress, dpid);
+		}
+		
+		public void attachEgressIf(String ipAddress, String macAddress, String dpid){
+			this.ingressIf = new Interface(ipAddress, macAddress, dpid);
+		}
+	}
  
 	protected IFloodlightProviderService floodlightProvider;
 	protected Set<Long> macAddresses;
 	protected static Logger logger;
     protected IOFSwitchService switchService;
+    
+    protected IpsServer testIpsServer;
 	
 	@Override
 	public String getName() {
@@ -98,6 +128,12 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     @Override
     public void startUp(FloodlightModuleContext context) {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        
+        this.testIpsServer = new IpsServer();
+        this.testIpsServer.attachIngressIf("192.168.56.11", 
+        		"52:54:00:69:0e:af", "3e:36:fa:a6:3d:4c");
+        this.testIpsServer.attachEgressIf("192.168.57.11",
+        		"52:54:00:a7:a0:af", "2a:92:11:2c:36:49");
     }
  
     @Override
@@ -107,12 +143,12 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
                                              IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
          IPacket pkt = eth.getPayload(); 
          
-         Set<DatapathId> datapathIdSet = switchService.getAllSwitchDpids();
+         IOFSwitch s = switchService.getActiveSwitch(this.testIpsServer.egressIf.attachedSwitch);
+         logger.info("We have a switch with datapathId: {}", s.getId().toString());
          
-         for(DatapathId dpid : datapathIdSet){
-        	 IOFSwitch s = switchService.getActiveSwitch(dpid);
-        	 logger.info("We have a switch with datapathId: {}", s.getId().toString());
-         }
+         s = switchService.getActiveSwitch(this.testIpsServer.ingressIf.attachedSwitch);
+         logger.info("We have a switch with datapathId: {}", s.getId().toString());
+         
   
          Long sourceMACHash = eth.getSourceMACAddress().getLong();
          if (!macAddresses.contains(sourceMACHash)) {
