@@ -159,7 +159,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         
         this.IpsServer2 = new IpsServer();
         this.IpsServer2.attachIngressIf("192.168.56.12", 
-        		"52:54:00:a6:ec:a7", "00:00:3e:36:fa:a6:3d:4c", 25);
+        		"52:54:00:a6:ec:a7", "00:00:3e:36:fa:a6:3d:4c", 30);
         this.IpsServer2.attachEgressIf("192.168.57.12",
         		"52:54:00:7b:45:6b", "00:00:2a:92:11:2c:36:49", 9);
         ipsServerList.add(this.IpsServer2);
