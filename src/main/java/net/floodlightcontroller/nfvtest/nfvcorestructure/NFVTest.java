@@ -9,6 +9,7 @@ import java.util.Map;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFPort;
  
@@ -166,10 +167,12 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
          
          if(pkt instanceof IPv4){
         	 IPv4 ip_pkt = (IPv4)pkt;
-        	 logger.info("source IP: {}, destination IP: {}",
-        			     ip_pkt.getSourceAddress().toString(), 
-        			     ip_pkt.getDestinationAddress().toString());
-        	 logger.info("above flow is from switch: {}", sw.getId().toString());
+        	 
+        	 int destIpAddress = ip_pkt.getDestinationAddress().getInt();
+        	 
+        	 if(destIpAddress == IPv4Address.of("192.168.57.51").getInt()){
+        		 logger.info("get a flow with destination IP address: {}", destIpAddress);
+        	 }
          }
          /*Long sourceMACHash = eth.getSourceMACAddress().getLong();
          if (!macAddresses.contains(sourceMACHash)) {
