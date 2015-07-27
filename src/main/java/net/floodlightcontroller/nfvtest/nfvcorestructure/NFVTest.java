@@ -51,11 +51,13 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			public int ipAddress;
 			public MacAddress macAddress;
 			public DatapathId attachedSwitch;
+			public int port;
 			
-			public Interface(String ipAddress, String macAddress, String dpid){
+			public Interface(String ipAddress, String macAddress, String dpid, int port){
 				this.ipAddress = IPv4.toIPv4Address(ipAddress);
 				this.macAddress = MacAddress.of(macAddress);
 				this.attachedSwitch = DatapathId.of(dpid);
+				this.port = port;
 			}
 		}
 		
@@ -65,12 +67,12 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		public IpsServer(){
 		}
 		
-		public void attachIngressIf(String ipAddress, String macAddress, String dpid){
-			this.ingressIf = new Interface(ipAddress, macAddress, dpid);
+		public void attachIngressIf(String ipAddress, String macAddress, String dpid, int port){
+			this.ingressIf = new Interface(ipAddress, macAddress, dpid, port);
 		}
 		
-		public void attachEgressIf(String ipAddress, String macAddress, String dpid){
-			this.egressIf = new Interface(ipAddress, macAddress, dpid);
+		public void attachEgressIf(String ipAddress, String macAddress, String dpid, int port){
+			this.egressIf = new Interface(ipAddress, macAddress, dpid, port);
 		}
 	}
  
@@ -83,8 +85,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     protected IpsServer IpsServer2;
     protected IpsServer IpsServer3;
     
-    private static String dpid_br1 = "00:00:3e:36:fa:a6:3d:4c";
-    private static String dpid_br2 = "00:00:2a:92:11:2c:36:49";
+    private String dpid_br1 = "00:00:3e:36:fa:a6:3d:4c";
+    private String dpid_br2 = "00:00:2a:92:11:2c:36:49";
 	
 	@Override
 	public String getName() {
@@ -133,21 +135,21 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         
         this.IpsServer1 = new IpsServer();
         this.IpsServer1.attachIngressIf("192.168.56.11", 
-        		"52:54:00:69:0e:af", "00:00:3e:36:fa:a6:3d:4c");
+        		"52:54:00:69:0e:af", "00:00:3e:36:fa:a6:3d:4c", 26);
         this.IpsServer1.attachEgressIf("192.168.57.11",
-        		"52:54:00:a7:a0:af", "00:00:2a:92:11:2c:36:49");
+        		"52:54:00:a7:a0:af", "00:00:2a:92:11:2c:36:49", 10);
         
         this.IpsServer2 = new IpsServer();
         this.IpsServer2.attachIngressIf("192.168.56.12", 
-        		"52:54:00:a6:ec:a7", "00:00:3e:36:fa:a6:3d:4c");
+        		"52:54:00:a6:ec:a7", "00:00:3e:36:fa:a6:3d:4c", 25);
         this.IpsServer2.attachEgressIf("192.168.57.12",
-        		"52:54:00:7b:45:6b", "00:00:2a:92:11:2c:36:49");
+        		"52:54:00:7b:45:6b", "00:00:2a:92:11:2c:36:49", 9);
         
         this.IpsServer3 = new IpsServer();
         this.IpsServer3.attachIngressIf("192.168.56.13", 
-        		"52:54:00:6a:7e:06", "00:00:3e:36:fa:a6:3d:4c");
+        		"52:54:00:6a:7e:06", "00:00:3e:36:fa:a6:3d:4c", 27);
         this.IpsServer3.attachEgressIf("192.168.57.13",
-        		"52:54:00:36:96:70", "00:00:2a:92:11:2c:36:49");
+        		"52:54:00:36:96:70", "00:00:2a:92:11:2c:36:49", 11);
     }
  
     @Override
@@ -162,16 +164,13 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
                                              IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
          IPacket pkt = eth.getPayload(); 
          
-         /*if(pkt instanceof IPv4){
+         if(pkt instanceof IPv4){
         	 IPv4 ip_pkt = (IPv4)pkt;
-        	 if(ip_pkt.getDestinationAddress().toString() == "192.168.57.51"){
-        		 if(ip_pkt.getPayload() instanceof UDP){
-        			 UDP udp_pkt = (UDP) ip_pkt.getPayload();
-        			 
-        			 IOFSwitch switchBr1 = switchService.getSwitch(DatapathId.of(this.dpid_br1));
-        		 }
+        	 if( (ip_pkt.getDestinationAddress().toString() == "192.168.57.51") &&
+        	     (sw.getId().toString() == this.dpid_br1) ){
+        			 logger.info("received a new udp flow to 192.168.57.51");
         	 }
-         }*/
+         }
          Long sourceMACHash = eth.getSourceMACAddress().getLong();
          if (!macAddresses.contains(sourceMACHash)) {
              macAddresses.add(sourceMACHash);
