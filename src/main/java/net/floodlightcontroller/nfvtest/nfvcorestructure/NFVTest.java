@@ -171,7 +171,13 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         	 int destIpAddress = ip_pkt.getDestinationAddress().getInt();
         	 
         	 if(destIpAddress == IPv4Address.of("192.168.57.51").getInt()){
-        		 logger.info("get a flow with destination IP address: {}", destIpAddress);
+        		 logger.info("get a flow with destination IP address: {}", 
+        				     ip_pkt.getDestinationAddress().toString());
+        	 }
+        	 
+        	 if(destIpAddress == IPv4Address.of("192.168.56.51").getInt()){
+        		 logger.info("get a flow with destination IP address: {}", 
+        				     ip_pkt.getDestinationAddress().toString());
         	 }
          }
          /*Long sourceMACHash = eth.getSourceMACAddress().getLong();
