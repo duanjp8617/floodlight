@@ -195,6 +195,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         			 //Only care about flows sent to the entry switch.
         			 logger.info("receive flow, start testing simpleLoadBalancing");
         			 simpleLoadBalancing(sw, cntx, pi.getInPort());
+        			 return Command.STOP;
         		 }
         	 }
          }
