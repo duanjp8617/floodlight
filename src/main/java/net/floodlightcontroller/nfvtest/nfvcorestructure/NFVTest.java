@@ -166,10 +166,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
          
          if(pkt instanceof IPv4){
         	 IPv4 ip_pkt = (IPv4)pkt;
-        	 if(ip_pkt.getDestinationAddress().toString() == "192.168.57.51"){
-        			 logger.info("received a new udp flow to 192.168.57.51 on switch: {}",
-        					     sw.getId().toString());
-        	 }
+        	 logger.info("source IP: {}, destination IP: {}",
+        			     ip_pkt.getSourceAddress().toString(), 
+        			     ip_pkt.getDestinationAddress().toString());
          }
          /*Long sourceMACHash = eth.getSourceMACAddress().getLong();
          if (!macAddresses.contains(sourceMACHash)) {
