@@ -2,6 +2,8 @@ package net.floodlightcontroller.nfvtest.nfvcorestructure;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
+
 
 
 public class NFVNode {
