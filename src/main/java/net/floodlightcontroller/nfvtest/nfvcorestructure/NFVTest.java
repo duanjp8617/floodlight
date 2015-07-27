@@ -169,6 +169,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         	 logger.info("source IP: {}, destination IP: {}",
         			     ip_pkt.getSourceAddress().toString(), 
         			     ip_pkt.getDestinationAddress().toString());
+        	 logger.info("above flow is from switch: {}", sw.getId().toString());
          }
          /*Long sourceMACHash = eth.getSourceMACAddress().getLong();
          if (!macAddresses.contains(sourceMACHash)) {
