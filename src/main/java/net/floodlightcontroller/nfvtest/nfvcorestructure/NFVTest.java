@@ -194,8 +194,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         		 if(sw.getId().getLong() == DatapathId.of(this.dpid_br1).getLong()){
         			 //Only care about flows sent to the entry switch.
         			 logger.info("receive flow, start testing simpleLoadBalancing");
-        			 simpleLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT));
-        			 return Command.STOP;
+        			 //simpleLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT));
+        			 //return Command.STOP;
         		 }
         	 }
          }
