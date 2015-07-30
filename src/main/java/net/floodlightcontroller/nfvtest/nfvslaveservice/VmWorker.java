@@ -11,6 +11,7 @@ import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -88,6 +89,8 @@ public class VmWorker extends MessageProcessor{
 				ServiceChainConfig chainConfig = hostServer.serviceChainConfigMap.get(chainName);
 				for(int i=0; i<chainConfig.bridges.size(); i++){
 					agent.createBridge(chainConfig.bridges.get(i));
+					agent.setBridgeDpid(chainConfig.bridges.get(i), 
+							            hostServer.serviceChainDpidMap.get(chainName).get(i));
 				}
 				for(int i=0; i<chainConfig.stages.size(); i++){
 					baseImgList.add(chainConfig.getImgNameForStage(i));
@@ -125,6 +128,15 @@ public class VmWorker extends MessageProcessor{
 			agent.uploadFile(localXmlFile, remoteXmlFile);
 			agent.copyFile(remoteBaseImgFile, remoteImgFile);
 			agent.createVMFromXml(remoteXmlFile);
+			List<Integer> portList = new ArrayList<Integer>();
+			for(int i=0; i<vmInstance.macList.size(); i++){
+				String mac = vmInstance.macList.get(i);
+				String portMac = "fe:"+mac.substring(3);
+				int portNum = agent.getPort(vmInstance.macBridgeMap.get(mac), 
+						                    portMac);
+				portList.add(new Integer(portNum));
+			}
+			vmInstance.setPort(portList);
 			agent.disconnect();
 			CreateVmReply reply = new CreateVmReply(this.getId(), request, true);
 			this.mh.sendTo(reply.getRequest().getSourceId(), reply);

@@ -69,6 +69,46 @@ public class HostAgent{
 		return returnVal;
 	}
 	
+	public boolean setBridgeDpid(String bridgeName, String dpid) throws
+	   				IOException, UserAuthException, TransportException{
+		
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo ovs-vsctl set bridge "+
+													 bridgeName + " other-config:hwaddr=" +
+				                                     dpid);
+		command.join(2, TimeUnit.SECONDS);
+
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+		}
+	}
+	
+	public int getPort(String bridgeName, String macAddress) throws
+				   IOException, UserAuthException, TransportException{
+
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo ovs-ofctl show "+ bridgeName +
+										" | grep "+macAddress);
+		
+		command.join(2, TimeUnit.SECONDS);
+		
+		if(command.getExitStatus().intValue()==0){
+			String result = IOUtils.readFully(command.getInputStream()).toString();
+			String port = result.substring(0, result.indexOf('('));
+			session.close();
+			return Integer.getInteger(port).intValue();
+		}
+		else{
+			session.close();
+			return -10;
+		}
+	}
+	
 	public boolean createVMFromXml(String remoteXmlFilePath) throws
 				   IOException, UserAuthException, TransportException{
 		

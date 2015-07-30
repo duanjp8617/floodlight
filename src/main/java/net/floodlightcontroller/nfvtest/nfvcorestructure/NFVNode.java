@@ -1,6 +1,4 @@
 package net.floodlightcontroller.nfvtest.nfvcorestructure;
-import java.util.ArrayList;
-import java.util.List;
 
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
 
@@ -8,15 +6,7 @@ import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
 
 public class NFVNode {
 	//immutable field.
-	private final String hypervisorIpAddress;
-	private final List<String> nodeIpAddress;
-	private final List<String> nodeMacAddress;
-	private final List<Short> nodeVlanId;
-	
-	private final int stage;
-	private final String type;
-	private final String nodeIndex;
-	private final int state;
+	public final VmInstance vmInstance;
 	
 	private NFVNodeProperty property;
 	
@@ -38,69 +28,50 @@ public class NFVNode {
 		}
 	}
 	
-	NFVNode(String hypervisorIpAddress, List<String> nodeIpAddress, List<String> nodeMacAddress,
-			List<Short> nodeVlanId,     int stage,                  String type,
-			String nodeIndex,           int state){
-		this.hypervisorIpAddress = new String(hypervisorIpAddress);
-		this.stage = stage;
-		this.type = new String(type);
-		this.nodeIndex = new String(nodeIndex);
-		this.state = state;
-		
-		this.nodeIpAddress = new ArrayList<String>(nodeIpAddress);
-		this.nodeMacAddress = new ArrayList<String>(nodeMacAddress);
-		this.nodeVlanId = new ArrayList<Short>(nodeVlanId);
-		this.property = new NFVNodeProperty("non zero");
+	NFVNode(VmInstance vmInstance){
+		this.vmInstance = vmInstance;
 	}
 	
-	NFVNode(NFVNode n){
-		hypervisorIpAddress = new String(n.getHypervisorIpAddress());
-		stage = n.getStage();
-		type = new String(n.getType());
-		nodeIndex = new String(n.getNodeIndex());
-		state = n.getState();
-		
-		nodeIpAddress = new ArrayList<String>(n.getNodeIpAddress());
-		nodeMacAddress = new ArrayList<String>(n.getNodeMacAddress());
-		nodeVlanId = new ArrayList<Short>(n.getNodeVlanId());
-		this.property = new NFVNodeProperty("non zero");
+	public String getChainName(){
+		return this.vmInstance.serviceChainConfig.name;
 	}
 	
-	
-	public int getState(){
-		return state;
+	public int getNumInterfaces(){
+		return this.vmInstance.serviceChainConfig.nVmInterface;
 	}
 	
-	public String getHypervisorIpAddress(){
-		return hypervisorIpAddress;
+	public String getMacAddress(int whichMac){
+		if(whichMac>=this.vmInstance.serviceChainConfig.nVmInterface){
+			return "no-such-mac";
+		}
+		else{
+			return this.vmInstance.macList.get(whichMac);
+		}
 	}
 	
-	public int getStage(){
-		return stage;
+	public String getBridgeDpid(int whichMac){
+		if(whichMac>=this.vmInstance.serviceChainConfig.nVmInterface){
+			return "no-such-bridge";
+		}
+		else{
+			return this.vmInstance.bridgeDpidList.get(whichMac);
+		}
 	}
-
-	public String getType(){
-		return type;
+	
+	public int getPort(int whichMac){
+		if(whichMac>=this.vmInstance.serviceChainConfig.nVmInterface){
+			return -10;
+		}
+		else{
+			return this.vmInstance.getPort(whichMac);
+		}
 	}
 	
 	public String getNodeIndex(){
-		return nodeIndex;
+		return this.vmInstance.macList.get(this.vmInstance.macList.size()-1);
 	}
 	
-	public List<String> getNodeIpAddress(){
-		return nodeIpAddress;
-	}
 	
-	public List<String> getNodeMacAddress(){
-		return nodeMacAddress;
-	}
 	
-	public List<Short> getNodeVlanId(){
-		return nodeVlanId;
-	}
-
-	public NFVNodeProperty getProperty() {
-		return property;
-	}
 	
 }

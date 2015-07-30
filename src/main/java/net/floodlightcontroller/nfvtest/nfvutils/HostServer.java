@@ -18,27 +18,38 @@ public class HostServer {
 		public final int stageIndex;
 		public final List<String> macList;
 		public final Map<String, String> macBridgeMap;
+		public final List<String> bridgeDpidList;
+		
+		private List<Integer> port;
 		
 		public VmInstance(HostServerConfig hConfig, ServiceChainConfig sConfig, ControllerConfig cConfig,
-				   int stageIndex, String vmName, List<String> macList){
+				   int stageIndex, String vmName, List<String> macList, List<String> dpidList){
 			this.stageIndex = stageIndex;
 			this.vmName = vmName;
 			this.hostServerConfig = hConfig;
 			this.serviceChainConfig = sConfig;
 			this.macList = macList;
 			this.macBridgeMap = new HashMap<String, String>();
+			this.bridgeDpidList = new ArrayList<String>();
 			this.controllerConfig = cConfig;
 			
 			if(this.macList.size()==2){
 				macBridgeMap.put(this.macList.get(0), this.serviceChainConfig.bridges.get(stageIndex));
 				macBridgeMap.put(this.macList.get(1), 
 				        this.serviceChainConfig.bridges.get(this.serviceChainConfig.bridges.size()-1));
+				
+				bridgeDpidList.add(dpidList.get(stageIndex));
+				bridgeDpidList.add(dpidList.get(dpidList.size()-1));
 			}
 			else if(this.macList.size()==3){
 				macBridgeMap.put(this.macList.get(0), this.serviceChainConfig.bridges.get(stageIndex));
 				macBridgeMap.put(this.macList.get(1), this.serviceChainConfig.bridges.get(stageIndex+1));
 				macBridgeMap.put(this.macList.get(2), 
 				        this.serviceChainConfig.bridges.get(this.serviceChainConfig.bridges.size()-1));
+				
+				bridgeDpidList.add(dpidList.get(stageIndex));
+				bridgeDpidList.add(dpidList.get(stageIndex+1));
+				bridgeDpidList.add(dpidList.get(dpidList.size()-1));
 			}
 			else{
 			}
@@ -47,6 +58,20 @@ public class HostServer {
 		public StageVmInfo getStageVmInfo(){
 			return serviceChainConfig.getStageVmInfo(this.stageIndex);
 		}
+		
+		public void setPort(List<Integer> port){
+			this.port = port;
+		}
+		
+		public synchronized int getPort(int index){
+			if(index>=this.macList.size()){
+				return -10;
+			}
+			else{
+				return this.port.get(index).intValue();
+			}
+		}
+		
 	}
 	
 	public class HostServerAllocation{
@@ -97,6 +122,8 @@ public class HostServer {
 	public final HostServerConfig hostServerConfig;
 	public final Map<String, ServiceChainConfig> serviceChainConfigMap;
 	public final MacAddressAllocator macAllocator;
+	public final Map<String, List<String>> serviceChainDpidMap;
+	
 	private HostServerAllocation allocation;
 	
 	public HostServer(ControllerConfig controllerConfig,
@@ -107,7 +134,22 @@ public class HostServer {
 		this.hostServerConfig = hostServerConfig;
 		this.serviceChainConfigMap = serviceChainConfigMap;
 		this.macAllocator = macAllocator;
+		this.serviceChainDpidMap = new HashMap<String, List<String>>();
 		allocation = new HostServerAllocation(this.hostServerConfig);
+		
+		byte[] prefix = new byte[1];
+		prefix[0] = (byte) 0xee;
+		MacAddressAllocator dpidAllocator = new MacAddressAllocator(prefix);
+		
+		for(String chainName : this.serviceChainConfigMap.keySet()){
+			ServiceChainConfig chainConfig = this.serviceChainConfigMap.get(chainName);
+			List<String> dpidList = new ArrayList<String>();
+			for(int i=0; i<chainConfig.bridges.size(); i++){
+				String dpid = dpidAllocator.getMac();
+				dpidList.add(dpid);
+			}
+			serviceChainDpidMap.put(chainName, dpidList);
+		}
 	}
 	
 	public VmInstance allocateVmInstance(String chainName, int stageIndex){
@@ -123,7 +165,7 @@ public class HostServer {
 			String newStr = lastMacAddr.replace(':', '-');
 			String vmName = chainName+"-"+newStr;
 			VmInstance newVm = new VmInstance(this.hostServerConfig, chainConfig, this.controllerConfig, stageIndex,
-			      vmName,macAddrList);	
+			      vmName,macAddrList, serviceChainDpidMap.get(chainName));	
 			return newVm;
 		}
 		else{
