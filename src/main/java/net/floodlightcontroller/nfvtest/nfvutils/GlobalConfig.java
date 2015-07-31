@@ -11,13 +11,16 @@ public class GlobalConfig {
 		public final String imgDir;
 		public final String xmlDir;
 		public final String xmlTemplateName;
+		public final String networkTemplateName;
 		
-		public ControllerConfig(String managementIp, String homeDir, String xmlTemplateName){
+		public ControllerConfig(String managementIp, String homeDir, String xmlTemplateName,
+								String networkTemplateName){
 			this.managementIp = managementIp;
 			this.homeDir = homeDir;
 			this.imgDir = homeDir+"/img";
 			this.xmlDir = homeDir+"/xml";
 			this.xmlTemplateName = xmlTemplateName;
+			this.networkTemplateName = networkTemplateName;
 		}
 	}
 	
@@ -85,16 +88,34 @@ public class GlobalConfig {
 		public final List<StageVmInfo> stages;
 		public final List<String> bridges;
 		
+		private String managementNetwork;
+		private String operationNetwork;
+		
 		//may need some additional informations.
 		public ServiceChainConfig(String name, int nVmInterface, List<StageVmInfo> stages){
 			this.name = name;
 			this.nVmInterface = nVmInterface;
 			this.stages = stages;
 			this.bridges = new ArrayList<String>();
-			
-			for(int i=0; i<stages.size()+(this.nVmInterface-1); i++){
-				bridges.add(this.name+"-"+"br"+(new Integer(i).toString()));
+			this.managementNetwork = this.name+"-"+"m";
+
+			if(nVmInterface == 2){
+				this.operationNetwork = this.name+"-"+"o";
 			}
+			if(nVmInterface == 3){
+				for(int i=0; i<stages.size()+1; i++){
+					bridges.add(this.name+"-"+"br"+(new Integer(i).toString()));
+				}
+				this.operationNetwork = "nil";
+			}
+		}
+		
+		public String getOperationNetwork(){
+			return this.operationNetwork;
+		}
+		
+		public String getManagementNetwork(){
+			return this.managementNetwork;
 		}
 		
 		public StageVmInfo getStageVmInfo(int stageIndex){

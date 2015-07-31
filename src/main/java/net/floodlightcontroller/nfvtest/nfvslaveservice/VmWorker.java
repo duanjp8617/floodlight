@@ -3,15 +3,17 @@ package net.floodlightcontroller.nfvtest.nfvslaveservice;
 import net.floodlightcontroller.nfvtest.message.Message;
 import net.floodlightcontroller.nfvtest.message.MessageProcessor;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
+import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ControllerConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.HostAgent;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.StageVmInfo;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
+import net.floodlightcontroller.nfvtest.nfvutils.FakeDhcpAllocator;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -92,6 +94,8 @@ public class VmWorker extends MessageProcessor{
 					agent.setBridgeDpid(chainConfig.bridges.get(i), 
 							            hostServer.serviceChainDpidMap.get(chainName).get(i));
 				}
+				//create the management network
+				//create the operation network if needed.
 				for(int i=0; i<chainConfig.stages.size(); i++){
 					baseImgList.add(chainConfig.getImgNameForStage(i));
 					if(!agent.fileExistInDir(hostServer.hostServerConfig.imgDir, chainConfig.getImgNameForStage(i))){
@@ -128,13 +132,13 @@ public class VmWorker extends MessageProcessor{
 			agent.uploadFile(localXmlFile, remoteXmlFile);
 			agent.copyFile(remoteBaseImgFile, remoteImgFile);
 			agent.createVMFromXml(remoteXmlFile);
-			List<Integer> portList = new ArrayList<Integer>();
+			int[] portList = new int[vmInstance.macList.size()];
 			for(int i=0; i<vmInstance.macList.size(); i++){
 				String mac = vmInstance.macList.get(i);
 				String portMac = "fe:"+mac.substring(3);
 				int portNum = agent.getPort(vmInstance.macBridgeMap.get(mac), 
 						                    portMac);
-				portList.add(new Integer(portNum));
+				portList[i] = portNum;
 			}
 			vmInstance.setPort(portList);
 			agent.disconnect();
@@ -146,6 +150,81 @@ public class VmWorker extends MessageProcessor{
 		}
 	}
 	
+	private String constructNetworkXmlFile(ControllerConfig controllerConfig, String chainName,
+							String networkName, FakeDhcpAllocator dhcpAllocator){
+		Document doc;
+		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+		
+		String networkXmlTemplateFile = controllerConfig.xmlDir+"/"+
+										controllerConfig.networkTemplateName;
+		String localXmlFile = controllerConfig.xmlDir+"/"+networkName+
+								dhcpAllocator.bridgeIp;
+		
+		try{
+			DocumentBuilder db = dbf.newDocumentBuilder();
+			doc = db.parse(new File(networkXmlTemplateFile));
+			doc.getDocumentElement().normalize();
+			
+			Node name = doc.getElementsByTagName("name").item(0);
+			name.setTextContent(networkName);
+			
+			Node forward = doc.getElementsByTagName("forward").item(0);
+			Element eForward = (Element)forward;
+			eForward.setAttribute("dev", "eth2");
+			
+			Node nInterface = eForward.getElementsByTagName("interface").item(0);
+			Element eInterface = (Element)nInterface;
+			eInterface.setAttribute("dev", "eth2");
+			
+			Node bridge = doc.getElementsByTagName("bridge").item(0);
+			Element eBridge = (Element)bridge;
+			eBridge.setAttribute("name", "virbr-"+dhcpAllocator.bridgeIp);
+			
+			Node mac = doc.getElementsByTagName("mac").item(0);
+			Element eMac = (Element)mac;
+			eMac.setAttribute("address", dhcpAllocator.bridgeMac);
+			
+			Node ip = doc.getElementsByTagName("ip").item(0);
+			Element eIp = (Element)ip;
+			eIp.setAttribute("address", dhcpAllocator.bridgeIp);
+			
+			Node dhcp = eIp.getElementsByTagName("dhcp").item(0);
+			Element eDhcp = (Element)dhcp;
+			Node range = eDhcp.getElementsByTagName("range").item(0);
+			Element eRange = (Element)range;
+			eRange.setAttribute("start", dhcpAllocator.startIp);
+			eRange.setAttribute("end", dhcpAllocator.endIp);
+			
+			HashMap<String, String> macIpMap = dhcpAllocator.getMacIpMap();
+			int i=0;
+			for(String key_mac : macIpMap.keySet()){
+				String value_ip = macIpMap.get(key_mac);
+				
+				Element eHost = doc.createElement("host");
+				eHost.setAttribute("mac", key_mac);
+				eHost.setAttribute("name", "host"+new Integer(i).toString());
+				i = i+1;
+				eHost.setAttribute("ip", value_ip);
+				
+				eDhcp.appendChild(eHost);
+			}
+			
+			
+			doc.getDocumentElement().normalize();
+			TransformerFactory transformerFactory = TransformerFactory.newInstance();
+			Transformer transformer = transformerFactory.newTransformer();
+			
+			File constructedFile = new File(localXmlFile);
+			StreamResult result = new StreamResult(constructedFile);
+			DOMSource source = new DOMSource(doc);
+			transformer.transform(source, result);
+			
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
+		return localXmlFile;
+	}
 	
 	private String constructLocalXmlFile(VmInstance vmInstance){
 		Document doc;

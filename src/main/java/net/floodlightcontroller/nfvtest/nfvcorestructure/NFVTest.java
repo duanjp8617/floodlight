@@ -56,6 +56,8 @@ import net.floodlightcontroller.packet.UDP;
 import java.util.Set;
 import java.util.Collection;
 
+import net.floodlightcontroller.nfvtest.test.TestHostServer;
+
 
  
 public class NFVTest implements IOFMessageListener, IFloodlightModule {
@@ -170,6 +172,12 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         this.IpsServer3.attachEgressIf("192.168.57.13",
         		"52:54:00:36:96:70", "00:00:2a:92:11:2c:36:49", 11);
         ipsServerList.add(this.IpsServer3);
+        
+        logger.info("start testing network xml");
+        TestHostServer testHostServer = new TestHostServer();
+        testHostServer.testConstructNetworkXmlFile();
+        logger.info("stop testing network xml");
+        
     }
  
     @Override

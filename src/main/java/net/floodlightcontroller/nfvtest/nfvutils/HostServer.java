@@ -2,6 +2,9 @@ package net.floodlightcontroller.nfvtest.nfvutils;
 
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.*;
 import net.floodlightcontroller.nfvtest.nfvutils.MacAddressAllocator;
+import net.floodlightcontroller.nfvtest.nfvutils.FakeDhcpAllocator;
+import net.floodlightcontroller.nfvtest.nfvutils.IpAddressAllocator;
+import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 
 import java.util.Map;
 import java.util.List;
@@ -14,52 +17,73 @@ public class HostServer {
 		public final ControllerConfig controllerConfig;
 		public final HostServerConfig hostServerConfig;
 		public final ServiceChainConfig serviceChainConfig;
+		
 		public final String vmName;
 		public final int stageIndex;
+		
 		public final List<String> macList;
 		public final Map<String, String> macBridgeMap;
 		public final List<String> bridgeDpidList;
+		private int[] port;
 		
-		private List<Integer> port;
+		public final String managementMac;
+		public final String managementIp;
+		public final String operationMac;
+		public final String operationIp;
 		
 		public VmInstance(HostServerConfig hConfig, ServiceChainConfig sConfig, ControllerConfig cConfig,
-				   int stageIndex, String vmName, List<String> macList, List<String> dpidList){
+				   int stageIndex, String vmName,String managementMac, String managementIp, 
+				   String operationMac, String operationIp){
 			this.stageIndex = stageIndex;
 			this.vmName = vmName;
+			
+			this.controllerConfig = cConfig;
 			this.hostServerConfig = hConfig;
 			this.serviceChainConfig = sConfig;
+			
+			this.macList = new ArrayList<String>();
+			this.macBridgeMap = new HashMap<String, String>();
+			this.bridgeDpidList = new ArrayList<String>();
+			
+			this.managementMac = managementMac;
+			this.managementIp = managementIp;
+			this.operationMac = operationMac;
+			this.operationIp = operationIp;
+		}
+		
+		public VmInstance(HostServerConfig hConfig, ServiceChainConfig sConfig, ControllerConfig cConfig,
+				   int stageIndex, String vmName, String managementMac, String managementIp, 
+				   List<String> macList, List<String> dpidList){
+			this.stageIndex = stageIndex;
+			this.vmName = vmName;
+			
+			this.controllerConfig = cConfig;
+			this.hostServerConfig = hConfig;
+			this.serviceChainConfig = sConfig;
+			
 			this.macList = macList;
 			this.macBridgeMap = new HashMap<String, String>();
 			this.bridgeDpidList = new ArrayList<String>();
-			this.controllerConfig = cConfig;
 			
-			if(this.macList.size()==2){
-				macBridgeMap.put(this.macList.get(0), this.serviceChainConfig.bridges.get(stageIndex));
-				macBridgeMap.put(this.macList.get(1), 
-				        this.serviceChainConfig.bridges.get(this.serviceChainConfig.bridges.size()-1));
-				
-				bridgeDpidList.add(dpidList.get(stageIndex));
-				bridgeDpidList.add(dpidList.get(dpidList.size()-1));
-			}
-			else if(this.macList.size()==3){
-				macBridgeMap.put(this.macList.get(0), this.serviceChainConfig.bridges.get(stageIndex));
-				macBridgeMap.put(this.macList.get(1), this.serviceChainConfig.bridges.get(stageIndex+1));
-				macBridgeMap.put(this.macList.get(2), 
-				        this.serviceChainConfig.bridges.get(this.serviceChainConfig.bridges.size()-1));
-				
-				bridgeDpidList.add(dpidList.get(stageIndex));
-				bridgeDpidList.add(dpidList.get(stageIndex+1));
-				bridgeDpidList.add(dpidList.get(dpidList.size()-1));
-			}
-			else{
-			}
+			this.managementMac = managementMac;
+			this.managementIp = managementIp;
+			this.operationMac = "nil";
+			this.operationIp = "nil";
+			
+			this.macBridgeMap.put(this.macList.get(0), 
+					              this.serviceChainConfig.bridges.get(this.stageIndex));
+			this.macBridgeMap.put(this.macList.get(1), 
+		              			  this.serviceChainConfig.bridges.get(this.stageIndex+1));
+			this.bridgeDpidList.add(dpidList.get(this.stageIndex));
+			this.bridgeDpidList.add(dpidList.get(this.stageIndex+1));
+			
 		}
 		
 		public StageVmInfo getStageVmInfo(){
 			return serviceChainConfig.getStageVmInfo(this.stageIndex);
 		}
 		
-		public void setPort(List<Integer> port){
+		public void setPort(int[] port){
 			this.port = port;
 		}
 		
@@ -68,7 +92,7 @@ public class HostServer {
 				return -10;
 			}
 			else{
-				return this.port.get(index).intValue();
+				return this.port[index];
 			}
 		}
 		
@@ -121,51 +145,89 @@ public class HostServer {
 	public final ControllerConfig controllerConfig;
 	public final HostServerConfig hostServerConfig;
 	public final Map<String, ServiceChainConfig> serviceChainConfigMap;
+	
 	public final MacAddressAllocator macAllocator;
 	public final Map<String, List<String>> serviceChainDpidMap;
+	
+	public final Map<String, FakeDhcpAllocator> serviceChainMNetworkMap;
+	public final Map<String, FakeDhcpAllocator> serviceChainONetworkMap;
 	
 	private HostServerAllocation allocation;
 	
 	public HostServer(ControllerConfig controllerConfig,
 			   		  HostServerConfig hostServerConfig,
 			   		  Map<String, ServiceChainConfig> serviceChainConfigMap,
-			   		  MacAddressAllocator macAllocator){
+			   		  MacAddressAllocator macAllocator,
+			   		  IpAddressAllocator ipAllocator){
 		this.controllerConfig = controllerConfig;
 		this.hostServerConfig = hostServerConfig;
 		this.serviceChainConfigMap = serviceChainConfigMap;
+		
 		this.macAllocator = macAllocator;
 		this.serviceChainDpidMap = new HashMap<String, List<String>>();
 		allocation = new HostServerAllocation(this.hostServerConfig);
 		
-		byte[] prefix = new byte[1];
-		prefix[0] = (byte) 0xee;
-		MacAddressAllocator dpidAllocator = new MacAddressAllocator(prefix);
+		this.serviceChainMNetworkMap = new HashMap<String, FakeDhcpAllocator>();
+		this.serviceChainONetworkMap = new HashMap<String, FakeDhcpAllocator>();
 		
 		for(String chainName : this.serviceChainConfigMap.keySet()){
+			
 			ServiceChainConfig chainConfig = this.serviceChainConfigMap.get(chainName);
+			
 			List<String> dpidList = new ArrayList<String>();
 			for(int i=0; i<chainConfig.bridges.size(); i++){
-				String dpid = dpidAllocator.getMac();
+				String dpid = this.macAllocator.getMac();
 				dpidList.add(dpid);
 			}
 			serviceChainDpidMap.put(chainName, dpidList);
+			
+			FakeDhcpAllocator mDhcpAllocator = new FakeDhcpAllocator(this.macAllocator,
+												ipAllocator.allocateIp()+2, 32);
+			this.serviceChainMNetworkMap.put(chainName, mDhcpAllocator);
+			
+			if(chainConfig.nVmInterface == 2){
+				FakeDhcpAllocator oDhcpAllocator = new FakeDhcpAllocator(this.macAllocator,
+														ipAllocator.allocateIp()+2, 32);
+				this.serviceChainONetworkMap.put(chainName, oDhcpAllocator);
+			}
+			else{
+				this.serviceChainONetworkMap.put(chainName, null);
+			}
 		}
 	}
 	
 	public VmInstance allocateVmInstance(String chainName, int stageIndex){
 		if(allocation.allocate(serviceChainConfigMap.get(chainName), stageIndex)){
 			ServiceChainConfig chainConfig = serviceChainConfigMap.get(chainName);
-
-			ArrayList<String> macAddrList = new ArrayList<String>();
-			for(int i=0; i<chainConfig.nVmInterface; i++){
-				macAddrList.add(this.macAllocator.getMac());
+			VmInstance newVm;
+			
+			if(chainConfig.nVmInterface == 2){
+				Pair<String, String> managementPair = 
+						this.serviceChainMNetworkMap.get(chainName).allocateMacIp();
+				Pair<String, String> operationPair = 
+						this.serviceChainONetworkMap.get(chainName).allocateMacIp();
+				
+				String vmName = chainName+managementPair.second;
+				
+				newVm = new VmInstance(this.hostServerConfig, chainConfig, this.controllerConfig,
+						stageIndex,vmName, managementPair.first, managementPair.second, 
+						operationPair.first, operationPair.second);
 			}
-
-			String lastMacAddr = new String(macAddrList.get(macAddrList.size()-1));
-			String newStr = lastMacAddr.replace(':', '-');
-			String vmName = chainName+"-"+newStr;
-			VmInstance newVm = new VmInstance(this.hostServerConfig, chainConfig, this.controllerConfig, stageIndex,
-			      vmName,macAddrList, serviceChainDpidMap.get(chainName));	
+			else{
+				ArrayList<String> macAddrList = new ArrayList<String>();
+				macAddrList.add(this.macAllocator.getMac());
+				macAddrList.add(this.macAllocator.getMac());
+				
+				Pair<String, String> managementPair = 
+						this.serviceChainMNetworkMap.get(chainName).allocateMacIp();
+				
+				String vmName = chainName+managementPair.second;
+				
+				newVm = new VmInstance(this.hostServerConfig, chainConfig, this.controllerConfig,
+						stageIndex,vmName, managementPair.first, managementPair.second,
+						macAddrList, this.serviceChainDpidMap.get(chainName));
+			}
+			
 			return newVm;
 		}
 		else{
@@ -175,6 +237,13 @@ public class HostServer {
 	
 	public boolean deallocateVmInstance(VmInstance vm){
 		if(this.allocation.deallocate(vm.serviceChainConfig, vm.stageIndex)){
+			Pair<String, String> managementPair = new Pair<String, String>(vm.managementMac, vm.managementIp);
+			this.serviceChainMNetworkMap.get(vm.serviceChainConfig.name).deallocateMacIp(managementPair);
+			
+			if(vm.serviceChainConfig.nVmInterface ==2){
+				Pair<String, String> operationPair = new Pair<String, String>(vm.operationMac, vm.operationIp);
+				this.serviceChainONetworkMap.get(vm.serviceChainConfig.name).deallocateMacIp(operationPair);
+			}
 			return true;
 		}
 		else{
