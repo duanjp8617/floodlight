@@ -17,7 +17,7 @@ public class FakeDhcpAllocator {
 	private final LinkedList<String> macQueue;
 	private final HashMap<String, String> allocatedMacIpMap;
 	
-	FakeDhcpAllocator(MacAddressAllocator macAllocator, int startIp, int size){
+	FakeDhcpAllocator(MacAddressAllocator macAllocator, long startIp, int size){
 		this.startIp = this.intToString(startIp);
 		this.endIp = this.intToString(startIp+size-1);
 		
@@ -32,7 +32,7 @@ public class FakeDhcpAllocator {
 		}
 		
 		this.bridgeMac = macAllocator.getMac();
-		this.bridgeIp = this.intToString((startIp&0xFFFFFF00)+1);
+		this.bridgeIp = this.intToString((startIp&0xFFFFFFFFFFFFFF00l)+1);
 	}
 	
 	public synchronized Pair<String, String> allocateMacIp(){
@@ -60,20 +60,20 @@ public class FakeDhcpAllocator {
 		return this.macIpMap;
 	}
 	
-	private byte[] intToByteArray(int value) {
-	    byte[] byteArray = new byte[4];
-	    byteArray[0] = (byte) ((value & 0xFF000000) >> 24);
-	    byteArray[1] = (byte) ((value & 0x00FF0000) >> 16);
-	    byteArray[2] = (byte) ((value & 0x0000FF00) >> 8);
-	    byteArray[3] = (byte) (value & 0x000000FF);
+	private long[] intToByteArray(long value) {
+	    long[] byteArray = new long[4];
+	    byteArray[0] = ((value & 0xFFFFFFFFFF000000l) >> 24);
+	    byteArray[1] = ((value & 0xFFFFFFFF00FF0000l) >> 16);
+	    byteArray[2] = ((value & 0xFFFFFFFF0000FF00l) >> 8);
+	    byteArray[3] = (value & 0xFFFFFFFF000000FFl);
 	    return byteArray;
 	}
 	
-	private String intToString(int value){
-		byte[] byteArray = this.intToByteArray(value);
+	private String intToString(long value){
+		long[] byteArray = this.intToByteArray(value);
 		StringBuilder sb = new StringBuilder();
 		for(int i=0; i<byteArray.length; i++){
-			sb.append(String.format("%d%s", byteArray[i], (i < byteArray.length - 1) ? "." : ""));
+			sb.append(String.format("%d%s", (int)byteArray[i], (i < byteArray.length - 1) ? "." : ""));
 		}
 		return sb.toString();
 	}

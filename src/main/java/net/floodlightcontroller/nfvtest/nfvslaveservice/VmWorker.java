@@ -94,8 +94,6 @@ public class VmWorker extends MessageProcessor{
 					agent.setBridgeDpid(chainConfig.bridges.get(i), 
 							            hostServer.serviceChainDpidMap.get(chainName).get(i));
 				}
-				//create the management network
-				//create the operation network if needed.
 				for(int i=0; i<chainConfig.stages.size(); i++){
 					baseImgList.add(chainConfig.getImgNameForStage(i));
 					if(!agent.fileExistInDir(hostServer.hostServerConfig.imgDir, chainConfig.getImgNameForStage(i))){
@@ -103,6 +101,30 @@ public class VmWorker extends MessageProcessor{
 						String remotePath = hostServer.hostServerConfig.imgDir+"/"+chainConfig.getImgNameForStage(i);
 						agent.uploadFile(imgPath, remotePath);
 					}
+				}
+				
+				if(agent.networkExist(chainConfig.getManagementNetwork())){
+					agent.deleteNetwork(chainConfig.getManagementNetwork());
+				}
+				String localMNetXMLFile = constructNetworkXmlFile(hostServer.controllerConfig,
+							              chainName, chainConfig.getManagementNetwork(),
+							              hostServer.serviceChainMNetworkMap.get(chainName));
+				String remoteMNetXMLFile = hostServer.hostServerConfig.xmlDir+"/"+
+										   chainConfig.getManagementNetwork();
+				agent.uploadFile(localMNetXMLFile, remoteMNetXMLFile);
+				agent.createNetworkFromXml(remoteMNetXMLFile);
+				
+				if(chainConfig.getOperationNetwork()!="nil"){
+					if(agent.networkExist(chainConfig.getOperationNetwork())){
+						agent.deleteNetwork(chainConfig.getOperationNetwork());
+					}
+					String localMNetXMLFilz = constructNetworkXmlFile(hostServer.controllerConfig,
+								              chainName, chainConfig.getOperationNetwork(),
+								              hostServer.serviceChainONetworkMap.get(chainName));
+					String remoteMNetXMLFilz = hostServer.hostServerConfig.xmlDir+"/"+
+											   chainConfig.getOperationNetwork();
+					agent.uploadFile(localMNetXMLFilz, remoteMNetXMLFilz);
+					agent.createNetworkFromXml(remoteMNetXMLFilz);
 				}
 			}
 			
@@ -151,74 +173,78 @@ public class VmWorker extends MessageProcessor{
 	}
 	
 	private String constructNetworkXmlFile(ControllerConfig controllerConfig, String chainName,
-							String networkName, FakeDhcpAllocator dhcpAllocator){
+			String networkName, FakeDhcpAllocator dhcpAllocator){
 		Document doc;
 		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-		
+
 		String networkXmlTemplateFile = controllerConfig.xmlDir+"/"+
-										controllerConfig.networkTemplateName;
+							controllerConfig.networkTemplateName;
 		String localXmlFile = controllerConfig.xmlDir+"/"+networkName+
-								dhcpAllocator.bridgeIp;
-		
+							dhcpAllocator.bridgeIp;
+
 		try{
 			DocumentBuilder db = dbf.newDocumentBuilder();
 			doc = db.parse(new File(networkXmlTemplateFile));
 			doc.getDocumentElement().normalize();
-			
+
 			Node name = doc.getElementsByTagName("name").item(0);
 			name.setTextContent(networkName);
-			
+
 			Node forward = doc.getElementsByTagName("forward").item(0);
 			Element eForward = (Element)forward;
 			eForward.setAttribute("dev", "eth2");
-			
+
 			Node nInterface = eForward.getElementsByTagName("interface").item(0);
 			Element eInterface = (Element)nInterface;
 			eInterface.setAttribute("dev", "eth2");
-			
+
 			Node bridge = doc.getElementsByTagName("bridge").item(0);
 			Element eBridge = (Element)bridge;
-			eBridge.setAttribute("name", "virbr-"+dhcpAllocator.bridgeIp);
-			
+			String baseIp = new String(dhcpAllocator.bridgeIp);
+			int firstDot = baseIp.indexOf('.');
+			int secondDot = baseIp.indexOf('.', firstDot+1);
+			int thirdDot = baseIp.indexOf('.', secondDot+1);
+			eBridge.setAttribute("name", "virbr"+baseIp.substring(secondDot+1, thirdDot));
+
 			Node mac = doc.getElementsByTagName("mac").item(0);
 			Element eMac = (Element)mac;
 			eMac.setAttribute("address", dhcpAllocator.bridgeMac);
-			
+
 			Node ip = doc.getElementsByTagName("ip").item(0);
 			Element eIp = (Element)ip;
 			eIp.setAttribute("address", dhcpAllocator.bridgeIp);
-			
+
 			Node dhcp = eIp.getElementsByTagName("dhcp").item(0);
 			Element eDhcp = (Element)dhcp;
 			Node range = eDhcp.getElementsByTagName("range").item(0);
 			Element eRange = (Element)range;
 			eRange.setAttribute("start", dhcpAllocator.startIp);
 			eRange.setAttribute("end", dhcpAllocator.endIp);
-			
+
 			HashMap<String, String> macIpMap = dhcpAllocator.getMacIpMap();
 			int i=0;
 			for(String key_mac : macIpMap.keySet()){
 				String value_ip = macIpMap.get(key_mac);
-				
+
 				Element eHost = doc.createElement("host");
 				eHost.setAttribute("mac", key_mac);
 				eHost.setAttribute("name", "host"+new Integer(i).toString());
 				i = i+1;
 				eHost.setAttribute("ip", value_ip);
-				
+
 				eDhcp.appendChild(eHost);
 			}
-			
-			
+
+
 			doc.getDocumentElement().normalize();
 			TransformerFactory transformerFactory = TransformerFactory.newInstance();
 			Transformer transformer = transformerFactory.newTransformer();
-			
+
 			File constructedFile = new File(localXmlFile);
 			StreamResult result = new StreamResult(constructedFile);
 			DOMSource source = new DOMSource(doc);
 			transformer.transform(source, result);
-			
+
 		}
 		catch (Exception e){
 			e.printStackTrace();

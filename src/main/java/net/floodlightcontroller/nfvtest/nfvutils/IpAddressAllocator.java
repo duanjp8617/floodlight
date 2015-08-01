@@ -1,10 +1,10 @@
 package net.floodlightcontroller.nfvtest.nfvutils;
 
 public class IpAddressAllocator {
-	private int uniqueValue;
+	private long uniqueValue;
 	
-	public IpAddressAllocator(byte first, byte second, byte third){
-		byte[] prefix = new byte[4];
+	public IpAddressAllocator(long first, long second, long third){
+		long[] prefix = new long[4];
 		prefix[0] = first;
 		prefix[1] = second;
 		prefix[2] = third;
@@ -12,17 +12,17 @@ public class IpAddressAllocator {
 		this.uniqueValue = this.byteArrayToInt(prefix);
 	}
 	
-	public synchronized int allocateIp(){
-		int returnVal = this.uniqueValue;
-		this.uniqueValue += 0x00000100;
+	public synchronized long allocateIp(){
+		long returnVal = this.uniqueValue;
+		this.uniqueValue += 256;
 		return returnVal;
 	}
 	
-	public int byteArrayToInt(byte[] byteArray) {
-	    int value = (byteArray[3] << (24));
-	    value |= (byteArray[2] & 0xFF) << (16);
-	    value |= (byteArray[1] & 0xFF) << (8);
-	    value |= (byteArray[0] & 0xFF);
+	public long byteArrayToInt(long[] byteArray) {
+	    long value = ((byteArray[0] << 24)&0xFFFFFFFFFF000000l);
+	    value |= ((byteArray[1] << 16)&0xFFFFFFFF00FF0000l);
+	    value |= ((byteArray[2] << 8)&0xFFFFFFFF0000FF00l);
+	    value |= (byteArray[3] & 0xFFFFFFFF000000FFl);
 	    return value;
 	}
 }
