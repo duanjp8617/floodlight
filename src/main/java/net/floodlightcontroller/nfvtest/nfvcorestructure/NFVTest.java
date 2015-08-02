@@ -175,7 +175,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         
         logger.info("start testing network xml");
         TestHostServer testHostServer = new TestHostServer();
-        testHostServer.testInitialize();
+        testHostServer.testVmAllocator();
         logger.info("stop testing network xml");
         
     }

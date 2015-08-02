@@ -99,9 +99,14 @@ public class HostAgent{
 		
 		if(command.getExitStatus().intValue()==0){
 			String result = IOUtils.readFully(command.getInputStream()).toString();
-			String port = result.substring(0, result.indexOf('('));
+			
+			int i = 0;
+			while (!Character.isDigit(result.charAt(i))) i++;
+			
+			String port = result.substring(i, result.indexOf('('));
+			System.out.println(port);
 			session.close();
-			return Integer.getInteger(port).intValue();
+			return Integer.parseInt(port);
 		}
 		else{
 			session.close();
@@ -209,7 +214,7 @@ public class HostAgent{
 		
 		final Session session = sshClient.startSession();
 		final Session.Command command = session.exec("cp "+remoteSrcFile+" "+remoteDstFile);
-		command.join(2, TimeUnit.SECONDS);
+		command.join(10, TimeUnit.SECONDS);
 		
 		if(command.getExitStatus().intValue()==0){
 			session.close();
