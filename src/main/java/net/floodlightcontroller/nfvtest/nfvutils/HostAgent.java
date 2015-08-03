@@ -114,6 +114,25 @@ public class HostAgent{
 		}
 	}
 	
+	public boolean setController(String bridgeName, String controllerIp) throws
+		IOException, UserAuthException, TransportException{
+
+			final Session session = sshClient.startSession();
+			final Session.Command command = session.exec("sudo ovs-vsctl set-controller "+
+												bridgeName+" tcp:"+controllerIp+":6653");
+
+			command.join(2, TimeUnit.SECONDS);
+
+			if(command.getExitStatus().intValue()==0){
+				session.close();
+				return true;
+			}
+			else{
+				session.close();
+				return false;
+			}
+	}
+	
 	public boolean networkExist(String networkName) throws
 	   			IOException, UserAuthException, TransportException{
 
