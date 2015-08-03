@@ -3,6 +3,7 @@ import net.floodlightcontroller.nfvtest.message.Message;
 
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
+import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVServiceChain;
 
 public class ConcreteMessage {
 	/*
@@ -217,6 +218,25 @@ public class ConcreteMessage {
 		
 		public VmInstance getVmInstance(){
 			return this.vmInstance;
+		}
+	}
+	
+	//The following messages are sent to ServiceChainHandler for processing.
+	static public class InitServiceChainRequset extends Message{
+		private final String sourceId;
+		private final NFVServiceChain serviceChain;
+		
+		public InitServiceChainRequset(String sourceId, NFVServiceChain serviceChain){
+			this.sourceId = sourceId;
+			this.serviceChain = serviceChain;
+		}
+		
+		public String getSourceId(){
+			return this.sourceId;
+		}
+		
+		public NFVServiceChain getServiceChain(){
+			return this.serviceChain;
 		}
 	}
 }

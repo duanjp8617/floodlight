@@ -28,7 +28,7 @@ public class NFVNode {
 		}
 	}
 	
-	NFVNode(VmInstance vmInstance){
+	public NFVNode(VmInstance vmInstance){
 		this.vmInstance = vmInstance;
 	}
 	
@@ -71,7 +71,8 @@ public class NFVNode {
 		return this.vmInstance.macList.get(this.vmInstance.macList.size()-1);
 	}
 	
-	
-	
+	public String getManagementMac(){
+		return this.vmInstance.managementMac;
+	}
 	
 }
