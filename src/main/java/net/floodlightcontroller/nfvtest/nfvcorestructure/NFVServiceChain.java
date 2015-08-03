@@ -18,7 +18,7 @@ public class NFVServiceChain {
 		this.serviceChainConfig = serviceChainConfig;
 		this.nfvNodeMaps = new ArrayList<Map<String, NFVNode>>();
 		this.rrStore = new int[this.serviceChainConfig.stages.size()];
-		this.baseNodeMacList = new ArrayList<String>();
+		this.baseNodeMacList = new ArrayList<String>(this.serviceChainConfig.stages.size());
 		
 		for(int i=0; i<this.serviceChainConfig.stages.size(); i++){
 			Map<String, NFVNode> nodeMap = new HashMap<String, NFVNode>();
@@ -27,17 +27,18 @@ public class NFVServiceChain {
 		}
 	}
 	
-	public synchronized void setBaseNodeMacList(List<String> macList){
-		for(String mac : macList){
-			this.baseNodeMacList.add(mac);
-		}
-	}
-	
+
 	public synchronized void addNodeToChain(NFVNode node){
 		if(node.vmInstance.serviceChainConfig.name == serviceChainConfig.name){
 			Map<String, NFVNode> stageMap = this.nfvNodeMaps.get(node.vmInstance.stageIndex);
-			if(!stageMap.containsKey(node.getManagementMac())){
+			if(stageMap.size() == 0){
 				stageMap.put(node.getManagementMac(), node);
+				this.baseNodeMacList.add(node.vmInstance.stageIndex, node.getManagementMac());
+			}
+			else{
+				if(!stageMap.containsKey(node.getManagementMac())){
+					stageMap.put(node.getManagementMac(), node);
+				}
 			}
 		}
 	}
@@ -45,7 +46,8 @@ public class NFVServiceChain {
 	public synchronized void deleteNodeFromChain(NFVNode node){
 		if(node.vmInstance.serviceChainConfig.name == serviceChainConfig.name){
 			Map<String, NFVNode> stageMap = this.nfvNodeMaps.get(node.vmInstance.stageIndex);
-			if(stageMap.containsKey(node.getManagementMac())){
+			if( (stageMap.containsKey(node.getManagementMac())) && 
+			    (node.getManagementMac()!=this.baseNodeMacList.get(node.vmInstance.stageIndex)) ){
 				stageMap.remove(node.getManagementMac());
 			}
 		}
@@ -64,5 +66,11 @@ public class NFVServiceChain {
 			this.rrStore[i] = (this.rrStore[i]+1)%stageMap.size();
 		}
 		return routeList;
+	}
+	
+	public synchronized String getEntryDpid(){
+		Map<String, NFVNode> nodeMap = this.nfvNodeMaps.get(0);
+		NFVNode baseNode = nodeMap.get(this.baseNodeMacList.get(0));
+		return baseNode.vmInstance.bridgeDpidList.get(0);
 	}
 }

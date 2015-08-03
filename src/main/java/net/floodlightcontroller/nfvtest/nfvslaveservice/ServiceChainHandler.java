@@ -97,14 +97,11 @@ public class ServiceChainHandler extends MessageProcessor {
 				NFVServiceChain serviceChain = originalRequest.getServiceChain();
 			
 				ArrayList<Message> newReplyList = pending.getReplyList();
-				List<String> macList = new ArrayList<String>(newReplyList.size());
 				for(int i=0; i<newReplyList.size(); i++){
 					AllocateVmReply newReplz = (AllocateVmReply)newReplyList.get(i);
 					VmInstance vmInstance = newReplz.getVmInstance();
 					serviceChain.addNodeToChain(new NFVNode(vmInstance));
-					macList.add(vmInstance.stageIndex,vmInstance.managementMac);
 				}
-				serviceChain.setBaseNodeMacList(macList);
 				this.serviceChainMap.put(serviceChain.serviceChainConfig.name, serviceChain);
 				synchronized(serviceChain){
 					serviceChain.notify();
