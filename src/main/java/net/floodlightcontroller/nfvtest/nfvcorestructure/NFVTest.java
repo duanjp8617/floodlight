@@ -206,7 +206,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		this.hostServerConfig = 
 				new HostServerConfig("net-b6.cs.hku.hk", "1.1.1.2", "2.2.2.2", 20, 32*1024, 100*1024, 1,
-						             "net", "netexplo", "/home/net/nfvenv");
+						             "xxx", "xxx", "/home/net/nfvenv");
 		
 		StageVmInfo vmInfo = new StageVmInfo(1,1024,2*1024,"img1.img");
 		ArrayList<StageVmInfo> list = new ArrayList<StageVmInfo>();
@@ -408,93 +408,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
  
     @Override
     public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-         Ethernet eth =
-                 IFloodlightProviderService.bcStore.get(cntx,
-                                             IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-         IPacket pkt = eth.getPayload(); 
-
-         OFPacketIn pi = (OFPacketIn)msg;
-         if(pkt instanceof IPv4){
-        	 IPv4 ip_pkt = (IPv4)pkt;
-        	 
-        	 int destIpAddress = ip_pkt.getDestinationAddress().getInt();
-        	 
-        	 if(destIpAddress == IPv4Address.of("192.168.57.51").getInt()){
-        		 if(sw.getId().getLong() == DatapathId.of(this.dpid_br1).getLong()){
-        			 //Only care about flows sent to the entry switch.
-        			 logger.info("receive flow, start testing simpleLoadBalancing");
-        			 simpleLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT));
-        			 return Command.STOP;
-        		 }
-        	 }
-         }
-         
-         return Command.CONTINUE;
-    }
-    
-    private void simpleLoadBalancing(IOFSwitch sw, FloodlightContext cntx, OFPort inPort){
-    	//First build a match from the received packet.
-    	int sourcePort = 0;
-    	
-        Ethernet eth =
-                IFloodlightProviderService.bcStore.get(cntx,
-                                            IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
-        
-        Match.Builder mb = sw.getOFFactory().buildMatch();
-        
-        //set the match for in port;
-        mb.setExact(MatchField.IN_PORT, inPort);
-        
-        //set match for mac address.
-        mb.setExact(MatchField.ETH_SRC, eth.getSourceMACAddress())
-          .setExact(MatchField.ETH_DST, eth.getDestinationMACAddress());
-        
-        //set match for ip address.
-        IPv4 ip_pkt = (IPv4)eth.getPayload();
-        mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
-          .setExact(MatchField.IPV4_SRC, ip_pkt.getSourceAddress())
-          .setExact(MatchField.IPV4_DST, ip_pkt.getDestinationAddress());
-        
-        //set match for tcp/udp
-        if(ip_pkt.getProtocol().equals(IpProtocol.TCP)){
-        	TCP tcp_pkt = (TCP)ip_pkt.getPayload();
-			mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
-			.setExact(MatchField.TCP_SRC, tcp_pkt.getSourcePort())
-			.setExact(MatchField.TCP_DST, tcp_pkt.getDestinationPort());
-			
-			sourcePort = tcp_pkt.getSourcePort().getPort();
-        }
-        else if(ip_pkt.getProtocol().equals(IpProtocol.UDP)){
-          	UDP udp_pkt = (UDP)ip_pkt.getPayload();
-    		mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-    		.setExact(MatchField.UDP_SRC, udp_pkt.getSourcePort())
-    		.setExact(MatchField.UDP_DST, udp_pkt.getDestinationPort());
-    		
-    		sourcePort = udp_pkt.getSourcePort().getPort();
-        }
-        
-        Match flowMatch = mb.build();
-      
-		List<OFAction> actionList = new ArrayList<OFAction>();	
-		OFActions actions = sw.getOFFactory().actions();
-		OFOxms oxms = sw.getOFFactory().oxms();
-		
-		//rewrite use of1.3
-		int index = sourcePort%3;
-		IpsServer selectedServer = ipsServerList.get(index);
-		actionList.add(actions.setField(oxms.ethDst(selectedServer.ingressIf.macAddress)));
-		actionList.add(actions.output(OFPort.of(selectedServer.ingressIf.port), Integer.MAX_VALUE));
-		
-		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
-		fmb.setHardTimeout(0);
-		fmb.setIdleTimeout(10);
-		fmb.setBufferId(OFBufferId.NO_BUFFER);
-		fmb.setCookie(U64.of(0));
-		fmb.setPriority(1);
-		fmb.setOutPort(OFPort.of(selectedServer.ingressIf.port));
-		fmb.setActions(actionList);
-		fmb.setMatch(flowMatch);
-		sw.write(fmb.build());
+         return this.processPktIn(sw,msg,cntx);
     }
    
  
