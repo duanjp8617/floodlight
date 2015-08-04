@@ -41,7 +41,7 @@ public class NFVNode {
 	}
 	
 	public String getMacAddress(int whichMac){
-		if(whichMac>=this.vmInstance.serviceChainConfig.nVmInterface){
+		if(whichMac>=this.vmInstance.macList.size()){
 			return "no-such-mac";
 		}
 		else{
@@ -50,7 +50,7 @@ public class NFVNode {
 	}
 	
 	public String getBridgeDpid(int whichMac){
-		if(whichMac>=this.vmInstance.serviceChainConfig.nVmInterface){
+		if(whichMac>=this.vmInstance.bridgeDpidList.size()){
 			return "no-such-bridge";
 		}
 		else{
@@ -65,10 +65,6 @@ public class NFVNode {
 		else{
 			return this.vmInstance.getPort(whichMac);
 		}
-	}
-	
-	public String getNodeIndex(){
-		return this.vmInstance.macList.get(this.vmInstance.macList.size()-1);
 	}
 	
 	public String getManagementMac(){

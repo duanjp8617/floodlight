@@ -25,6 +25,7 @@ import org.projectfloodlight.openflow.types.IpProtocol;
 import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TransportPort;
 import org.projectfloodlight.openflow.types.U64;
  
 import net.floodlightcontroller.core.FloodlightContext;
@@ -285,6 +286,124 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     @Override
     public void startUp(FloodlightModuleContext context) {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+    }
+    
+    private net.floodlightcontroller.core.IListener.Command processPktIn(IOFSwitch sw, OFMessage msg, FloodlightContext cntx){
+    	Ethernet eth =
+                IFloodlightProviderService.bcStore.get(cntx,
+                                            IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        IPacket pkt = eth.getPayload(); 
+        OFPacketIn pi = (OFPacketIn)msg;
+        if(pkt instanceof IPv4){
+        	IPv4 ip_pkt = (IPv4)pkt;
+       	 	int destIpAddress = ip_pkt.getDestinationAddress().getInt();
+       	 	if(destIpAddress == IPv4Address.of("192.168.57.51").getInt()){
+       	 		if(sw.getId().getLong() == DatapathId.of(this.serviceChain.getEntryDpid()).getLong()){
+       	 			serviceChainLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT));
+       	 			return Command.STOP;
+       	 		}
+       	 	}
+        }
+        
+        return Command.CONTINUE;
+    }
+    
+    private void serviceChainLoadBalancing(IOFSwitch sw, FloodlightContext cntx, OFPort initialInPort){
+    	synchronized(this.serviceChain){
+        	Ethernet eth =
+                    IFloodlightProviderService.bcStore.get(cntx,
+                                                IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
+        	IPv4 ip_pkt = (IPv4)eth.getPayload();
+        	IPv4Address srcIp = ip_pkt.getSourceAddress();
+        	IPv4Address dstIp = ip_pkt.getDestinationAddress();
+  
+        	TransportPort srcPort = null;
+        	TransportPort dstPort = null;
+        	IpProtocol transportProtocol = ip_pkt.getProtocol();
+        	if(transportProtocol.equals(IpProtocol.TCP)){
+        		TCP tcp_pkt = (TCP)ip_pkt.getPayload();
+        		srcPort = tcp_pkt.getSourcePort();
+        		dstPort = tcp_pkt.getDestinationPort();
+        	}
+        	else if(ip_pkt.getProtocol().equals(IpProtocol.UDP)){
+        		UDP udp_pkt = (UDP)ip_pkt.getPayload();
+        		srcPort = udp_pkt.getSourcePort();
+        		dstPort = udp_pkt.getDestinationPort();
+        	}
+        	else {
+        		return;
+        	}
+ 
+        	OFPort inPort = initialInPort;
+        	
+    		List<NFVNode> routeList = this.serviceChain.forwardRoute();
+    		IOFSwitch hitSwitch = sw;
+    		
+    		for(int i=0; i<routeList.size(); i++){
+    			NFVNode currentNode = routeList.get(i);
+    			IOFSwitch nodeSwitch = this.switchService.getSwitch(DatapathId.of(currentNode.getBridgeDpid(0)));
+    			//create flow rules to route the flow from hitSwitch to nodeSwitch.
+    			
+    			if(hitSwitch.getId().getLong() == nodeSwitch.getId().getLong()){
+    				Match flowMatch = createMatch(hitSwitch, inPort, srcIp, dstIp,
+    											  transportProtocol, srcPort, dstPort);
+    				OFFlowMod flowMod = createFlowMod(hitSwitch, flowMatch, 
+    						                          MacAddress.of(currentNode.getMacAddress(0)),
+    												  OFPort.of(currentNode.getPort(0)));
+    				hitSwitch.write(flowMod);
+    			}
+    			else{
+    				//temporarily ignore this condition.
+    			}
+    			
+    			hitSwitch = this.switchService.getSwitch(DatapathId.of(currentNode.getBridgeDpid(1)));
+    		}
+    	}
+    }
+    
+    private Match createMatch(IOFSwitch sw, OFPort inPort, 
+    						  IPv4Address srcIp, IPv4Address dstIp, IpProtocol transportProtocol,
+    						  TransportPort srcPort, TransportPort dstPort){
+    	Match.Builder mb = sw.getOFFactory().buildMatch();
+    	mb.setExact(MatchField.IN_PORT, inPort);
+    	
+        mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+        .setExact(MatchField.IPV4_SRC, srcIp)
+        .setExact(MatchField.IPV4_DST, dstIp);
+        
+        if(transportProtocol.equals(IpProtocol.TCP)){
+			mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
+			.setExact(MatchField.TCP_SRC, srcPort)
+			.setExact(MatchField.TCP_DST, dstPort);
+        }
+        else{
+    		mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+    		.setExact(MatchField.UDP_SRC, srcPort)
+    		.setExact(MatchField.UDP_DST, dstPort);
+        }
+       
+        return mb.build();
+    }
+    
+    private OFFlowMod createFlowMod(IOFSwitch sw, Match flowMatch, MacAddress dstMac, OFPort outPort){
+		List<OFAction> actionList = new ArrayList<OFAction>();	
+		OFActions actions = sw.getOFFactory().actions();
+		OFOxms oxms = sw.getOFFactory().oxms();
+		
+		actionList.add(actions.setField(oxms.ethDst(dstMac)));
+		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
+		
+		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+		fmb.setHardTimeout(0);
+		fmb.setIdleTimeout(10);
+		fmb.setBufferId(OFBufferId.NO_BUFFER);
+		fmb.setCookie(U64.of(0));
+		fmb.setPriority(1);
+		fmb.setOutPort(outPort);
+		fmb.setActions(actionList);
+		fmb.setMatch(flowMatch);
+		
+		return fmb.build();
     }
  
     @Override
