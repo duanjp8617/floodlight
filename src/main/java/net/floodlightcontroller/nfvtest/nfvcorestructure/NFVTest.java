@@ -73,7 +73,7 @@ import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ControllerConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.HostServerConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.StageVmInfo;
-import net.floodlightcontroller.nfvtest.test.TestHostServer;
+import net.floodlightcontroller.nfvtest.nfvutils.FlowTuple;
 
 
  
@@ -130,6 +130,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	private HostServer hostServer;
 	private IpAddressAllocator ipAllocator;
 	private NFVServiceChain serviceChain;
+	
+	private HashMap<FlowTuple, Integer> flowMap;
 	
 	@Override
 	public String getName() {
@@ -202,7 +204,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         //TestHostServer testHostServer = new TestHostServer();
         //testHostServer.testVmAllocator();
 		this.controllerConfig = 
-				new ControllerConfig("1.1.1.1", "/home/net/base-env", "basexml.xml", "networkxml.xml");
+				new ControllerConfig("1.1.1.1", "/home/jpduan/Desktop/nfvenv", "basexml.xml", "networkxml.xml");
 		
 		this.hostServerConfig = 
 				new HostServerConfig("net-b6.cs.hku.hk", "1.1.1.2", "2.2.2.2", 20, 32*1024, 100*1024, 1,
@@ -224,6 +226,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		map.put(this.serviceChainConfig.name, this.serviceChainConfig);
 		hostServer = new HostServer(this.controllerConfig, this.hostServerConfig, map, this.macAllocator,
 										this.ipAllocator);
+		
+		this.flowMap = new HashMap<FlowTuple, Integer>();
 		
 		MessageHub mh = new MessageHub();
 		
@@ -278,6 +282,20 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		catch (Exception e){
 			e.printStackTrace();
 		}
+		System.out.println(DatapathId.of(this.serviceChain.getEntryDpid()).toString());
+		
+		/*(FlowTuple tuple1 = new FlowTuple(IPv4Address.of("192.168.56.51").getInt(),
+										 IPv4Address.of("192.168.57.51").getInt(),
+										 FlowTuple.UDP,
+										 458,
+										 1234);
+		FlowTuple tuple2 = new FlowTuple(IPv4Address.of("192.168.46.41").getInt(),
+										 IPv4Address.of("192.168.46.41").getInt(),
+										 FlowTuple.UDP,
+										 123,
+										 3434);
+		this.flowMap.put(tuple1, new Integer(1234));
+		this.flowMap.put(tuple2, new Integer(123232));*/
 		
         logger.info("stop testing network xml");
         
@@ -332,6 +350,16 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         	}
         	else {
         		return;
+        	}
+        	
+        	FlowTuple tuple = new FlowTuple(srcIp.getInt(), dstIp.getInt(), 
+        				transportProtocol.equals(IpProtocol.TCP)?FlowTuple.TCP:FlowTuple.UDP,
+        						srcPort.getPort(), dstPort.getPort());
+        	if(this.flowMap.containsKey(tuple)){
+        		return;
+        	}
+        	else{
+        		this.flowMap.put(tuple, 1);
         	}
  
         	OFPort inPort = initialInPort;
