@@ -149,7 +149,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     @Override
     public boolean isCallbackOrderingPostreq(OFType type, String name) {
         // TODO Auto-generated method stub
-        return false;
+        return (type.equals(OFType.PACKET_IN) && name.equals("forwarding"));
     }
  
     @Override
@@ -326,9 +326,17 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         IPacket pkt = eth.getPayload(); 
         OFPacketIn pi = (OFPacketIn)msg;
         if (eth.isBroadcast() || eth.isMulticast()) {
-            if (pkt instanceof ARP) {                                                    
-            	handleArp(eth, sw, pi);
-            	return Command.STOP;
+            if (pkt instanceof ARP) {   
+            	MacAddress srcMac = eth.getSourceMACAddress();
+            	String switchDpid = this.serviceChain.getDpidForMac(srcMac.toString());
+            	
+            	if(switchDpid != null){
+            		handleArp(eth, sw, pi);
+            		return Command.STOP;
+            	}
+            	else{
+            		return Command.CONTINUE;
+            	}
             }
         } 
         
