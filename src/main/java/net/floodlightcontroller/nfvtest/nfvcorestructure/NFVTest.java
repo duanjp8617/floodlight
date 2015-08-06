@@ -208,7 +208,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		this.hostServerConfig = 
 				new HostServerConfig("net-b6.cs.hku.hk", "1.1.1.2", "2.2.2.2", 20, 32*1024, 100*1024, 1,
-						             "xxx", "xxx", "/home/net/nfvenv");
+						             "xx", "xx", "/home/net/nfvenv");
 		
 		StageVmInfo vmInfo = new StageVmInfo(1,1024,2*1024,"img1.img");
 		ArrayList<StageVmInfo> list = new ArrayList<StageVmInfo>();
@@ -284,18 +284,29 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		}
 		System.out.println(DatapathId.of(this.serviceChain.getEntryDpid()).toString());
 		
-		/*(FlowTuple tuple1 = new FlowTuple(IPv4Address.of("192.168.56.51").getInt(),
+		FlowTuple tuple1 = new FlowTuple(IPv4Address.of("192.168.56.51").getInt(),
 										 IPv4Address.of("192.168.57.51").getInt(),
 										 FlowTuple.UDP,
 										 458,
 										 1234);
-		FlowTuple tuple2 = new FlowTuple(IPv4Address.of("192.168.46.41").getInt(),
-										 IPv4Address.of("192.168.46.41").getInt(),
-										 FlowTuple.UDP,
-										 123,
-										 3434);
+		FlowTuple tuple2 = new FlowTuple(IPv4Address.of("192.168.56.51").getInt(),
+				 						 IPv4Address.of("192.168.57.51").getInt(),
+				 						 FlowTuple.UDP,
+				 						 458,
+				 						 1234);
 		this.flowMap.put(tuple1, new Integer(1234));
-		this.flowMap.put(tuple2, new Integer(123232));*/
+		//this.flowMap.put(tuple2, new Integer(123232));
+		
+		if(this.flowMap.containsKey(tuple1)){
+			logger.info("have key tuple1");
+		}
+		
+		if(this.flowMap.containsKey(tuple2)){
+			logger.info("have key tuple2");
+		}
+		else{
+			logger.info("problem");
+		}
 		
         logger.info("stop testing network xml");
         

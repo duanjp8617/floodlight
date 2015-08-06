@@ -35,8 +35,6 @@ public class FlowTuple {
     public boolean equals(Object obj) {
 		if (this == obj)
             return true;
-        if (!super.equals(obj))
-            return false;
         if (!(obj instanceof FlowTuple))
             return false;
         FlowTuple other = (FlowTuple)obj;
