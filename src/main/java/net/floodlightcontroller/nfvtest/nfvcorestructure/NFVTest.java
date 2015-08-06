@@ -214,11 +214,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		StageVmInfo vmInfo1 = new StageVmInfo(1,1024,2*1024,"img1.img");
 		StageVmInfo vmInfo2 = new StageVmInfo(1,1024,2*1024,"img2.img");
-		StageVmInfo vmInfo3 = new StageVmInfo(1,1024,2*1024,"img3.img");
 		ArrayList<StageVmInfo> list = new ArrayList<StageVmInfo>();
 		list.add(vmInfo1);
 		list.add(vmInfo2);
-		list.add(vmInfo3);
 			
 		this.serviceChainConfig = new ServiceChainConfig("test-chain", 3, list);
 		byte[] prefix = new byte[3];
@@ -300,16 +298,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			e.printStackTrace();
 		}
 		
-		AllocateVmRequest m5 = new AllocateVmRequest("hehe", "test-chain", 2);
-		mh.sendTo("chainHandler", m5);
-		try{
-			synchronized(this.serviceChain){
-				this.serviceChain.wait();
-			}
-		}
-		catch (Exception e){
-			e.printStackTrace();
-		}
 		System.out.println(DatapathId.of(this.serviceChain.getEntryDpid()).toString());
 		
 		FlowTuple tuple1 = new FlowTuple(IPv4Address.of("192.168.56.51").getInt(),
@@ -481,6 +469,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     			}
     			
     			hitSwitch = this.switchService.getSwitch(DatapathId.of(currentNode.getBridgeDpid(1)));
+    			inPort = OFPort.of(currentNode.getPort(1));
     		}
     	}
     }
