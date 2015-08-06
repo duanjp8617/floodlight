@@ -212,9 +212,13 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 				new HostServerConfig("net-b6.cs.hku.hk", "1.1.1.2", "2.2.2.2", 20, 32*1024, 100*1024, 1,
 						             "xx", "xx", "/home/net/nfvenv");
 		
-		StageVmInfo vmInfo = new StageVmInfo(1,1024,2*1024,"img1.img");
+		StageVmInfo vmInfo1 = new StageVmInfo(1,1024,2*1024,"img1.img");
+		StageVmInfo vmInfo2 = new StageVmInfo(1,1024,2*1024,"img2.img");
+		StageVmInfo vmInfo3 = new StageVmInfo(1,1024,2*1024,"img3.img");
 		ArrayList<StageVmInfo> list = new ArrayList<StageVmInfo>();
-		list.add(vmInfo);
+		list.add(vmInfo1);
+		list.add(vmInfo2);
+		list.add(vmInfo3);
 			
 		this.serviceChainConfig = new ServiceChainConfig("test-chain", 3, list);
 		byte[] prefix = new byte[3];
@@ -276,6 +280,28 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);
+		try{
+			synchronized(this.serviceChain){
+				this.serviceChain.wait();
+			}
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
+		
+		AllocateVmRequest m4 = new AllocateVmRequest("hehe", "test-chain", 1);
+		mh.sendTo("chainHandler", m4);
+		try{
+			synchronized(this.serviceChain){
+				this.serviceChain.wait();
+			}
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
+		
+		AllocateVmRequest m5 = new AllocateVmRequest("hehe", "test-chain", 2);
+		mh.sendTo("chainHandler", m5);
 		try{
 			synchronized(this.serviceChain){
 				this.serviceChain.wait();

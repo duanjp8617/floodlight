@@ -222,7 +222,8 @@ public class HostServer {
 				Pair<String, String> managementPair = 
 						this.serviceChainMNetworkMap.get(chainName).allocateMacIp();
 				
-				String vmName = chainName+managementPair.second;
+				String vmName = chainName+"-"+new Integer(stageIndex).toString()+
+								"-"+managementPair.second;
 				
 				newVm = new VmInstance(this.hostServerConfig, chainConfig, this.controllerConfig,
 						stageIndex,vmName, managementPair.first, managementPair.second,
