@@ -11,6 +11,7 @@ import java.util.Map;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
+import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
@@ -31,6 +32,7 @@ import org.projectfloodlight.openflow.types.U64;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -323,6 +325,13 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
                                             IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
         IPacket pkt = eth.getPayload(); 
         OFPacketIn pi = (OFPacketIn)msg;
+        if (eth.isBroadcast() || eth.isMulticast()) {
+            if (pkt instanceof ARP) {                                                    
+            	handleArp(eth, sw, pi);
+            	return Command.STOP;
+            }
+        } 
+        
         if(pkt instanceof IPv4){
         	IPv4 ip_pkt = (IPv4)pkt;
        	 	int destIpAddress = ip_pkt.getDestinationAddress().getInt();
@@ -335,6 +344,48 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         }
         
         return Command.CONTINUE;
+    }
+    
+    private void handleArp(Ethernet eth, IOFSwitch sw, OFPacketIn pi){
+    	ARP arpRequest = (ARP) eth.getPayload();
+        MacAddress srcMac = eth.getSourceMACAddress();
+        
+        logger.info("get an arp request from: {}", srcMac.toString());
+        logger.info("with source ip: {}, requesting destination ip: {}", 
+        		arpRequest.getSenderProtocolAddress().toString(),
+        		arpRequest.getTargetProtocolAddress().toString());
+
+        String switchDpid = this.serviceChain.getDpidForMac(srcMac.toString());
+        if(switchDpid != null){
+        	IPacket arpReply = new Ethernet()
+            .setSourceMACAddress(MacAddress.of(switchDpid))
+            .setDestinationMACAddress(eth.getSourceMACAddress())
+            .setEtherType(EthType.ARP)
+            .setVlanID(eth.getVlanID())
+            .setPriorityCode(eth.getPriorityCode())
+            .setPayload(
+                new ARP()
+                .setHardwareType(ARP.HW_TYPE_ETHERNET)
+                .setProtocolType(ARP.PROTO_TYPE_IP)
+                .setHardwareAddressLength((byte) 6)
+                .setProtocolAddressLength((byte) 4)
+                .setOpCode(ARP.OP_REPLY)
+                .setSenderHardwareAddress(MacAddress.of(switchDpid))
+                .setSenderProtocolAddress(arpRequest.getTargetProtocolAddress())
+                .setTargetHardwareAddress(eth.getSourceMACAddress())
+                .setTargetProtocolAddress(arpRequest.getSenderProtocolAddress()));
+        	
+        	OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+        	List<OFAction> actions = new ArrayList<OFAction>();
+        	OFPort outPort = pi.getMatch().get(MatchField.IN_PORT);
+            actions.add(sw.getOFFactory().actions().buildOutput().setPort(outPort).setMaxLen(Integer.MAX_VALUE).build());
+            pob.setActions(actions);
+            pob.setBufferId(OFBufferId.NO_BUFFER);
+            pob.setInPort(OFPort.ANY);
+            byte[] packetData = arpReply.serialize();
+            pob.setData(packetData);
+            sw.write(pob.build());
+        }
     }
     
     private void serviceChainLoadBalancing(IOFSwitch sw, FloodlightContext cntx, OFPort initialInPort){
@@ -434,10 +485,10 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
 		fmb.setHardTimeout(0);
-		fmb.setIdleTimeout(10);
+		fmb.setIdleTimeout(30);
 		fmb.setBufferId(OFBufferId.NO_BUFFER);
 		fmb.setCookie(U64.of(0));
-		fmb.setPriority(1);
+		fmb.setPriority(5);
 		fmb.setOutPort(outPort);
 		fmb.setActions(actionList);
 		fmb.setMatch(flowMatch);

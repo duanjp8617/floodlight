@@ -13,12 +13,23 @@ public class NFVServiceChain {
 	private final List<Map<String, NFVNode>> nfvNodeMaps;
 	private final List<String> baseNodeMacList;
 	private final int[] rrStore;
+	private final Map<String, NFVNode> entryMacNodeMap;
+	private final Map<String, NFVNode> exitMacNodeMap;
 	
 	NFVServiceChain(ServiceChainConfig serviceChainConfig){
 		this.serviceChainConfig = serviceChainConfig;
 		this.nfvNodeMaps = new ArrayList<Map<String, NFVNode>>();
 		this.rrStore = new int[this.serviceChainConfig.stages.size()];
 		this.baseNodeMacList = new ArrayList<String>(this.serviceChainConfig.stages.size());
+		
+		if(serviceChainConfig.nVmInterface == 3){
+			this.entryMacNodeMap = new HashMap<String, NFVNode>();
+			this.exitMacNodeMap = new HashMap<String, NFVNode>();
+		}
+		else{
+			this.entryMacNodeMap = null;
+			this.exitMacNodeMap = null;
+		}
 		
 		for(int i=0; i<this.serviceChainConfig.stages.size(); i++){
 			Map<String, NFVNode> nodeMap = new HashMap<String, NFVNode>();
@@ -34,10 +45,20 @@ public class NFVServiceChain {
 			if(stageMap.size() == 0){
 				stageMap.put(node.getManagementMac(), node);
 				this.baseNodeMacList.add(node.vmInstance.stageIndex, node.getManagementMac());
+				
+				if(this.serviceChainConfig.nVmInterface == 3){
+					this.entryMacNodeMap.put(node.vmInstance.macList.get(0), node);
+					this.exitMacNodeMap.put(node.vmInstance.macList.get(1), node);
+				}
 			}
 			else{
 				if(!stageMap.containsKey(node.getManagementMac())){
 					stageMap.put(node.getManagementMac(), node);
+					
+					if(this.serviceChainConfig.nVmInterface == 3){
+						this.entryMacNodeMap.put(node.vmInstance.macList.get(0), node);
+						this.exitMacNodeMap.put(node.vmInstance.macList.get(1), node);
+					}
 				}
 			}
 		}
@@ -49,6 +70,11 @@ public class NFVServiceChain {
 			if( (stageMap.containsKey(node.getManagementMac())) && 
 			    (node.getManagementMac()!=this.baseNodeMacList.get(node.vmInstance.stageIndex)) ){
 				stageMap.remove(node.getManagementMac());
+				
+				if(this.serviceChainConfig.nVmInterface == 3){
+					this.entryMacNodeMap.remove(node.vmInstance.macList.get(0));
+					this.exitMacNodeMap.remove(node.vmInstance.macList.get(1));
+				}
 			}
 		}
 	}
@@ -72,5 +98,22 @@ public class NFVServiceChain {
 		Map<String, NFVNode> nodeMap = this.nfvNodeMaps.get(0);
 		NFVNode baseNode = nodeMap.get(this.baseNodeMacList.get(0));
 		return baseNode.vmInstance.bridgeDpidList.get(0);
+	}
+	
+	public synchronized String getDpidForMac(String mac){
+		if(this.serviceChainConfig.nVmInterface == 3){
+			if(this.entryMacNodeMap.containsKey(mac)){
+				return this.entryMacNodeMap.get(mac).vmInstance.bridgeDpidList.get(0);
+			}
+			else if(this.exitMacNodeMap.containsKey(mac)){
+				return this.exitMacNodeMap.get(mac).vmInstance.bridgeDpidList.get(1);
+			}
+			else {
+				return null;
+			}
+		}
+		else{
+			return null;
+		}
 	}
 }
