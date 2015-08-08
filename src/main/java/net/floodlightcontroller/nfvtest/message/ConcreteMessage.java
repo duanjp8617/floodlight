@@ -239,4 +239,29 @@ public class ConcreteMessage {
 			return this.serviceChain;
 		}
 	}
+	
+	//The following messages are sent to SubscriberConnector for processing.
+	static public class SubConnRequest extends Message{
+		private final String sourceId;
+		private final String managementIp;
+		private final String port;
+		
+		public SubConnRequest(String sourceId, String managementIp, String port){
+			this.sourceId = sourceId;
+			this.managementIp = managementIp;
+			this.port = port;
+		}
+		
+		public String getSourceId(){
+			return this.sourceId;
+		}
+		
+		public String getManagementIp(){
+			return this.managementIp;
+		}
+		
+		public String getPort(){
+			return this.port;
+		}
+	}
 }

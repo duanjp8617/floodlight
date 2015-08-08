@@ -77,6 +77,11 @@ import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.StageVmInfo;
 import net.floodlightcontroller.nfvtest.nfvutils.FlowTuple;
 
+import org.zeromq.ZMQ;
+import org.zeromq.ZMQ.Context;
+import org.zeromq.ZMQ.Socket;
+import org.zeromq.ZMQException;
+
 
  
 public class NFVTest implements IOFMessageListener, IFloodlightModule {
@@ -121,9 +126,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     protected IpsServer IpsServer3;
     
     protected ArrayList<IpsServer> ipsServerList;
-    
-    private String dpid_br1 = "00:00:3e:36:fa:a6:3d:4c";
-    private String dpid_br2 = "00:00:2a:92:11:2c:36:49";
     
 	private ControllerConfig controllerConfig;
 	private HostServerConfig hostServerConfig;
@@ -181,28 +183,45 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         logger = LoggerFactory.getLogger(NFVTest.class);
         ipsServerList = new ArrayList<IpsServer>();
         
-        this.IpsServer1 = new IpsServer();
-        this.IpsServer1.attachIngressIf("192.168.56.11", 
-        		"52:54:00:69:0e:af", "00:00:3e:36:fa:a6:3d:4c", 26);
-        this.IpsServer1.attachEgressIf("192.168.57.11",
-        		"52:54:00:a7:a0:af", "00:00:2a:92:11:2c:36:49", 10);
-        ipsServerList.add(this.IpsServer1);
+        logger.info("start zmq subscriber connection");
+        Context zmqContext = ZMQ.context(1);
+        ZMQ.Event event;
         
-        this.IpsServer2 = new IpsServer();
-        this.IpsServer2.attachIngressIf("192.168.56.12", 
-        		"52:54:00:a6:ec:a7", "00:00:3e:36:fa:a6:3d:4c", 30);
-        this.IpsServer2.attachEgressIf("192.168.57.12",
-        		"52:54:00:7b:45:6b", "00:00:2a:92:11:2c:36:49", 9);
-        ipsServerList.add(this.IpsServer2);
+        Socket subscriber = zmqContext.socket(ZMQ.SUB);
+        subscriber.monitor("inproc://monitor.subscriber", ZMQ.EVENT_CONNECTED);
         
-        this.IpsServer3 = new IpsServer();
-        this.IpsServer3.attachIngressIf("192.168.56.13", 
-        		"52:54:00:6a:7e:06", "00:00:3e:36:fa:a6:3d:4c", 27);
-        this.IpsServer3.attachEgressIf("192.168.57.13",
-        		"52:54:00:36:96:70", "00:00:2a:92:11:2c:36:49", 11);
-        ipsServerList.add(this.IpsServer3);
+        Socket monitor = zmqContext.socket(ZMQ.PAIR);
+        monitor.setReceiveTimeOut(100);
+        monitor.connect("inproc://monitor.subscriber");
         
-        logger.info("start testing network xml");
+        try{
+        	subscriber.connect("tcp://127.0.0.1:5556");
+        	event = ZMQ.Event.recv(monitor);
+        	
+        	if(event != null){
+        		if(event.getEvent() == ZMQ.EVENT_CONNECTED){
+        			logger.info("subscriber is connected.");
+        		}
+        		else{
+        			logger.info("connection failed.");
+        		}
+        	}
+        	else{
+        		logger.info("connection failed");
+        	}
+        	
+        	subscriber.subscribe("".getBytes());
+        }
+        catch (ZMQException e){
+        	logger.info("error occurs: {}", e.toString());
+        }
+        
+        logger.info("after zmq subscriber connection");
+        String topic = subscriber.recvStr();
+        logger.info("{}", topic);
+        logger.info("end zmq subscriber connection");
+        
+        /*logger.info("start testing network xml");
         //TestHostServer testHostServer = new TestHostServer();
         //testHostServer.testVmAllocator();
 		this.controllerConfig = 
@@ -324,7 +343,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			logger.info("problem");
 		}
 		
-        logger.info("stop testing network xml");
+        logger.info("stop testing network xml");*/
+        
         
     }
  
