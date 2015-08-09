@@ -1,4 +1,6 @@
 package net.floodlightcontroller.nfvtest.message;
+import org.zeromq.ZMQ.Socket;
+
 import net.floodlightcontroller.nfvtest.message.Message;
 
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
@@ -262,6 +264,30 @@ public class ConcreteMessage {
 		
 		public String getPort(){
 			return this.port;
+		}
+	}
+	
+	static public class SubConnReply extends Message{
+		private final String sourceId;
+		private final SubConnRequest request;
+		private final Socket subscriber;
+		
+		public SubConnReply(String sourceId, SubConnRequest request, Socket subscriber){
+			this.sourceId = sourceId;
+			this.request = request;
+			this.subscriber = subscriber;
+		}
+		
+		public String getSourceId(){
+			return this.sourceId;
+		}
+		
+		public SubConnRequest getSubConnRequest(){
+			return this.request;
+		}
+		
+		public Socket getSubscriber(){
+			return this.subscriber;
 		}
 	}
 }
