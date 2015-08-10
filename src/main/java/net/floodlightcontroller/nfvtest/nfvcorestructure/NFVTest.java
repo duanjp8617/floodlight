@@ -198,7 +198,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         monitor.connect("inproc://monitor.subscriber");
         
         try{
-        	subscriber.connect("tcp://127.0.0.1:5556");
+        	subscriber.connect("tcp://192.168.64.33:5555");
         	event = ZMQ.Event.recv(monitor);
         	
         	if(event != null){
@@ -228,7 +228,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         catch (Exception e){
         	e.printStackTrace();
         }
-        poller.register(new Pair<String, Socket>("2.2.2.2", subscriber));
+        poller.register(new Pair<String, Socket>("192.168.64.33", subscriber));
         
         logger.info("after zmq subscriber connection");
         String topic = subscriber.recvStr();
