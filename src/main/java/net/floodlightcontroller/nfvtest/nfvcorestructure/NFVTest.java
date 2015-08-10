@@ -66,6 +66,7 @@ import net.floodlightcontroller.nfvtest.message.ConcreteMessage.AddHostServerReq
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.AllocateVmRequest;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.HostInitializationRequest;
 import net.floodlightcontroller.nfvtest.nfvslaveservice.ServiceChainHandler;
+import net.floodlightcontroller.nfvtest.nfvslaveservice.SubscriberConnector;
 import net.floodlightcontroller.nfvtest.nfvslaveservice.VmAllocator;
 import net.floodlightcontroller.nfvtest.nfvslaveservice.VmWorker;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
@@ -186,7 +187,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         logger = LoggerFactory.getLogger(NFVTest.class);
         ipsServerList = new ArrayList<IpsServer>();
         
-        logger.info("start zmq subscriber connection");
+        /*logger.info("start zmq subscriber connection");
         Context zmqContext = ZMQ.context(1);
         ZMQ.Event event;
         
@@ -233,9 +234,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         logger.info("after zmq subscriber connection");
         String topic = subscriber.recvStr();
         logger.info("{}", topic);
-        logger.info("end zmq subscriber connection");
+        logger.info("end zmq subscriber connection");*/
         
-        /*logger.info("start testing network xml");
+        logger.info("start testing network xml");
         //TestHostServer testHostServer = new TestHostServer();
         //testHostServer.testVmAllocator();
 		this.controllerConfig = 
@@ -273,6 +274,11 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		VmAllocator vmAllocator = new VmAllocator("vmAllocator");
 		vmAllocator.registerWithMessageHub(mh);
+		
+		Context zmqContext = ZMQ.context(1);
+		SubscriberConnector subscriberConnector = new SubscriberConnector("subscriberConnector",
+																			zmqContext);
+		subscriberConnector.registerWithMessageHub(mh);
 		
 		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler");
 		chainHandler.registerWithMessageHub(mh);
@@ -331,33 +337,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			e.printStackTrace();
 		}
 		
-		System.out.println(DatapathId.of(this.serviceChain.getEntryDpid()).toString());
-		
-		FlowTuple tuple1 = new FlowTuple(IPv4Address.of("192.168.56.51").getInt(),
-										 IPv4Address.of("192.168.57.51").getInt(),
-										 FlowTuple.UDP,
-										 458,
-										 1234);
-		FlowTuple tuple2 = new FlowTuple(IPv4Address.of("192.168.56.51").getInt(),
-				 						 IPv4Address.of("192.168.57.51").getInt(),
-				 						 FlowTuple.UDP,
-				 						 458,
-				 						 1234);
-		this.flowMap.put(tuple1, new Integer(1234));
-		//this.flowMap.put(tuple2, new Integer(123232));
-		
-		if(this.flowMap.containsKey(tuple1)){
-			logger.info("have key tuple1");
-		}
-		
-		if(this.flowMap.containsKey(tuple2)){
-			logger.info("have key tuple2");
-		}
-		else{
-			logger.info("problem");
-		}
-		
-        logger.info("stop testing network xml");*/
+        logger.info("stop testing network xml");
         
         
     }
