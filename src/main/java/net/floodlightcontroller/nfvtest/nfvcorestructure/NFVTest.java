@@ -76,11 +76,14 @@ import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.HostServerConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.StageVmInfo;
 import net.floodlightcontroller.nfvtest.nfvutils.FlowTuple;
+import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Context;
 import org.zeromq.ZMQ.Socket;
 import org.zeromq.ZMQException;
+
+import net.floodlightcontroller.nfvtest.nfvslaveservice.NFVZmqPoller;
 
 
  
@@ -215,6 +218,17 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         catch (ZMQException e){
         	logger.info("error occurs: {}", e.toString());
         }
+        
+        NFVZmqPoller poller = new NFVZmqPoller();
+        Thread pollerThread = new Thread(poller);
+        pollerThread.start();
+        try{
+        	Thread.sleep(1000);
+        }
+        catch (Exception e){
+        	e.printStackTrace();
+        }
+        poller.register(new Pair<String, Socket>("2.2.2.2", subscriber));
         
         logger.info("after zmq subscriber connection");
         String topic = subscriber.recvStr();

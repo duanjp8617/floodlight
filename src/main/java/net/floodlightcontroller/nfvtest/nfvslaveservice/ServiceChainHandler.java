@@ -62,6 +62,10 @@ public class ServiceChainHandler extends MessageProcessor {
 			AllocateVmReply reply = (AllocateVmReply)m;
 			handleAllocateVmReply(reply);
 		}
+		if(m instanceof SubConnReply){
+			SubConnReply reply = (SubConnReply) m;
+			handleSubConnReply(reply);
+		}
 	}
 	
 	private void initServiceChain(InitServiceChainRequset originalRequest){
@@ -101,6 +105,9 @@ public class ServiceChainHandler extends MessageProcessor {
 					AllocateVmReply newReplz = (AllocateVmReply)newReplyList.get(i);
 					VmInstance vmInstance = newReplz.getVmInstance();
 					serviceChain.addNodeToChain(new NFVNode(vmInstance));
+					SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
+																"3333");
+					this.mh.sendTo("subscriberConnector", request);
 				}
 				this.serviceChainMap.put(serviceChain.serviceChainConfig.name, serviceChain);
 				synchronized(serviceChain){
@@ -114,11 +121,18 @@ public class ServiceChainHandler extends MessageProcessor {
 			String serviceChainName = vmInstance.serviceChainConfig.name;
 			if(this.serviceChainMap.containsKey(serviceChainName)){
 				this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
+				SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
+						"3333");
+				this.mh.sendTo("subscriberConnector", request);
 				synchronized(this.serviceChainMap.get(serviceChainName)){
 					this.serviceChainMap.get(serviceChainName).notify();
 				}
 			}
 		}
+	}
+	
+	private void handleSubConnReply(SubConnReply reply){
+		
 	}
 	
 }

@@ -17,10 +17,10 @@ public class SubscriberConnector extends MessageProcessor{
 	private final Context zmqContext;
 	
 	
-	public SubscriberConnector(String id){
+	public SubscriberConnector(String id, Context zmqContext){
 		this.id = id;
 		this.queue = new LinkedBlockingQueue<Message>();
-		this.zmqContext = ZMQ.context(1);
+		this.zmqContext = zmqContext;
 	}
 	
 	@Override
