@@ -1,4 +1,6 @@
 package net.floodlightcontroller.nfvtest.message;
+import java.util.ArrayList;
+
 import org.zeromq.ZMQ.Socket;
 
 import net.floodlightcontroller.nfvtest.message.Message;
@@ -239,6 +241,30 @@ public class ConcreteMessage {
 		
 		public NFVServiceChain getServiceChain(){
 			return this.serviceChain;
+		}
+	}
+	
+	static public class StatUpdateRequest extends Message{
+		private final String sourceId;
+		private final ArrayList<String> statList;
+		private final String managementIp;
+		
+		public StatUpdateRequest(String sourceId, String managementIp, ArrayList<String> statList){
+			this.sourceId = sourceId;
+			this.managementIp = managementIp;
+			this.statList = statList;
+		}
+		
+		public String getSourceId(){
+			return this.sourceId;
+		}
+		
+		public String getManagementIp(){
+			return this.managementIp;
+		}
+		
+		public ArrayList<String> getStatList(){
+			return this.statList;
 		}
 	}
 	

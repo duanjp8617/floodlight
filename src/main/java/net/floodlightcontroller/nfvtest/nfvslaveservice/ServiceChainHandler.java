@@ -13,7 +13,6 @@ import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.UUID;
 
 import org.zeromq.ZMQ.Socket;
@@ -29,7 +28,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		this.queue = new LinkedBlockingQueue<Message>();
 		serviceChainMap = new HashMap<String, NFVServiceChain>();
 		pendingMap = new HashMap<UUID, Pending>();
-		poller = new NFVZmqPoller();
+		poller = new NFVZmqPoller(this.mh);
 		Thread pollerThread = new Thread(this.poller);
 		pollerThread.start();
 	}
@@ -72,6 +71,10 @@ public class ServiceChainHandler extends MessageProcessor {
 		if(m instanceof SubConnReply){
 			SubConnReply reply = (SubConnReply) m;
 			handleSubConnReply(reply);
+		}
+		if(m instanceof StatUpdateRequest){
+			StatUpdateRequest request = (StatUpdateRequest)m;
+			statUpdate(request);
 		}
 	}
 	
@@ -129,7 +132,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			if(this.serviceChainMap.containsKey(serviceChainName)){
 				this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
 				SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
-						"3333");
+						"5555");
 				this.mh.sendTo("subscriberConnector", request);
 				synchronized(this.serviceChainMap.get(serviceChainName)){
 					this.serviceChainMap.get(serviceChainName).notify();
@@ -143,6 +146,11 @@ public class ServiceChainHandler extends MessageProcessor {
 		String managementIp = request.getManagementIp();
 		Socket subscriber = reply.getSubscriber();
 		this.poller.register(new Pair<String, Socket>(managementIp, subscriber));
+	}
+	
+	private void statUpdate(StatUpdateRequest request){
+		ArrayList<String> statList = request.getStatList();
+		String manangementIp = request.getManagementIp();
 	}
 	
 }

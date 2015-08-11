@@ -1,5 +1,7 @@
 package net.floodlightcontroller.nfvtest.nfvslaveservice;
 
+import net.floodlightcontroller.nfvtest.message.ConcreteMessage.StatUpdateRequest;
+import net.floodlightcontroller.nfvtest.message.MessageHub;
 import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 
 import java.util.ArrayList;
@@ -18,12 +20,14 @@ public class NFVZmqPoller implements Runnable{
 	private final LinkedList<Pair<String, Socket>> registerQueue;
 	private final LinkedList<Pair<String, Socket>> unregisterQueue;
 	private final LinkedHashMap<String, Socket> socketMap;
+	private final MessageHub mh;
 
 	
-	public NFVZmqPoller(){
+	public NFVZmqPoller(MessageHub mh){
 		this.registerQueue = new LinkedList<Pair<String, Socket>>();
 		this.unregisterQueue = new LinkedList<Pair<String, Socket>>();
 		this.socketMap = new LinkedHashMap<String, Socket>();
+		this.mh = mh;
 	}
 	
 	public synchronized void register(Pair<String, Socket> ipSocketPair){
@@ -84,11 +88,8 @@ public class NFVZmqPoller implements Runnable{
 			strList.add(result);
 			hasMore = socket.hasReceiveMore();
 		}
-		String finalResult = "";
-		for(String str : strList){
-			finalResult += str;
-		}
-		System.out.println(managementIp+": "+finalResult);
+		StatUpdateRequest request = new StatUpdateRequest("hehe", managementIp, strList);
+		this.mh.sendTo("chainHandler", request);
 	}
 	
 }
