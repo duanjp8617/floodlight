@@ -76,16 +76,15 @@ public class SubscriberConnector extends MessageProcessor{
 			String ipAddress = this.request.getManagementIp();
 			String port = this.request.getPort();
 			
-			Socket subscriber = zmqContext.socket(ZMQ.SUB);
-			subscriber.monitor("inproc://monitor"+ipAddress, ZMQ.EVENT_CONNECTED);
+			for(int i=0; i<1000; i++){
+				Socket subscriber = zmqContext.socket(ZMQ.SUB);
+				subscriber.monitor("inproc://monitor"+ipAddress, ZMQ.EVENT_CONNECTED);
 			
-			Socket monitor = zmqContext.socket(ZMQ.PAIR);
-			monitor.setReceiveTimeOut(100);
-			monitor.connect("inproc://monitor"+ipAddress);
-			ZMQ.Event event;
+				Socket monitor = zmqContext.socket(ZMQ.PAIR);
+				monitor.setReceiveTimeOut(100);
+				monitor.connect("inproc://monitor"+ipAddress);
+				ZMQ.Event event;
 			
-			//retry 10 times
-			for(int i=0; i<10; i++){
 				subscriber.connect("tcp://"+ipAddress+":"+port);
 	        	event = ZMQ.Event.recv(monitor);
 	        	
@@ -98,6 +97,8 @@ public class SubscriberConnector extends MessageProcessor{
 	        		break;
 	        	}
 	        	else{
+	        		monitor.close();
+	        		subscriber.close();
 	        	}
 			}
 		}
