@@ -247,10 +247,10 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 						             "xx", "xx", "/home/net/nfvenv");
 		
 		StageVmInfo vmInfo1 = new StageVmInfo(1,1024,2*1024,"img1.img");
-		StageVmInfo vmInfo2 = new StageVmInfo(1,1024,2*1024,"img2.img");
+		//StageVmInfo vmInfo2 = new StageVmInfo(1,1024,2*1024,"img2.img");
 		ArrayList<StageVmInfo> list = new ArrayList<StageVmInfo>();
 		list.add(vmInfo1);
-		list.add(vmInfo2);
+		//list.add(vmInfo2);
 			
 		this.serviceChainConfig = new ServiceChainConfig("test-chain", 3, list);
 		byte[] prefix = new byte[3];
@@ -282,6 +282,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler");
 		chainHandler.registerWithMessageHub(mh);
+		chainHandler.startPollerThread();
 		
 		mh.startProcessors();
 		
@@ -315,7 +316,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			e.printStackTrace();
 		}
 		
-		AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
+		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);
 		try{
 			synchronized(this.serviceChain){
@@ -335,7 +336,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		}
 		catch (Exception e){
 			e.printStackTrace();
-		}
+		}*/
 		
         logger.info("stop testing network xml");
         

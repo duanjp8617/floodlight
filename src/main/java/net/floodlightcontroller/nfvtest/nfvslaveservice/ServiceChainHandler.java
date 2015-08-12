@@ -20,7 +20,7 @@ import org.zeromq.ZMQ.Socket;
 public class ServiceChainHandler extends MessageProcessor {
 	private final HashMap<String, NFVServiceChain> serviceChainMap;
 	private final HashMap<UUID, Pending> pendingMap;
-	private final NFVZmqPoller poller;
+	private NFVZmqPoller poller;
 	
 
 	public ServiceChainHandler(String id){
@@ -28,6 +28,9 @@ public class ServiceChainHandler extends MessageProcessor {
 		this.queue = new LinkedBlockingQueue<Message>();
 		serviceChainMap = new HashMap<String, NFVServiceChain>();
 		pendingMap = new HashMap<UUID, Pending>();
+	}
+	
+	public void startPollerThread(){
 		poller = new NFVZmqPoller(this.mh);
 		Thread pollerThread = new Thread(this.poller);
 		pollerThread.start();
