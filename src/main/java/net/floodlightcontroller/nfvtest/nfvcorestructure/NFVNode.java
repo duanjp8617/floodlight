@@ -77,11 +77,14 @@ public class NFVNode {
 		private int index;
 		private boolean filledUp;
 		
-		public CircularList(int size){
+		public CircularList(int size, E e){
 			this.list = new ArrayList<E>(size);
 			this.size = size;
 			this.index = 0;
 			this.filledUp = false;
+			for(int i=0; i<this.size; i++){
+				this.list.add(e);
+			}
 		}
 		
 		public void add(E element){
@@ -129,16 +132,16 @@ public class NFVNode {
 		public final CircularList<Integer> eth1SendInt;
 		
 		public NFVNodeProperty(int listSize){
-			cpuUsage = new CircularList<Float>(listSize);
-			memUsage = new CircularList<Float>(listSize);
+			cpuUsage = new CircularList<Float>(listSize, new Float(0));
+			memUsage = new CircularList<Float>(listSize, new Float(0));
 			
-			eth0RecvInt = new CircularList<Integer>(listSize);
-			eth0RecvPkt = new CircularList<Long>(listSize);
-			eth0SendInt = new CircularList<Integer>(listSize);
+			eth0RecvInt = new CircularList<Integer>(listSize, new Integer(0));
+			eth0RecvPkt = new CircularList<Long>(listSize, new Long(0));
+			eth0SendInt = new CircularList<Integer>(listSize, new Integer(0));
 			
-			eth1RecvInt = new CircularList<Integer>(listSize);
-			eth1RecvPkt = new CircularList<Long>(listSize);
-			eth1SendInt = new CircularList<Integer>(listSize);
+			eth1RecvInt = new CircularList<Integer>(listSize, new Integer(0));
+			eth1RecvPkt = new CircularList<Long>(listSize, new Long(0));
+			eth1SendInt = new CircularList<Integer>(listSize, new Integer(0));
 			
 			cpuState = new SimpleSM(listSize);
 			memState = new SimpleSM(listSize);
