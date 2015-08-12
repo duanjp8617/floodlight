@@ -247,10 +247,10 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 						             "xx", "xx", "/home/net/nfvenv");
 		
 		StageVmInfo vmInfo1 = new StageVmInfo(1,1024,2*1024,"img1.img");
-		//StageVmInfo vmInfo2 = new StageVmInfo(1,1024,2*1024,"img2.img");
+		StageVmInfo vmInfo2 = new StageVmInfo(1,1024,2*1024,"img2.img");
 		ArrayList<StageVmInfo> list = new ArrayList<StageVmInfo>();
 		list.add(vmInfo1);
-		//list.add(vmInfo2);
+		list.add(vmInfo2);
 			
 		this.serviceChainConfig = new ServiceChainConfig("test-chain", 3, list);
 		byte[] prefix = new byte[3];

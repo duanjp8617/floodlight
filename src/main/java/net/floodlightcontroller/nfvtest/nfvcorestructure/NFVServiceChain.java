@@ -138,6 +138,7 @@ public class NFVServiceChain {
 			String mem = statList.get(4);
 			String[] memStatArray = mem.trim().split("\\s+");
 			float memUsage = Float.parseFloat(memStatArray[1])*100/Float.parseFloat(memStatArray[0]);
+			memUsage = 100-memUsage;
 			
 			String interrupt = statList.get(6);
 			String[] intStatArray = interrupt.trim().split("\\s+");

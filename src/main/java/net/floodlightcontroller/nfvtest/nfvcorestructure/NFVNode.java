@@ -370,11 +370,21 @@ public class NFVNode {
 	public void updateNodeProperty(Float cpuUsage, Float memUsage, 
 								   Integer eth0RecvInt, Long eth0RecvPkt, Integer eth0SendInt,
 								   Integer eth1RecvInt, Long eth1RecvPkt, Integer eth1SendInt){
-		System.out.println(cpuUsage+" "+memUsage+" "+eth0RecvInt+" "+eth0RecvPkt+" "+
-						   eth0SendInt+" "+eth1RecvInt+" "+eth1RecvPkt+" "+eth1SendInt);
+		//System.out.println(cpuUsage+" "+memUsage+" "+eth0RecvInt+" "+eth0RecvPkt+" "+
+		//				   eth0SendInt+" "+eth1RecvInt+" "+eth1RecvPkt+" "+eth1SendInt);
 		this.property.updateNodeProperty(cpuUsage, memUsage, eth0RecvInt, eth0RecvPkt, 
 										 eth0SendInt, eth1RecvInt, eth1RecvPkt, eth1SendInt);
 		this.state = this.property.getNodeState();
+		
+		if(this.state == NFVNode.IDLE){
+			System.out.println("Node-"+this.getManagementIp()+" is IDLE");
+		}
+		if(this.state == NFVNode.NORMAL){
+			System.out.println("Node-"+this.getManagementIp()+" is NORMAL");
+		}
+		if(this.state == NFVNode.OVERLOAD){
+			System.out.println("Node-"+this.getManagementIp()+" is OVERLOAD");
+		}
 	}
 	
 	public int getState(){
