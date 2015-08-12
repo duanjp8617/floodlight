@@ -31,7 +31,6 @@ public class NFVNode {
 			if(this.index == this.listSize){
 				updateFinalState();
 				this.index = 0;
-				this.list.clear();
 			}
 		}
 		
@@ -352,6 +351,10 @@ public class NFVNode {
 		else{
 			return this.vmInstance.getPort(whichMac);
 		}
+	}
+	
+	public String getManagementIp(){
+		return this.vmInstance.managementIp;
 	}
 	
 	public String getManagementMac(){

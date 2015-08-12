@@ -150,7 +150,16 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private void statUpdate(StatUpdateRequest request){
 		ArrayList<String> statList = request.getStatList();
-		String manangementIp = request.getManagementIp();
+		String managementIp = request.getManagementIp();
+		
+		for(String chainName : this.serviceChainMap.keySet()){
+			NFVServiceChain chain = this.serviceChainMap.get(chainName);
+			synchronized(chain){
+				if(chain.hasNode(managementIp)){
+					chain.updateNodeStat(managementIp, statList);
+				}
+			}
+		}
 	}
 	
 }
