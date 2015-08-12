@@ -154,7 +154,12 @@ public class ServiceChainHandler extends MessageProcessor {
 	private void statUpdate(StatUpdateRequest request){
 		ArrayList<String> statList = request.getStatList();
 		String managementIp = request.getManagementIp();
-		System.out.println("Got stat from: "+managementIp+" with content: "+statList.get(0));
+		
+		String sum = "";
+		for(int i=0; i<statList.size(); i++){
+			sum = sum + statList.get(i) + "|";
+		}
+		System.out.println(sum);
 		
 		for(String chainName : this.serviceChainMap.keySet()){
 			NFVServiceChain chain = this.serviceChainMap.get(chainName);

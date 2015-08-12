@@ -23,6 +23,9 @@ public class NFVNode {
 			list = new ArrayList<Integer>(listSize);
 			this.state = NFVNode.IDLE;
 			this.index = 0;
+			for(int i=0; i<this.listSize; i++){
+				this.list.add(new Integer(0));
+			}
 		}
 		
 		public void updateTransientState(int transientState){
@@ -367,6 +370,8 @@ public class NFVNode {
 	public void updateNodeProperty(Float cpuUsage, Float memUsage, 
 								   Integer eth0RecvInt, Long eth0RecvPkt, Integer eth0SendInt,
 								   Integer eth1RecvInt, Long eth1RecvPkt, Integer eth1SendInt){
+		System.out.println(cpuUsage+" "+memUsage+" "+eth0RecvInt+" "+eth0RecvPkt+" "+
+						   eth0SendInt+" "+eth1RecvInt+" "+eth1RecvPkt+" "+eth1SendInt);
 		this.property.updateNodeProperty(cpuUsage, memUsage, eth0RecvInt, eth0RecvPkt, 
 										 eth0SendInt, eth1RecvInt, eth1RecvPkt, eth1SendInt);
 		this.state = this.property.getNodeState();
