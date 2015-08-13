@@ -13,6 +13,7 @@ import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import org.zeromq.ZMQ.Socket;
@@ -129,6 +130,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			if(this.serviceChainMap.containsKey(serviceChainName)){
 				this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
 				this.poller.register(new Pair<String, Socket>(vmInstance.managementIp, newReply.getSubscriber()));
+				this.serviceChainMap.get(serviceChainName).setScaleIndicator(vmInstance.stageIndex, false);
 				synchronized(this.serviceChainMap.get(serviceChainName)){
 					this.serviceChainMap.get(serviceChainName).notify();
 				}
@@ -140,17 +142,33 @@ public class ServiceChainHandler extends MessageProcessor {
 		ArrayList<String> statList = request.getStatList();
 		String managementIp = request.getManagementIp();
 		
-		/*String sum = "";
-		for(int i=0; i<statList.size(); i++){
-			sum = sum + statList.get(i) + "|";
-		}
-		System.out.println(sum);*/
-		
 		for(String chainName : this.serviceChainMap.keySet()){
 			NFVServiceChain chain = this.serviceChainMap.get(chainName);
 			synchronized(chain){
 				if(chain.hasNode(managementIp)){
 					chain.updateNodeStat(managementIp, statList);
+							
+					NFVNode node = chain.getNode(managementIp);
+					Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
+				
+					int nOverload = 0;
+					for(String ip : stageMap.keySet()){
+						NFVNode n = stageMap.get(ip);
+						if(n.getState() == NFVNode.OVERLOAD){
+							nOverload += 1;
+						}
+					}
+					if( (nOverload == stageMap.size())&&
+						(!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
+						chain.setScaleIndicator(node.vmInstance.stageIndex, true);
+						AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(), 
+												  node.vmInstance.serviceChainConfig.name,
+												  	           node.vmInstance.stageIndex);
+						Pending pending = new Pending(1, null);
+						this.pendingMap.put(newRequest.getUUID(), pending);
+						this.mh.sendTo("vmAllocator", newRequest);
+					}
+					break;
 				}
 			}
 		}

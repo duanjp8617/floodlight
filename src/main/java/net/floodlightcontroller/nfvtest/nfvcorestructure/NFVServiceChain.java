@@ -16,6 +16,7 @@ public class NFVServiceChain {
 	private final Map<String, NFVNode> entryMacNodeMap;
 	private final Map<String, NFVNode> exitMacNodeMap;
 	private final Map<String, NFVNode> managementIpNodeMap;
+	private final boolean[] scaleIndicators; 
 	
 	NFVServiceChain(ServiceChainConfig serviceChainConfig){
 		this.serviceChainConfig = serviceChainConfig;
@@ -37,6 +38,10 @@ public class NFVServiceChain {
 			Map<String, NFVNode> nodeMap = new HashMap<String, NFVNode>();
 			this.nfvNodeMaps.add(nodeMap);
 			this.rrStore[i] = 0;
+		}
+		scaleIndicators = new boolean[this.serviceChainConfig.stages.size()];
+		for(int i=0; i<scaleIndicators.length; i++){
+			scaleIndicators[i] = false;
 		}
 	}
 	
@@ -172,5 +177,25 @@ public class NFVServiceChain {
 		else{
 			return false;
 		}
+	}
+	
+	public synchronized Map<String, NFVNode> getManagementIpNodeMap(){
+		return this.managementIpNodeMap;
+	}
+	
+	public synchronized NFVNode getNode(String managementIp){
+		return this.managementIpNodeMap.get(managementIp);
+	}
+	
+	public synchronized Map<String, NFVNode> getStageMap(int stage){
+		return this.nfvNodeMaps.get(stage);
+	}
+	
+	public synchronized void setScaleIndicator(int stage, boolean val){
+		this.scaleIndicators[stage] = val;
+	}
+	
+	public synchronized boolean getScaleIndicator(int stage){
+		return this.scaleIndicators[stage];
 	}
 }
