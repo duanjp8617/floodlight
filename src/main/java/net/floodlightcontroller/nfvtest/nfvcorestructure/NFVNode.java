@@ -172,13 +172,13 @@ public class NFVNode {
 		public int getNodeState(){
 			if(cpuUsage.getFilledUp()){
 				cpuState.updateTransientState(checkStatus(cpuUsage.getCircularList(), 
-														  new Float(20.0),
+														  new Float(30.0),
 														  new Float(80.0)));
 			}
 			if(memUsage.getFilledUp()){
 				memState.updateTransientState(checkStatus(memUsage.getCircularList(),
-														  new Float(10.0),
-														  new Float(50.0)));
+														  new Float(30.0),
+														  new Float(70.0)));
 			}
 			if(eth0SendInt.getFilledUp()){
 				eth0SendState.updateTransientState(checkStatus(eth0SendInt.getCircularList(),
@@ -191,48 +191,14 @@ public class NFVNode {
 															   new Integer(100)));
 			}
 			if(eth0RecvInt.getFilledUp()&&eth0RecvPkt.getFilledUp()){
-				int recvPktTrend = checkTrend(eth0RecvPkt.getIndex(), eth0RecvPkt.getCircularList());
-				int recvIntTrend = checkTrend(eth0RecvInt.getIndex(), eth0RecvInt.getCircularList());
-				
-				int recvPktTState = checkStatus(eth0RecvPkt.getCircularList(),
-												new Long(70000),
-												new Long(100000));
-				int tState = 0;
-				if(recvPktTState != NFVNode.OVERLOAD){
-					tState = recvPktTState;
-				}
-				else{
-					if(recvPktTrend == recvIntTrend){
-						tState = NFVNode.NORMAL;
-					}
-					else{
-						tState = NFVNode.OVERLOAD;
-					}
-				}
-				
-				eth0RecvState.updateTransientState(tState);
+				eth0RecvState.updateTransientState(checkRecvStatus(eth0RecvInt.getCircularList(),
+																   eth0RecvPkt.getCircularList(),
+																   (float)18));
 			}
 			if(eth1RecvInt.getFilledUp()&&eth1RecvPkt.getFilledUp()){
-				int recvPktTrend = checkTrend(eth1RecvPkt.getIndex(), eth1RecvPkt.getCircularList());
-				int recvIntTrend = checkTrend(eth1RecvInt.getIndex(), eth1RecvInt.getCircularList());
-				
-				int recvPktTState = checkStatus(eth1RecvPkt.getCircularList(),
-												new Long(100000),
-												new Long(550000));
-				int tState = 0;
-				if(recvPktTState != NFVNode.OVERLOAD){
-					tState = recvPktTState;
-				}
-				else{
-					if(recvPktTrend == recvIntTrend){
-						tState = NFVNode.NORMAL;
-					}
-					else{
-						tState = NFVNode.OVERLOAD;
-					}
-				}
-				
-				eth1RecvState.updateTransientState(tState);
+				eth1RecvState.updateTransientState(checkRecvStatus(eth1RecvInt.getCircularList(),
+						   									       eth1RecvPkt.getCircularList(),
+						   									       (float)18));
 			}
 			
 			int[] stateList = new int[6];
@@ -264,12 +230,6 @@ public class NFVNode {
 			else{
 				return NFVNode.NORMAL;
 			}
-		}
-		
-		private <E extends Comparable<E>> int checkTrend(int index, ArrayList<E> list){
-			E lastElem = list.get(index);
-			E firstElem = list.get((index-1)<0?(list.size()-1):(index-1));
-			return firstElem.compareTo(lastElem);
 		}
 		
 		private <E extends Comparable<E>> int checkStatus(ArrayList<E> list, E lowerT, E upperT){
@@ -305,6 +265,28 @@ public class NFVNode {
 			}
 			
 			return returnVal;
+		}
+		
+		private int checkRecvStatus(ArrayList<Integer> intList, ArrayList<Long> pktList, float t){
+			int nOverload = 0;
+			int nIdle = 0;
+			
+			for(int i=0; i<intList.size(); i++){
+				float val = pktList.get(i).floatValue()/intList.get(i).floatValue();
+				if(val>=t){
+					nOverload+=1;
+				}
+				else{
+					nIdle+=1;
+				}
+			}
+		
+			if(nOverload>=nIdle){
+				return NFVNode.OVERLOAD;
+			}
+			else{
+				return NFVNode.IDLE;
+			}
 		}
 	}
 	//immutable field.
@@ -373,11 +355,15 @@ public class NFVNode {
 		String stat = cpuUsage.toString()+" "+memUsage.toString()+" "+eth0RecvInt.toString()+" "+
 					  eth0RecvPkt.toString()+" "+eth0SendInt.toString()+" "+eth0SendPkt.toString()+" "+eth1RecvInt.toString()
 					  +" "+eth1RecvPkt.toString()+" "+eth1SendInt.toString()+" "+eth1SendPkt.toString();
+		float recvPkt = eth0RecvPkt.floatValue();
+		float recvInt = eth0RecvInt.floatValue();
+		stat = stat+" "+new Float(recvPkt/recvInt).toString();
 		
 		this.property.updateNodeProperty(cpuUsage, memUsage, eth0RecvInt, eth0RecvPkt, 
 										 eth0SendInt, eth1RecvInt, eth1RecvPkt, eth1SendInt);
 		this.state = this.property.getNodeState();
 		
+		if(this.vmInstance.stageIndex == 0){
 		if(this.state == NFVNode.IDLE){
 			System.out.println("Node-"+this.getManagementIp()+" is IDLE : "+stat);
 		}
@@ -386,6 +372,7 @@ public class NFVNode {
 		}
 		if(this.state == NFVNode.OVERLOAD){
 			System.out.println("Node-"+this.getManagementIp()+" is OVERLOAD : "+stat);
+		}
 		}
 	}
 	

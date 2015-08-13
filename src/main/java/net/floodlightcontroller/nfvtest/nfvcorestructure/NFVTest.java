@@ -387,10 +387,10 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     	ARP arpRequest = (ARP) eth.getPayload();
         MacAddress srcMac = eth.getSourceMACAddress();
         
-        logger.info("get an arp request from: {}", srcMac.toString());
+        /*logger.info("get an arp request from: {}", srcMac.toString());
         logger.info("with source ip: {}, requesting destination ip: {}", 
         		arpRequest.getSenderProtocolAddress().toString(),
-        		arpRequest.getTargetProtocolAddress().toString());
+        		arpRequest.getTargetProtocolAddress().toString());*/
 
         String switchDpid = this.serviceChain.getDpidForMac(srcMac.toString());
         if(switchDpid != null){
