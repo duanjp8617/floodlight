@@ -368,11 +368,11 @@ public class NFVNode {
 	}
 	
 	public void updateNodeProperty(Float cpuUsage, Float memUsage, 
-								   Integer eth0RecvInt, Long eth0RecvPkt, Integer eth0SendInt,
-								   Integer eth1RecvInt, Long eth1RecvPkt, Integer eth1SendInt){
+								   Integer eth0RecvInt, Long eth0RecvPkt, Integer eth0SendInt, Long eth0SendPkt,
+								   Integer eth1RecvInt, Long eth1RecvPkt, Integer eth1SendInt, Long eth1SendPkt){
 		String stat = cpuUsage.toString()+" "+memUsage.toString()+" "+eth0RecvInt.toString()+" "+
-					  eth0RecvPkt.toString()+" "+eth0SendInt.toString()+" "+eth1RecvInt.toString()
-					  +" "+eth1RecvPkt.toString()+" "+eth1SendInt.toString();
+					  eth0RecvPkt.toString()+" "+eth0SendInt.toString()+" "+eth0SendPkt.toString()+" "+eth1RecvInt.toString()
+					  +" "+eth1RecvPkt.toString()+" "+eth1SendInt.toString()+" "+eth1SendPkt.toString();
 		
 		this.property.updateNodeProperty(cpuUsage, memUsage, eth0RecvInt, eth0RecvPkt, 
 										 eth0SendInt, eth1RecvInt, eth1RecvPkt, eth1SendInt);

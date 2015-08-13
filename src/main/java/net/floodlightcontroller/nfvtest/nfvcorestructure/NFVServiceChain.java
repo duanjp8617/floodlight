@@ -150,15 +150,18 @@ public class NFVServiceChain {
 			String eth0 = statList.get(8);
 			String[] eth0StatArray = eth0.trim().split("\\s+");
 			long eth0RecvPkt = Long.parseLong(eth0StatArray[1]);
+			long eth0SendPkt = Long.parseLong(eth0StatArray[9]);
 			
 			String eth1 = statList.get(10);
 			String[] eth1StatArray = eth1.trim().split("\\s+");
 			long eth1RecvPkt = Long.parseLong(eth1StatArray[1]);
+			long eth1SendPkt = Long.parseLong(eth1StatArray[9]);
 			
 			node.updateNodeProperty(new Float(cpuUsage), new Float(memUsage), 
 									new Integer(eth0RecvInt), new Long(eth0RecvPkt), 
-									new Integer(eth0SendInt), new Integer(eth1RecvInt), 
-									new Long(eth1RecvPkt), new Integer(eth1SendInt));
+									new Integer(eth0SendInt), new Long(eth0SendPkt),
+									new Integer(eth1RecvInt), new Long(eth1RecvPkt), 
+									new Integer(eth1SendInt), new Long(eth1SendPkt));
 		}
 	}
 	
