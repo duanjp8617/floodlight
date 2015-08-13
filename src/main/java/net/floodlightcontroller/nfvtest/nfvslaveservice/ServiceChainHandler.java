@@ -71,10 +71,6 @@ public class ServiceChainHandler extends MessageProcessor {
 			AllocateVmReply reply = (AllocateVmReply)m;
 			handleAllocateVmReply(reply);
 		}
-		if(m instanceof SubConnReply){
-			SubConnReply reply = (SubConnReply) m;
-			handleSubConnReply(reply);
-		}
 		if(m instanceof StatUpdateRequest){
 			StatUpdateRequest request = (StatUpdateRequest)m;
 			statUpdate(request);
@@ -118,9 +114,7 @@ public class ServiceChainHandler extends MessageProcessor {
 					AllocateVmReply newReplz = (AllocateVmReply)newReplyList.get(i);
 					VmInstance vmInstance = newReplz.getVmInstance();
 					serviceChain.addNodeToChain(new NFVNode(vmInstance));
-					SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
-																"5555");
-					this.mh.sendTo("subscriberConnector", request);
+					this.poller.register(new Pair<String, Socket>(vmInstance.managementIp, newReply.getSubscriber()));
 				}
 				this.serviceChainMap.put(serviceChain.serviceChainConfig.name, serviceChain);
 				synchronized(serviceChain){
@@ -134,21 +128,12 @@ public class ServiceChainHandler extends MessageProcessor {
 			String serviceChainName = vmInstance.serviceChainConfig.name;
 			if(this.serviceChainMap.containsKey(serviceChainName)){
 				this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
-				SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
-						"5555");
-				this.mh.sendTo("subscriberConnector", request);
+				this.poller.register(new Pair<String, Socket>(vmInstance.managementIp, newReply.getSubscriber()));
 				synchronized(this.serviceChainMap.get(serviceChainName)){
 					this.serviceChainMap.get(serviceChainName).notify();
 				}
 			}
 		}
-	}
-	
-	private void handleSubConnReply(SubConnReply reply){
-		SubConnRequest request = reply.getSubConnRequest();
-		String managementIp = request.getManagementIp();
-		Socket subscriber = reply.getSubscriber();
-		this.poller.register(new Pair<String, Socket>(managementIp, subscriber));
 	}
 	
 	private void statUpdate(StatUpdateRequest request){
