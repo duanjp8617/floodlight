@@ -273,11 +273,14 @@ public class ConcreteMessage {
 		private final String sourceId;
 		private final String managementIp;
 		private final String port;
+		private final VmInstance vmInstance;
 		
-		public SubConnRequest(String sourceId, String managementIp, String port){
+		public SubConnRequest(String sourceId, String managementIp, String port,
+							  VmInstance vmInstance){
 			this.sourceId = sourceId;
 			this.managementIp = managementIp;
 			this.port = port;
+			this.vmInstance = vmInstance;
 		}
 		
 		public String getSourceId(){
@@ -290,6 +293,10 @@ public class ConcreteMessage {
 		
 		public String getPort(){
 			return this.port;
+		}
+		
+		public VmInstance getVmInstance(){
+			return this.vmInstance;
 		}
 	}
 	

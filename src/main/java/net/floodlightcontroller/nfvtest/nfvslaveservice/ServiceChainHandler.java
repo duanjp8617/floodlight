@@ -112,17 +112,17 @@ public class ServiceChainHandler extends MessageProcessor {
 				InitServiceChainRequset originalRequest = 
 						(InitServiceChainRequset)pending.getCachedMessage();
 				NFVServiceChain serviceChain = originalRequest.getServiceChain();
+				this.serviceChainMap.put(serviceChain.serviceChainConfig.name, serviceChain);
 			
 				ArrayList<Message> newReplyList = pending.getReplyList();
 				for(int i=0; i<newReplyList.size(); i++){
 					AllocateVmReply newReplz = (AllocateVmReply)newReplyList.get(i);
 					VmInstance vmInstance = newReplz.getVmInstance();
-					serviceChain.addNodeToChain(new NFVNode(vmInstance));
+					//serviceChain.addNodeToChain(new NFVNode(vmInstance));
 					SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
-																"5555");
+																"5555", vmInstance);
 					this.mh.sendTo("subscriberConnector", request);
 				}
-				this.serviceChainMap.put(serviceChain.serviceChainConfig.name, serviceChain);
 				synchronized(serviceChain){
 					serviceChain.notify();
 				}
@@ -133,19 +133,21 @@ public class ServiceChainHandler extends MessageProcessor {
 			VmInstance vmInstance = newReply.getVmInstance();
 			String serviceChainName = vmInstance.serviceChainConfig.name;
 			if(this.serviceChainMap.containsKey(serviceChainName)){
-				this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
+				//this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
 				SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
-						"5555");
+						"5555", vmInstance);
 				this.mh.sendTo("subscriberConnector", request);
-				synchronized(this.serviceChainMap.get(serviceChainName)){
-					this.serviceChainMap.get(serviceChainName).notify();
-				}
 			}
 		}
 	}
 	
 	private void handleSubConnReply(SubConnReply reply){
 		SubConnRequest request = reply.getSubConnRequest();
+		
+		VmInstance vmInstance = request.getVmInstance();
+		String serviceChainName = vmInstance.serviceChainConfig.name;
+		this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
+		
 		String managementIp = request.getManagementIp();
 		Socket subscriber = reply.getSubscriber();
 		this.poller.register(new Pair<String, Socket>(managementIp, subscriber));
