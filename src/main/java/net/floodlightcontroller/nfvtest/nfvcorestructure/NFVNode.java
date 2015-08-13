@@ -195,8 +195,8 @@ public class NFVNode {
 				int recvIntTrend = checkTrend(eth0RecvInt.getIndex(), eth0RecvInt.getCircularList());
 				
 				int recvPktTState = checkStatus(eth0RecvPkt.getCircularList(),
-												new Long(100000),
-												new Long(550000));
+												new Long(70000),
+												new Long(100000));
 				int tState = 0;
 				if(recvPktTState != NFVNode.OVERLOAD){
 					tState = recvPktTState;
@@ -370,20 +370,22 @@ public class NFVNode {
 	public void updateNodeProperty(Float cpuUsage, Float memUsage, 
 								   Integer eth0RecvInt, Long eth0RecvPkt, Integer eth0SendInt,
 								   Integer eth1RecvInt, Long eth1RecvPkt, Integer eth1SendInt){
-		//System.out.println(cpuUsage+" "+memUsage+" "+eth0RecvInt+" "+eth0RecvPkt+" "+
-		//				   eth0SendInt+" "+eth1RecvInt+" "+eth1RecvPkt+" "+eth1SendInt);
+		String stat = cpuUsage.toString()+" "+memUsage.toString()+" "+eth0RecvInt.toString()+" "+
+					  eth0RecvPkt.toString()+" "+eth0SendInt.toString()+" "+eth1RecvInt.toString()
+					  +" "+eth1RecvPkt.toString()+" "+eth1SendInt.toString();
+		
 		this.property.updateNodeProperty(cpuUsage, memUsage, eth0RecvInt, eth0RecvPkt, 
 										 eth0SendInt, eth1RecvInt, eth1RecvPkt, eth1SendInt);
 		this.state = this.property.getNodeState();
 		
 		if(this.state == NFVNode.IDLE){
-			System.out.println("Node-"+this.getManagementIp()+" is IDLE");
+			System.out.println("Node-"+this.getManagementIp()+" is IDLE : "+stat);
 		}
 		if(this.state == NFVNode.NORMAL){
-			System.out.println("Node-"+this.getManagementIp()+" is NORMAL");
+			System.out.println("Node-"+this.getManagementIp()+" is NORMAL : "+stat);
 		}
 		if(this.state == NFVNode.OVERLOAD){
-			System.out.println("Node-"+this.getManagementIp()+" is OVERLOAD");
+			System.out.println("Node-"+this.getManagementIp()+" is OVERLOAD : "+stat);
 		}
 	}
 	
