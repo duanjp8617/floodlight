@@ -72,6 +72,10 @@ public class ServiceChainHandler extends MessageProcessor {
 			AllocateVmReply reply = (AllocateVmReply)m;
 			handleAllocateVmReply(reply);
 		}
+		if(m instanceof SubConnReply){
+			SubConnReply reply = (SubConnReply) m;
+			handleSubConnReply(reply);
+		}
 		if(m instanceof StatUpdateRequest){
 			StatUpdateRequest request = (StatUpdateRequest)m;
 			statUpdate(request);
@@ -109,15 +113,17 @@ public class ServiceChainHandler extends MessageProcessor {
 				InitServiceChainRequset originalRequest = 
 						(InitServiceChainRequset)pending.getCachedMessage();
 				NFVServiceChain serviceChain = originalRequest.getServiceChain();
+				this.serviceChainMap.put(serviceChain.serviceChainConfig.name, serviceChain);
 			
 				ArrayList<Message> newReplyList = pending.getReplyList();
 				for(int i=0; i<newReplyList.size(); i++){
 					AllocateVmReply newReplz = (AllocateVmReply)newReplyList.get(i);
 					VmInstance vmInstance = newReplz.getVmInstance();
-					serviceChain.addNodeToChain(new NFVNode(vmInstance));
-					this.poller.register(new Pair<String, Socket>(vmInstance.managementIp, newReply.getSubscriber()));
+					//serviceChain.addNodeToChain(new NFVNode(vmInstance));
+					SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
+																"5555", vmInstance);
+					this.mh.sendTo("subscriberConnector", request);
 				}
-				this.serviceChainMap.put(serviceChain.serviceChainConfig.name, serviceChain);
 				synchronized(serviceChain){
 					serviceChain.notify();
 				}
@@ -128,29 +134,46 @@ public class ServiceChainHandler extends MessageProcessor {
 			VmInstance vmInstance = newReply.getVmInstance();
 			String serviceChainName = vmInstance.serviceChainConfig.name;
 			if(this.serviceChainMap.containsKey(serviceChainName)){
-				this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
-				this.poller.register(new Pair<String, Socket>(vmInstance.managementIp, newReply.getSubscriber()));
-				this.serviceChainMap.get(serviceChainName).setScaleIndicator(vmInstance.stageIndex, false);
-				synchronized(this.serviceChainMap.get(serviceChainName)){
-					this.serviceChainMap.get(serviceChainName).notify();
-				}
+				//this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
+				SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
+						"5555", vmInstance);
+				this.mh.sendTo("subscriberConnector", request);
 			}
 		}
+	}
+	
+	private void handleSubConnReply(SubConnReply reply){
+		SubConnRequest request = reply.getSubConnRequest();
+		
+		VmInstance vmInstance = request.getVmInstance();
+		String serviceChainName = vmInstance.serviceChainConfig.name;
+		this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
+		
+		String managementIp = request.getManagementIp();
+		Socket subscriber = reply.getSubscriber();
+		this.poller.register(new Pair<String, Socket>(managementIp, subscriber));
+		this.serviceChainMap.get(serviceChainName).setScaleIndicator(vmInstance.stageIndex, false);
 	}
 	
 	private void statUpdate(StatUpdateRequest request){
 		ArrayList<String> statList = request.getStatList();
 		String managementIp = request.getManagementIp();
 		
+		/*String sum = "";
+		for(int i=0; i<statList.size(); i++){
+			sum = sum + statList.get(i) + "|";
+		}
+		System.out.println(sum);*/
+		
 		for(String chainName : this.serviceChainMap.keySet()){
 			NFVServiceChain chain = this.serviceChainMap.get(chainName);
 			synchronized(chain){
 				if(chain.hasNode(managementIp)){
 					chain.updateNodeStat(managementIp, statList);
-							
+					
 					NFVNode node = chain.getNode(managementIp);
 					Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
-				
+					
 					int nOverload = 0;
 					for(String ip : stageMap.keySet()){
 						NFVNode n = stageMap.get(ip);
@@ -159,11 +182,11 @@ public class ServiceChainHandler extends MessageProcessor {
 						}
 					}
 					if( (nOverload == stageMap.size())&&
-						(!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
+					    (!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
 						chain.setScaleIndicator(node.vmInstance.stageIndex, true);
-						AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(), 
-												  node.vmInstance.serviceChainConfig.name,
-												  	           node.vmInstance.stageIndex);
+						AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
+								                  node.vmInstance.serviceChainConfig.name,
+								                              node.vmInstance.stageIndex);
 						Pending pending = new Pending(1, null);
 						this.pendingMap.put(newRequest.getUUID(), pending);
 						this.mh.sendTo("vmAllocator", newRequest);

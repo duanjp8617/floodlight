@@ -3,6 +3,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import net.floodlightcontroller.nfvtest.message.Message;
 import net.floodlightcontroller.nfvtest.message.MessageProcessor;
+import net.floodlightcontroller.nfvtest.message.ConcreteMessage.KillSelfRequest;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.*;
@@ -12,8 +13,6 @@ import net.floodlightcontroller.nfvtest.message.Pending;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.UUID;
-
-import org.zeromq.ZMQ.Socket;
 
 
 public class VmAllocator extends MessageProcessor {
@@ -70,10 +69,6 @@ public class VmAllocator extends MessageProcessor {
 			DestroyVmReply reply = (DestroyVmReply)m;
 			handleDestroyVmReply(reply);
 		}
-		else if(m instanceof SubConnReply){
-			SubConnReply reply = (SubConnReply)m;
-			handleSubConnReply(reply);
-		}
 	}
 	
 	private void allocateVm(AllocateVmRequest originalRequest){
@@ -100,11 +95,10 @@ public class VmAllocator extends MessageProcessor {
 		if(newReply.getSuccessful()){
 			//start to reply to AllocateVmRequest
 			AllocateVmRequest originalRequest = (AllocateVmRequest)pending.getCachedMessage();
-			VmInstance vmInstance = newReply.getRequest().getVmInstance();
-			
-			SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
-														"5555", originalRequest, vmInstance);
-			this.mh.sendTo("subscriberConnector", request);
+			AllocateVmReply originalReply = new AllocateVmReply(this.getId(), 
+					                                newReply.getRequest().getVmInstance(), originalRequest);
+			System.out.println("Sending AllocateVmReply to: "+originalReply.getAllocateVmRequest().getSourceId());
+			this.mh.sendTo(originalReply.getAllocateVmRequest().getSourceId(), originalReply);
 		}
 		this.pendingMap.remove(newRequest.getUUID());
 	}
@@ -128,17 +122,5 @@ public class VmAllocator extends MessageProcessor {
 		if(newReply.getSuccessful()){
 			this.hostServerList.get(0).deallocateVmInstance(newRequest.getVmInstance());
 		}
-	}
-	
-	private void handleSubConnReply(SubConnReply reply){
-		SubConnRequest request = reply.getSubConnRequest();
-		
-		Socket subscriber = reply.getSubscriber();
-		VmInstance vmInstance = request.getVmInstance();
-		AllocateVmRequest originalRequest = request.getAllocateVmRequest();
-		
-		AllocateVmReply originalReply = new AllocateVmReply(this.getId(),
-										 vmInstance, originalRequest, subscriber);
-		this.mh.sendTo(originalRequest.getSourceId(), originalReply);
 	}
 }

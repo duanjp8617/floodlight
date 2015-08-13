@@ -169,14 +169,11 @@ public class ConcreteMessage {
 		private final String sourceId;
 		private final VmInstance vmInstance;
 		private final AllocateVmRequest request;
-		private final Socket subscriber;
 		
-		public AllocateVmReply(String sourceId, VmInstance vmInstance, AllocateVmRequest request,
-							   Socket subscriber){
+		public AllocateVmReply(String sourceId, VmInstance vmInstance, AllocateVmRequest request){
 			this.sourceId = sourceId;
 			this.vmInstance = vmInstance;
 			this.request = request;
-			this.subscriber = subscriber;
 		}
 		
 		public String getSourceId(){
@@ -189,10 +186,6 @@ public class ConcreteMessage {
 		
 		public AllocateVmRequest getAllocateVmRequest(){
 			return this.request;
-		}
-		
-		public Socket getSubscriber(){
-			return this.subscriber;
 		}
 	}
 	
@@ -280,15 +273,13 @@ public class ConcreteMessage {
 		private final String sourceId;
 		private final String managementIp;
 		private final String port;
-		private final AllocateVmRequest allocateVmRequest;
 		private final VmInstance vmInstance;
 		
-		public SubConnRequest(String sourceId, String managementIp, String port, 
-				              AllocateVmRequest allocateVmRequest, VmInstance vmInstance){
+		public SubConnRequest(String sourceId, String managementIp, String port,
+							  VmInstance vmInstance){
 			this.sourceId = sourceId;
 			this.managementIp = managementIp;
 			this.port = port;
-			this.allocateVmRequest = allocateVmRequest;
 			this.vmInstance = vmInstance;
 		}
 		
@@ -302,10 +293,6 @@ public class ConcreteMessage {
 		
 		public String getPort(){
 			return this.port;
-		}
-		
-		public AllocateVmRequest getAllocateVmRequest(){
-			return this.allocateVmRequest;
 		}
 		
 		public VmInstance getVmInstance(){
