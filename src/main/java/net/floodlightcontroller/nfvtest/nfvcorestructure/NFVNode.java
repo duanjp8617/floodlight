@@ -294,6 +294,7 @@ public class NFVNode {
 	
 	private NFVNodeProperty property;
 	private int state;
+	private int activeFlows;
 	
 	//node state: idel, normal, overload
 	public static final int IDLE = 1;
@@ -304,6 +305,7 @@ public class NFVNode {
 		this.vmInstance = vmInstance;
 		this.property = new NFVNodeProperty(15);
 		this.state = NFVNode.IDLE;
+		this.activeFlows = 0;
 	}
 	
 	public String getChainName(){
@@ -378,5 +380,17 @@ public class NFVNode {
 	
 	public int getState(){
 		return this.state;
+	}
+	
+	public void addActiveFlow(){
+		this.activeFlows += 1;
+	}
+	
+	public void deleteActiveFlow(){
+		this.activeFlows -= 1;
+	}
+	
+	public int getActiveFlows(){
+		return this.activeFlows;
 	}
 }

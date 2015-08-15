@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 
+import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.*;
 
 public class NFVServiceChain {
@@ -16,7 +17,11 @@ public class NFVServiceChain {
 	private final Map<String, NFVNode> entryMacNodeMap;
 	private final Map<String, NFVNode> exitMacNodeMap;
 	private final Map<String, NFVNode> managementIpNodeMap;
+	
 	private final boolean[] scaleIndicators; 
+	
+	public final long[] scaleDownCounter;
+	public final List<Map<String, Integer>> scaleDownList;
 	
 	NFVServiceChain(ServiceChainConfig serviceChainConfig){
 		this.serviceChainConfig = serviceChainConfig;
@@ -39,9 +44,18 @@ public class NFVServiceChain {
 			this.nfvNodeMaps.add(nodeMap);
 			this.rrStore[i] = 0;
 		}
+		
 		scaleIndicators = new boolean[this.serviceChainConfig.stages.size()];
 		for(int i=0; i<scaleIndicators.length; i++){
 			scaleIndicators[i] = false;
+		}
+		
+		scaleDownList = new ArrayList<Map<String, Integer>>();
+		scaleDownCounter = new long[serviceChainConfig.stages.size()];
+		for(int i=0; i<this.serviceChainConfig.stages.size(); i++){
+			Map<String, Integer> nodeMap = new HashMap<String, Integer>();
+			this.scaleDownList.add(nodeMap);
+			scaleDownCounter[i] = -1;
 		}
 	}
 	
@@ -80,6 +94,7 @@ public class NFVServiceChain {
 			if( (stageMap.containsKey(node.getManagementIp())) && 
 			    (node.getManagementIp()!=this.baseNodeIpList.get(node.vmInstance.stageIndex)) ){
 				stageMap.remove(node.getManagementIp());
+				
 				this.managementIpNodeMap.remove(node.getManagementIp());
 				
 				if(this.serviceChainConfig.nVmInterface == 3){
@@ -94,11 +109,18 @@ public class NFVServiceChain {
 		//a simple round rubin.
 		List<NFVNode> routeList = new ArrayList<NFVNode>();
 		for(int i=0; i<this.nfvNodeMaps.size(); i++){
+			Map<String, Integer> stageScaleDownMap = this.scaleDownList.get(i);
 			Map<String, NFVNode> stageMap = this.nfvNodeMaps.get(i);
 			if(this.rrStore[i]>=stageMap.size()){
 				this.rrStore[i]=0;
 			}
+			
 			String[] keyArray = stageMap.keySet().toArray(new String[stageMap.keySet().size()]);
+			
+			while(stageScaleDownMap.containsKey(keyArray[this.rrStore[i]])){
+				this.rrStore[i] = (this.rrStore[i]+1)%stageMap.size();
+			}
+			
 			routeList.add(stageMap.get(keyArray[this.rrStore[i]]));
 			this.rrStore[i] = (this.rrStore[i]+1)%stageMap.size();
 		}
@@ -193,6 +215,59 @@ public class NFVServiceChain {
 	
 	public synchronized void setScaleIndicator(int stage, boolean val){
 		this.scaleIndicators[stage] = val;
+	}
+	
+	public synchronized int getNodeWithLeastFlows(int stageIndex, 
+			             ArrayList<Pair<String, Integer>> flowNumArray){
+		
+		String baseNodeIp = this.baseNodeIpList.get(stageIndex);
+		
+		if(flowNumArray.size() == 0){
+			return -1;
+		}
+		if((flowNumArray.size() == 1)&&(flowNumArray.get(0).first.equals(baseNodeIp))){
+			return -1;
+		}
+		
+		int smallestFlowNum = 0;
+		int smallestIndex = 0;
+		
+		for(int i=0; i<flowNumArray.size(); i++){
+			String managementIp = flowNumArray.get(i).first;
+			int flowNum = flowNumArray.get(i).second.intValue();
+			
+			if(!managementIp.equals(baseNodeIp)){
+				smallestFlowNum = flowNum;
+				smallestIndex = i;
+				break;
+			}
+		}
+		
+		for(int i=0; i<flowNumArray.size(); i++){
+			String managementIp = flowNumArray.get(i).first;
+			int flowNum = flowNumArray.get(i).second.intValue();
+			
+			if( (flowNum<smallestFlowNum) &&
+			    (!managementIp.equals(baseNodeIp)) ){
+				smallestFlowNum = flowNum;
+				smallestIndex = i;
+			}
+		}
+		
+		return smallestIndex;
+	}
+	
+	public synchronized ArrayList<Pair<String, Integer>> getFlowNumArray(int stageIndex){
+		Map<String,NFVNode> nodeMap = this.nfvNodeMaps.get(stageIndex);
+		ArrayList<Pair<String, Integer>> flowNumArray = new ArrayList<Pair<String, Integer>>();
+		
+		for(String ip : nodeMap.keySet()){
+			NFVNode node = nodeMap.get(ip);
+			flowNumArray.add(new Pair<String, Integer>(node.getManagementIp(), 
+					         new Integer(node.getActiveFlows())));
+		}
+		
+		return flowNumArray;
 	}
 	
 	public synchronized boolean getScaleIndicator(int stage){

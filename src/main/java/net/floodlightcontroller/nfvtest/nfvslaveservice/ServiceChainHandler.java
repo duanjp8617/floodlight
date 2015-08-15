@@ -13,6 +13,7 @@ import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -151,19 +152,13 @@ public class ServiceChainHandler extends MessageProcessor {
 		
 		String managementIp = request.getManagementIp();
 		Socket subscriber = reply.getSubscriber();
-		this.poller.register(new Pair<String, Socket>(managementIp, subscriber));
 		this.serviceChainMap.get(serviceChainName).setScaleIndicator(vmInstance.stageIndex, false);
+		this.poller.register(new Pair<String, Socket>(managementIp, subscriber));
 	}
 	
 	private void statUpdate(StatUpdateRequest request){
 		ArrayList<String> statList = request.getStatList();
 		String managementIp = request.getManagementIp();
-		
-		/*String sum = "";
-		for(int i=0; i<statList.size(); i++){
-			sum = sum + statList.get(i) + "|";
-		}
-		System.out.println(sum);*/
 		
 		for(String chainName : this.serviceChainMap.keySet()){
 			NFVServiceChain chain = this.serviceChainMap.get(chainName);
@@ -173,6 +168,7 @@ public class ServiceChainHandler extends MessageProcessor {
 					
 					NFVNode node = chain.getNode(managementIp);
 					Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
+					int stageIndex = node.vmInstance.stageIndex;
 					
 					int nOverload = 0;
 					for(String ip : stageMap.keySet()){
@@ -181,6 +177,69 @@ public class ServiceChainHandler extends MessageProcessor {
 							nOverload += 1;
 						}
 					}
+					
+					if(nOverload == 0){
+						if(chain.scaleDownList.get(stageIndex).size()!=0){
+							Map<String, Integer> stageScaleDownMap = 
+									                chain.scaleDownList.get(stageIndex);
+							List<String> deletedNodeIndexList = new ArrayList<String>();
+							
+							for(String ip : stageScaleDownMap.keySet()){
+								NFVNode n = chain.getNode(ip);
+								
+								if(n.getActiveFlows() == 0){
+									chain.deleteNodeFromChain(n);
+									deletedNodeIndexList.add(ip);
+									
+									//Do some other thing.
+									this.poller.unregister(n.getManagementIp());
+									DeallocateVmRequest deallocationRequest = 
+											new DeallocateVmRequest(this.getId(), n.vmInstance);
+									this.mh.sendTo("vmAllocator", deallocationRequest);
+								}
+							}
+							
+							for(int i=0; i<deletedNodeIndexList.size(); i++){
+								stageScaleDownMap.remove(deletedNodeIndexList.get(i));
+							}
+							
+							if(stageScaleDownMap.size() == 0){
+								chain.scaleDownCounter[stageIndex] = -1;
+							}
+						}
+						else{
+							if(chain.scaleDownCounter[stageIndex] == -1){
+								chain.scaleDownCounter[stageIndex] = System.currentTimeMillis();
+							}
+							else{
+								if((System.currentTimeMillis()-chain.scaleDownCounter[stageIndex])>=
+									                                        15000){
+									//The stage has been relatively idle for 15000s, put some 
+									//nodes to the scaleDownList
+									ArrayList<Pair<String, Integer>> flowNumList = 
+											             chain.getFlowNumArray(stageIndex);
+									
+									int numToAdd = flowNumList.size()/2;
+									for(int i=0; i<numToAdd; i++){
+										int index = chain.getNodeWithLeastFlows(stageIndex, 
+												             flowNumList);
+										if(index < 0){
+											continue;
+										}
+										else{
+											String ip = flowNumList.get(index).first;
+											chain.scaleDownList.get(stageIndex).put(ip, 
+													                 new Integer(0));
+											flowNumList.remove(index);
+										}
+									}
+									
+									chain.scaleDownCounter[stageIndex] = -1;
+								}						
+							}
+						}
+					}
+					
 					if( (nOverload == stageMap.size())&&
 					    (!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
 						chain.setScaleIndicator(node.vmInstance.stageIndex, true);
@@ -190,11 +249,18 @@ public class ServiceChainHandler extends MessageProcessor {
 						Pending pending = new Pending(1, null);
 						this.pendingMap.put(newRequest.getUUID(), pending);
 						this.mh.sendTo("vmAllocator", newRequest);
+						
+						chain.scaleDownList.get(stageIndex).clear();
+						chain.scaleDownCounter[stageIndex] = -1;
 					}
+					else if((nOverload > 0)&&(nOverload < stageMap.size())){
+						chain.scaleDownList.get(stageIndex).clear();
+						chain.scaleDownCounter[stageIndex] = -1;
+					}
+					
 					break;
 				}
 			}
 		}
 	}
-	
 }

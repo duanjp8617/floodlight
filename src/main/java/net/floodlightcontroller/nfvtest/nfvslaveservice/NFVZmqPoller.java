@@ -18,14 +18,14 @@ import org.zeromq.ZMQ;
 
 public class NFVZmqPoller implements Runnable{
 	private final LinkedList<Pair<String, Socket>> registerQueue;
-	private final LinkedList<Pair<String, Socket>> unregisterQueue;
+	private final LinkedList<String> unregisterQueue;
 	private final LinkedHashMap<String, Socket> socketMap;
 	private final MessageHub mh;
 
 	
 	public NFVZmqPoller(MessageHub mh){
 		this.registerQueue = new LinkedList<Pair<String, Socket>>();
-		this.unregisterQueue = new LinkedList<Pair<String, Socket>>();
+		this.unregisterQueue = new LinkedList<String>();
 		this.socketMap = new LinkedHashMap<String, Socket>();
 		this.mh = mh;
 	}
@@ -34,8 +34,8 @@ public class NFVZmqPoller implements Runnable{
 		this.registerQueue.add(ipSocketPair);
 	}
 	
-	public synchronized void unregister(Pair<String, Socket> ipSocketPair){
-		this.unregisterQueue.add(ipSocketPair);
+	public synchronized void unregister(String managementIp){
+		this.unregisterQueue.add(managementIp);
 	}
 	
 	
@@ -49,9 +49,9 @@ public class NFVZmqPoller implements Runnable{
 					this.socketMap.put(socketPair.first, socketPair.second);
 				}
 				while(!this.unregisterQueue.isEmpty()){
-					Pair<String, Socket> socketPair = this.unregisterQueue.removeFirst();
-					if(this.socketMap.containsKey(socketPair.first)){
-						this.socketMap.remove(socketPair.first);
+					String managementIp = this.unregisterQueue.removeFirst();
+					if(this.socketMap.containsKey(managementIp)){
+						this.socketMap.remove(managementIp);
 					}
 				}
 			}
