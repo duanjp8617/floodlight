@@ -10,21 +10,21 @@ public class RouteTuple {
 	public final int type;
 	public final int srcPort;
 	public final int dstPort;
-	public final long dstMac;
+	public final long dpid;
 	
-	public RouteTuple(int srcIp, int dstIp, int type, int srcPort, int dstPort, long dstMac){
+	public RouteTuple(int srcIp, int dstIp, int type, int srcPort, int dstPort, long dpid){
 		this.srcIp = srcIp;
 		this.dstIp = dstIp;
 		this.type = type;
 		this.srcPort = srcPort;
 		this.dstPort = dstPort;
-		this.dstMac = dstMac;
+		this.dpid = dpid;
 	}
 	
 	@Override
 	public int hashCode() {
-		int mac = (int)this.dstMac;
-		mac = (mac<0)?(-1*mac):mac;
+		int dpid = (int)this.dpid;
+		dpid = (dpid<0)?(-1*dpid):dpid;
 		
 		final int prime = 5807;
 		int result = prime;
@@ -33,7 +33,7 @@ public class RouteTuple {
 		result = result+this.type;
 		result = result+this.srcPort;
 		result = result+this.dstPort;
-		result = result+mac;
+		result = result+dpid;
 		return result;	
 	}
 	
@@ -60,7 +60,7 @@ public class RouteTuple {
         if(other.dstPort != this.dstPort){
         	return false;
         }
-        if(other.dstMac != this.dstMac){
+        if(other.dpid != this.dpid){
         	return false;
         }
         return true;

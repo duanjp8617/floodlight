@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
  
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowRemoved;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
@@ -60,6 +61,7 @@ import net.floodlightcontroller.packet.UDP;
 import java.util.Set;
 import java.util.Collection;
 
+import net.floodlightcontroller.learningswitch.LearningSwitch;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.InitServiceChainRequset;
 import net.floodlightcontroller.nfvtest.message.MessageHub;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.AddHostServerRequest;
@@ -78,6 +80,7 @@ import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.StageVmInfo;
 import net.floodlightcontroller.nfvtest.nfvutils.FlowTuple;
 import net.floodlightcontroller.nfvtest.nfvutils.Pair;
+import net.floodlightcontroller.nfvtest.nfvutils.RouteTuple;
 
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Context;
@@ -140,6 +143,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	private NFVServiceChain serviceChain;
 	
 	private HashMap<FlowTuple, Integer> flowMap;
+	private HashMap<RouteTuple, String> routeMap;
 	
 	@Override
 	public String getName() {
@@ -266,6 +270,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 										this.ipAllocator);
 		
 		this.flowMap = new HashMap<FlowTuple, Integer>();
+		this.routeMap = new HashMap<RouteTuple, String>();
 		
 		MessageHub mh = new MessageHub();
 		
@@ -346,6 +351,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     @Override
     public void startUp(FloodlightModuleContext context) {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        floodlightProvider.addOFMessageListener(OFType.FLOW_REMOVED, this);
     }
     
     private net.floodlightcontroller.core.IListener.Command processPktIn(IOFSwitch sw, OFMessage msg, FloodlightContext cntx){
@@ -478,11 +484,19 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     						                          MacAddress.of(currentNode.getMacAddress(0)),
     												  OFPort.of(currentNode.getPort(0)));
     				hitSwitch.write(flowMod);
+    				
+    				RouteTuple routeTuple = new RouteTuple(srcIp.getInt(), dstIp.getInt(), 
+    			   transportProtocol.equals(IpProtocol.TCP)?RouteTuple.TCP:RouteTuple.UDP,
+    								                 srcPort.getPort(), dstPort.getPort(), 
+    								DatapathId.of(currentNode.getBridgeDpid(0)).getLong());
+    				
+    				this.routeMap.put(routeTuple, currentNode.getManagementIp());
     			}
     			else{
     				//temporarily ignore this condition.
     			}
     			
+    			currentNode.addActiveFlow();
     			hitSwitch = this.switchService.getSwitch(DatapathId.of(currentNode.getBridgeDpid(1)));
     			inPort = OFPort.of(currentNode.getPort(1));
     		}
@@ -525,7 +539,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		fmb.setHardTimeout(0);
 		fmb.setIdleTimeout(30);
 		fmb.setBufferId(OFBufferId.NO_BUFFER);
-		fmb.setCookie(U64.of(0));
+		fmb.setCookie(U64.of(8617));
 		fmb.setPriority(5);
 		fmb.setOutPort(outPort);
 		fmb.setActions(actionList);
@@ -533,10 +547,47 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		return fmb.build();
     }
- 
+    
+    private net.floodlightcontroller.core.IListener.Command processPktRemoved(IOFSwitch sw, OFFlowRemoved msg){
+    	if (!msg.getCookie().equals(U64.of(8617))) {
+			return Command.CONTINUE;
+		}
+    	
+    	Match match = msg.getMatch();
+    	IPv4Address srcIp = match.get(MatchField.IPV4_SRC);
+    	IPv4Address dstIp = match.get(MatchField.IPV4_DST);
+    	IpProtocol protocol = match.get(MatchField.IP_PROTO);
+    	TransportPort srcPort = null;
+    	TransportPort dstPort = null;
+    	if(protocol.equals(IpProtocol.TCP)){
+    		srcPort = match.get(MatchField.TCP_SRC);
+    		dstPort = match.get(MatchField.TCP_DST);
+    	}
+    	else{
+    		srcPort = match.get(MatchField.UDP_SRC);
+    		dstPort = match.get(MatchField.UDP_DST);
+    	}
+    	
+    	RouteTuple tuple = new RouteTuple(srcIp.getInt(), dstIp.getInt(),
+    					protocol.equals(IpProtocol.TCP)?RouteTuple.TCP:RouteTuple.UDP,
+    							srcPort.getPort(), dstPort.getPort(), sw.getId().getLong());
+    	
+    	if(this.routeMap.containsKey(tuple)){
+    		String managementIp = this.routeMap.get(tuple);
+    		this.serviceChain.getNode(managementIp).deleteActiveFlow();
+    	}
+    	return Command.STOP;
+    }
     @Override
     public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-         return this.processPktIn(sw,msg,cntx);
+    	switch (msg.getType()) {
+    	case PACKET_IN:
+    		return this.processPktIn(sw,msg,cntx);
+    	case FLOW_REMOVED:
+    		return this.processPktRemoved(sw, (OFFlowRemoved)msg);
+		default:
+			return Command.CONTINUE;
+    	}
     }
    
  

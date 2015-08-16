@@ -1,9 +1,11 @@
 package net.floodlightcontroller.nfvtest.nfvcorestructure;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.HashSet;
 
 import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.*;
@@ -111,6 +113,44 @@ public class NFVServiceChain {
 		for(int i=0; i<this.nfvNodeMaps.size(); i++){
 			Map<String, Integer> stageScaleDownMap = this.scaleDownList.get(i);
 			Map<String, NFVNode> stageMap = this.nfvNodeMaps.get(i);
+			
+			HashSet<String> nonScaleDownSet = new HashSet<String>(stageMap.keySet());
+			nonScaleDownSet.removeAll(stageScaleDownMap.keySet());
+			
+			Iterator<String> iterator = nonScaleDownSet.iterator();
+			
+			String managementIp = null;
+			
+			while(iterator.hasNext()){
+				String tmp = iterator.next();
+				if(stageMap.get(tmp).getState() != NFVNode.OVERLOAD){
+					managementIp = tmp;
+					break;
+				}
+			}
+			
+			if(managementIp!=null){
+				int smallestFlowNum = stageMap.get(managementIp).getActiveFlows();
+				iterator = nonScaleDownSet.iterator();
+				
+				while(iterator.hasNext()){
+					String tmp = iterator.next();
+					int flowNum = stageMap.get(tmp).getActiveFlows();
+					int state = stageMap.get(tmp).getState();
+					if( (flowNum<smallestFlowNum) && (state!=NFVNode.OVERLOAD) ){
+						smallestFlowNum = flowNum;
+						managementIp = tmp;
+					}
+				}
+				
+				routeList.add(stageMap.get(managementIp));
+			}
+			else{
+				if(stageScaleDownMap.size()>0){
+				}
+			}
+			
+			
 			if(this.rrStore[i]>=stageMap.size()){
 				this.rrStore[i]=0;
 			}
