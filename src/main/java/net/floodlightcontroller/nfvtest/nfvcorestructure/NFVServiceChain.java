@@ -209,6 +209,23 @@ public class NFVServiceChain {
 		}
 	}
 	
+	public synchronized boolean macOnRearSwitch(String mac){
+		boolean returnVal = false;
+		if(this.entryMacNodeMap.containsKey(mac)){
+			returnVal = false;
+		}
+		else if(this.exitMacNodeMap.containsKey(mac)){
+			NFVNode node = this.exitMacNodeMap.get(mac);
+			if(node.vmInstance.stageIndex == (node.vmInstance.serviceChainConfig.stages.size()-1)){
+				returnVal = true;
+			}
+			else{
+				returnVal = false;
+			}
+		}
+		return returnVal;
+	}
+	
 	public synchronized void updateNodeStat(String managementIp, ArrayList<String> statList){
 		if(this.managementIpNodeMap.containsKey(managementIp)){
 			NFVNode node = this.managementIpNodeMap.get(managementIp);

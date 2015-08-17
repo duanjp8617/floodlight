@@ -312,8 +312,13 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
             	String switchDpid = this.serviceChain.getDpidForMac(srcMac.toString());
             	
             	if(switchDpid != null){
-            		handleArp(eth, sw, pi);
-            		return Command.STOP;
+            		if(!this.serviceChain.macOnRearSwitch(srcMac.toString())){
+            			handleArp(eth, sw, pi);
+            			return Command.STOP;
+            		}
+            		else{
+            			return Command.CONTINUE;
+            		}
             	}
             	else{
             		return Command.CONTINUE;
@@ -527,16 +532,14 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     }
     @Override
     public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-    	/*switch (msg.getType()) {
+    	switch (msg.getType()) {
     	case PACKET_IN:
     		return this.processPktIn(sw,msg,cntx);
     	case FLOW_REMOVED:
     		return this.processPktRemoved(sw, (OFFlowRemoved)msg);
 		default:
 			return Command.CONTINUE;
-    	}*/
-    	System.out.println("Switch "+sw.getId().toString()+" get an msg "+msg.getType().toString());
-    	return Command.CONTINUE;
+    	}
     }
    
  
