@@ -1,7 +1,6 @@
 package net.floodlightcontroller.nfvtest.nfvcorestructure;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
@@ -117,12 +116,12 @@ public class NFVServiceChain {
 			HashSet<String> nonScaleDownSet = new HashSet<String>(stageMap.keySet());
 			nonScaleDownSet.removeAll(stageScaleDownMap.keySet());
 			
-			Iterator<String> iterator = nonScaleDownSet.iterator();
+			String[] nonScaleDownArray = nonScaleDownSet.toArray(new String[nonScaleDownSet.size()]);
 			
 			String managementIp = null;
 			
-			while(iterator.hasNext()){
-				String tmp = iterator.next();
+			for(int j=0; j<nonScaleDownArray.length; j++){
+				String tmp = nonScaleDownArray[j];
 				if(stageMap.get(tmp).getState() != NFVNode.OVERLOAD){
 					managementIp = tmp;
 					break;
@@ -131,10 +130,9 @@ public class NFVServiceChain {
 			
 			if(managementIp!=null){
 				int smallestFlowNum = stageMap.get(managementIp).getActiveFlows();
-				iterator = nonScaleDownSet.iterator();
 				
-				while(iterator.hasNext()){
-					String tmp = iterator.next();
+				for(int j=0; j<nonScaleDownArray.length; j++){
+					String tmp = nonScaleDownArray[j];
 					int flowNum = stageMap.get(tmp).getActiveFlows();
 					int state = stageMap.get(tmp).getState();
 					if( (flowNum<smallestFlowNum) && (state!=NFVNode.OVERLOAD) ){
@@ -147,22 +145,43 @@ public class NFVServiceChain {
 			}
 			else{
 				if(stageScaleDownMap.size()>0){
+					String[] scaleDownArray = stageScaleDownMap.keySet()
+						                     .toArray(new String[stageScaleDownMap.size()]);
+					
+					managementIp = scaleDownArray[0];
+					int smallestFlowNum = stageMap.get(managementIp).getActiveFlows();
+					
+					for(int j=0; j<scaleDownArray.length; j++){
+						String tmp = scaleDownArray[j];
+						int flowNum = stageMap.get(tmp).getActiveFlows();
+						if(flowNum<smallestFlowNum){
+							smallestFlowNum = flowNum;
+							managementIp = tmp;
+						}
+					}
+					
+					routeList.add(stageMap.get(managementIp));
 				}
+				else{
+					String[] nodeArray = stageMap.keySet()
+										 .toArray(new String[stageScaleDownMap.size()]);
+					
+					managementIp = nodeArray[0];
+					int smallestFlowNum = stageMap.get(managementIp).getActiveFlows();
+					
+					for(int j=0; j<nodeArray.length; j++){
+						String tmp = nodeArray[j];
+						int flowNum = stageMap.get(tmp).getActiveFlows();
+						if(flowNum<smallestFlowNum){
+							smallestFlowNum = flowNum;
+							managementIp = tmp;
+						}
+					}
+					
+					routeList.add(stageMap.get(managementIp));
+				}
+				
 			}
-			
-			
-			if(this.rrStore[i]>=stageMap.size()){
-				this.rrStore[i]=0;
-			}
-			
-			String[] keyArray = stageMap.keySet().toArray(new String[stageMap.keySet().size()]);
-			
-			while(stageScaleDownMap.containsKey(keyArray[this.rrStore[i]])){
-				this.rrStore[i] = (this.rrStore[i]+1)%stageMap.size();
-			}
-			
-			routeList.add(stageMap.get(keyArray[this.rrStore[i]]));
-			this.rrStore[i] = (this.rrStore[i]+1)%stageMap.size();
 		}
 		return routeList;
 	}
