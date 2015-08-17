@@ -537,7 +537,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
 		fmb.setHardTimeout(0);
-		fmb.setIdleTimeout(30);
+		fmb.setIdleTimeout(15);
 		fmb.setBufferId(OFBufferId.NO_BUFFER);
 		fmb.setCookie(U64.of(8617));
 		fmb.setPriority(5);
@@ -575,6 +575,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     	if(this.routeMap.containsKey(tuple)){
     		String managementIp = this.routeMap.get(tuple);
     		this.serviceChain.getNode(managementIp).deleteActiveFlow();
+    		
+    		System.out.println("Flow on node "+managementIp+" is removed");
     	}
     	return Command.STOP;
     }
