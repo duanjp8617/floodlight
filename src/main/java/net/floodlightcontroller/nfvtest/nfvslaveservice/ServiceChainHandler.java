@@ -125,9 +125,6 @@ public class ServiceChainHandler extends MessageProcessor {
 																"5555", vmInstance);
 					this.mh.sendTo("subscriberConnector", request);
 				}
-				synchronized(serviceChain){
-					serviceChain.notify();
-				}
 			}
 		}
 		else{

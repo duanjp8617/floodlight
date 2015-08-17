@@ -193,55 +193,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         logger = LoggerFactory.getLogger(NFVTest.class);
         ipsServerList = new ArrayList<IpsServer>();
         
-        /*logger.info("start zmq subscriber connection");
-        Context zmqContext = ZMQ.context(1);
-        ZMQ.Event event;
-        
-        Socket subscriber = zmqContext.socket(ZMQ.SUB);
-        subscriber.monitor("inproc://monitor.subscriber", ZMQ.EVENT_CONNECTED);
-        
-        Socket monitor = zmqContext.socket(ZMQ.PAIR);
-        monitor.setReceiveTimeOut(100);
-        monitor.connect("inproc://monitor.subscriber");
-        
-        try{
-        	subscriber.connect("tcp://192.168.64.33:5555");
-        	event = ZMQ.Event.recv(monitor);
-        	
-        	if(event != null){
-        		if(event.getEvent() == ZMQ.EVENT_CONNECTED){
-        			logger.info("subscriber is connected.");
-        		}
-        		else{
-        			logger.info("connection failed.");
-        		}
-        	}
-        	else{
-        		logger.info("connection failed");
-        	}
-        	
-        	subscriber.subscribe("".getBytes());
-        }
-        catch (ZMQException e){
-        	logger.info("error occurs: {}", e.toString());
-        }
-        
-        NFVZmqPoller poller = new NFVZmqPoller();
-        Thread pollerThread = new Thread(poller);
-        pollerThread.start();
-        try{
-        	Thread.sleep(1000);
-        }
-        catch (Exception e){
-        	e.printStackTrace();
-        }
-        poller.register(new Pair<String, Socket>("192.168.64.33", subscriber));
-        
-        logger.info("after zmq subscriber connection");
-        String topic = subscriber.recvStr();
-        logger.info("{}", topic);
-        logger.info("end zmq subscriber connection");*/
-        
         logger.info("start testing network xml");
         //TestHostServer testHostServer = new TestHostServer();
         //testHostServer.testVmAllocator();
@@ -253,10 +204,10 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 						             "xx", "xx", "/home/net/nfvenv");
 		
 		StageVmInfo vmInfo1 = new StageVmInfo(1,1024,2*1024,"img1.img");
-		StageVmInfo vmInfo2 = new StageVmInfo(1,1024,2*1024,"img2.img");
+		//StageVmInfo vmInfo2 = new StageVmInfo(1,1024,2*1024,"img2.img");
 		ArrayList<StageVmInfo> list = new ArrayList<StageVmInfo>();
 		list.add(vmInfo1);
-		list.add(vmInfo2);
+		//list.add(vmInfo2);
 			
 		this.serviceChainConfig = new ServiceChainConfig("test-chain", 3, list);
 		byte[] prefix = new byte[3];
@@ -314,16 +265,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
 		InitServiceChainRequset m2 = new InitServiceChainRequset("hehe", this.serviceChain);
 		mh.sendTo("chainHandler", m2);
-		try{
-			synchronized(this.serviceChain){
-				this.serviceChain.wait();
-			}
-		}
-		catch (Exception e){
-			e.printStackTrace();
-		}
 		
-		AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
+		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);
 		try{
 			synchronized(this.serviceChain){
@@ -343,7 +286,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		}
 		catch (Exception e){
 			e.printStackTrace();
-		}
+		}*/
 		
         logger.info("stop testing network xml");
         
@@ -354,6 +297,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     public void startUp(FloodlightModuleContext context) {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         floodlightProvider.addOFMessageListener(OFType.FLOW_REMOVED, this);
+        floodlightProvider.addOFMessageListener(OFType.ERROR, this);
     }
     
     private net.floodlightcontroller.core.IListener.Command processPktIn(IOFSwitch sw, OFMessage msg, FloodlightContext cntx){
@@ -394,11 +338,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     private void handleArp(Ethernet eth, IOFSwitch sw, OFPacketIn pi){
     	ARP arpRequest = (ARP) eth.getPayload();
         MacAddress srcMac = eth.getSourceMACAddress();
-        
-        /*logger.info("get an arp request from: {}", srcMac.toString());
-        logger.info("with source ip: {}, requesting destination ip: {}", 
-        		arpRequest.getSenderProtocolAddress().toString(),
-        		arpRequest.getTargetProtocolAddress().toString());*/
 
         String switchDpid = this.serviceChain.getDpidForMac(srcMac.toString());
         if(switchDpid != null){
@@ -588,14 +527,16 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     }
     @Override
     public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
-    	switch (msg.getType()) {
+    	/*switch (msg.getType()) {
     	case PACKET_IN:
     		return this.processPktIn(sw,msg,cntx);
     	case FLOW_REMOVED:
     		return this.processPktRemoved(sw, (OFFlowRemoved)msg);
 		default:
 			return Command.CONTINUE;
-    	}
+    	}*/
+    	System.out.println("Switch "+sw.getId().toString()+" get an msg "+msg.getType().toString());
+    	return Command.CONTINUE;
     }
    
  
