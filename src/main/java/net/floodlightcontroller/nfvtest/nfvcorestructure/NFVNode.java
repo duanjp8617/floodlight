@@ -365,7 +365,7 @@ public class NFVNode {
 										 eth0SendInt, eth1RecvInt, eth1RecvPkt, eth1SendInt);
 		this.state = this.property.getNodeState();
 		
-		if(this.vmInstance.stageIndex == 0){
+		//if(this.vmInstance.stageIndex == 0){
 		if(this.state == NFVNode.IDLE){
 			System.out.println("Node-"+this.getManagementIp()+" is IDLE : "+stat);
 		}
@@ -375,7 +375,7 @@ public class NFVNode {
 		if(this.state == NFVNode.OVERLOAD){
 			System.out.println("Node-"+this.getManagementIp()+" is OVERLOAD : "+stat);
 		}
-		}
+		//}
 	}
 	
 	public int getState(){

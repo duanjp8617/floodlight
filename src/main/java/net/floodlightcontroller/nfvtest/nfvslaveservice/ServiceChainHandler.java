@@ -188,6 +188,7 @@ public class ServiceChainHandler extends MessageProcessor {
 								NFVNode n = chain.getNode(ip);
 								
 								if(n.getActiveFlows() == 0){
+									System.out.println("!!! ScaleDown: Node "+ip+" is deleted from the chain");
 									chain.deleteNodeFromChain(n);
 									deletedNodeIndexList.add(ip);
 									
@@ -231,6 +232,7 @@ public class ServiceChainHandler extends MessageProcessor {
 											chain.scaleDownList.get(stageIndex).put(ip, 
 													                 new Integer(0));
 											flowNumList.remove(index);
+											System.out.println("!!!Scale Down: Node "+ip+" is put into the scaleDownList");
 										}
 									}
 									

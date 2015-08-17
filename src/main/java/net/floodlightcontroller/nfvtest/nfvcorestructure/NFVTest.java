@@ -582,7 +582,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     		String managementIp = this.routeMap.get(tuple);
     		this.serviceChain.getNode(managementIp).deleteActiveFlow();
     		
-    		System.out.println("Flow on node "+managementIp+" is removed");
+    		//System.out.println("Flow on node "+managementIp+" is removed");
     	}
     	return Command.STOP;
     }
