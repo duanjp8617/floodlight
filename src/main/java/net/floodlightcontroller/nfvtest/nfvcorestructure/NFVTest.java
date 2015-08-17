@@ -5,10 +5,12 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
  
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
 import org.projectfloodlight.openflow.protocol.OFFlowRemoved;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
@@ -544,6 +546,10 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		fmb.setOutPort(outPort);
 		fmb.setActions(actionList);
 		fmb.setMatch(flowMatch);
+		
+		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
+		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
+		fmb.setFlags(sfmf);
 		
 		return fmb.build();
     }
