@@ -183,12 +183,12 @@ public class NFVNode {
 			if(eth0SendInt.getFilledUp()){
 				eth0SendState.updateTransientState(checkStatus(eth0SendInt.getCircularList(),
 															   new Integer(10),
-															   new Integer(100)));
+															   new Integer(20)));
 			}
 			if(eth1SendInt.getFilledUp()){
 				eth1SendState.updateTransientState(checkStatus(eth1SendInt.getCircularList(),
 															   new Integer(10),
-															   new Integer(100)));
+															   new Integer(20)));
 			}
 			if(eth0RecvInt.getFilledUp()&&eth0RecvPkt.getFilledUp()){
 				eth0RecvState.updateTransientState(checkRecvStatus(eth0RecvInt.getCircularList(),
@@ -303,7 +303,7 @@ public class NFVNode {
 	
 	public NFVNode(VmInstance vmInstance){
 		this.vmInstance = vmInstance;
-		this.property = new NFVNodeProperty(15);
+		this.property = new NFVNodeProperty(1);
 		this.state = NFVNode.IDLE;
 		this.activeFlows = 0;
 	}
