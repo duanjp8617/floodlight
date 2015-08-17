@@ -37,7 +37,7 @@ public class MessageHub {
 	public void stopProcessors(){
 	}
 	
-	public synchronized void sendTo(String messageProcessorId, Message m){
+	public void sendTo(String messageProcessorId, Message m){
 		if(messageProcessorMap.containsKey(messageProcessorId)){
 			while(!messageProcessorMap.get(messageProcessorId).obtainQueue().offer(m)){
 			}

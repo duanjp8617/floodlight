@@ -193,7 +193,7 @@ public class HostAgent{
 		
 		final Session session = sshClient.startSession();
 		final Session.Command command = session.exec("virsh create "+remoteXmlFilePath);
-		command.join(2, TimeUnit.SECONDS);
+		command.join(10, TimeUnit.SECONDS);
 		
 		if(command.getExitStatus().intValue()==0){
 			session.close();
