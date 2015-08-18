@@ -2,6 +2,9 @@ package net.floodlightcontroller.nfvtest.nfvcorestructure;
 
 import java.util.ArrayList;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
 
 
@@ -295,6 +298,7 @@ public class NFVNode {
 	private NFVNodeProperty property;
 	private int state;
 	private int activeFlows;
+	private static Logger logger;
 	
 	//node state: idel, normal, overload
 	public static final int IDLE = 1;
@@ -303,9 +307,10 @@ public class NFVNode {
 	
 	public NFVNode(VmInstance vmInstance){
 		this.vmInstance = vmInstance;
-		this.property = new NFVNodeProperty(1);
+		this.property = new NFVNodeProperty(4);
 		this.state = NFVNode.IDLE;
 		this.activeFlows = 0;
+		logger = LoggerFactory.getLogger(NFVNode.class);
 	}
 	
 	public String getChainName(){
@@ -367,13 +372,16 @@ public class NFVNode {
 		
 		//if(this.vmInstance.stageIndex == 0){
 		if(this.state == NFVNode.IDLE){
-			System.out.println("Node-"+this.getManagementIp()+" is IDLE : "+stat);
+			String output = "Node-"+this.getManagementIp()+" is IDLE : "+stat;
+			logger.info("{}", output);
 		}
 		if(this.state == NFVNode.NORMAL){
-			System.out.println("Node-"+this.getManagementIp()+" is NORMAL : "+stat);
+			String output = "Node-"+this.getManagementIp()+" is NORMAL : "+stat;
+			logger.info("{}", output);
 		}
 		if(this.state == NFVNode.OVERLOAD){
-			System.out.println("Node-"+this.getManagementIp()+" is OVERLOAD : "+stat);
+			String output = "Node-"+this.getManagementIp()+" is OVERLOAD : "+stat;
+			logger.info("{}", output);
 		}
 		//}
 	}
