@@ -193,7 +193,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         logger = LoggerFactory.getLogger(NFVTest.class);
         ipsServerList = new ArrayList<IpsServer>();
         
-        logger.info("start testing network xml");
+        /*logger.info("start testing network xml");
         //TestHostServer testHostServer = new TestHostServer();
         //testHostServer.testVmAllocator();
 		this.controllerConfig = 
@@ -264,7 +264,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
 		InitServiceChainRequset m2 = new InitServiceChainRequset("hehe", this.serviceChain);
-		mh.sendTo("chainHandler", m2);
+		mh.sendTo("chainHandler", m2);*/
 		
 		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);
@@ -288,7 +288,53 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			e.printStackTrace();
 		}*/
 		
-        logger.info("stop testing network xml");
+        //logger.info("stop testing network xml");
+        
+    	Context zmqContext = ZMQ.context(1);
+    	Socket publisher = zmqContext.socket(ZMQ.PUB);
+    	publisher.bind("tcp://192.168.64.1:5555");
+        int counter = 0;
+        
+        try{
+        	Thread.sleep(1000);
+        }
+        catch(Exception e){
+        	e.printStackTrace();
+        }
+        
+        Socket requester = zmqContext.socket(ZMQ.REQ);
+        requester.connect("tcp://192.168.64.14:7771");
+        boolean result = false;
+        result = requester.send("1", ZMQ.SNDMORE);
+        result = requester.send("192.168.126.91:5054",ZMQ.SNDMORE);
+        result = requester.send("192.168.64.1",ZMQ.SNDMORE);
+        result = requester.send("5555",0);
+        String recvResult = requester.recvStr();
+        logger.info("Receive result : {}", recvResult);
+        
+        try{
+            Thread.sleep(1000);
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
+        
+        while(true){
+            try{
+                Thread.sleep(10000);
+            }
+            catch(Exception e){
+                e.printStackTrace();
+            }
+            if(counter%2==0){
+            	publisher.send("192.168.126.92:5054");
+            }
+            else{
+            	publisher.send("192.168.126.91:5054");
+            }
+            counter+=1;
+        }
+        
         
         
     }

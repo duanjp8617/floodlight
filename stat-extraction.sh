@@ -17,6 +17,8 @@ grep -n $NODE5 $INPUT > $NODE5
 grep -n $NODE6 $INPUT > $NODE6
 grep -n $NODE7 $INPUT > $NODE7
 
+grep -n "img1.img\|img2.img\|virsh destroy" $INPUT > "scaling-timeline"
+
 sed  -e "s/:/ /g" -e "s/INFO/ /" -e "s/$NODE1/ /" -e "s/is/ /" -e "s/\[n.f.n.n.NFVNode Thread-4\]/ /" -e "s/IDLE/0/" -e "s/OVERLOAD/2/" -e  "s/NORMAL/1/" $NODE1 > "$NODE1-final" 
 
 sed  -e "s/:/ /g" -e "s/INFO/ /" -e "s/$NODE2/ /" -e "s/is/ /" -e "s/\[n.f.n.n.NFVNode Thread-4\]/ /" -e "s/IDLE/0/" -e "s/OVERLOAD/2/" -e  "s/NORMAL/1/" $NODE2 > "$NODE2-final" 
