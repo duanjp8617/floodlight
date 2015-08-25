@@ -290,50 +290,13 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
         //logger.info("stop testing network xml");
         
-    	Context zmqContext = ZMQ.context(1);    
+    	Context zmqContext = ZMQ.context(1);  
+    	
         Socket requester = zmqContext.socket(ZMQ.REQ);
-        requester.connect("tcp://192.168.126.123:7773");
+        requester.connect("tcp://192.168.126.81:7774");
         
-        requester.send("add", ZMQ.SNDMORE);
-        requester.send("sprout.cw.t",ZMQ.SNDMORE);
-        requester.send("192.168.126.91",0);
+        requester.send("shutdown", 0);
         String recvResult = requester.recvStr();
-        logger.info("Receive result : {}", recvResult);
-        try{
-            Thread.sleep(10000);
-        }
-        catch(Exception e){
-            e.printStackTrace();
-        }
-        
-        requester.send("add", ZMQ.SNDMORE);
-        requester.send("sprout.cw.t",ZMQ.SNDMORE);
-        requester.send("192.168.126.92",0);
-        recvResult = requester.recvStr();
-        logger.info("Receive result : {}", recvResult);
-        try{
-            Thread.sleep(10000);
-        }
-        catch(Exception e){
-            e.printStackTrace();
-        }
-        
-        requester.send("add", ZMQ.SNDMORE);
-        requester.send("sprout.cw.t",ZMQ.SNDMORE);
-        requester.send("192.168.126.93",0);
-        recvResult = requester.recvStr();
-        logger.info("Receive result : {}", recvResult);
-        try{
-            Thread.sleep(10000);
-        }
-        catch(Exception e){
-            e.printStackTrace();
-        }
-        
-        requester.send("delete", ZMQ.SNDMORE);
-        requester.send("sprout.cw.t",ZMQ.SNDMORE);
-        requester.send("192.168.126.93",0);
-        recvResult = requester.recvStr();
         logger.info("Receive result : {}", recvResult);
         try{
             Thread.sleep(10000);
