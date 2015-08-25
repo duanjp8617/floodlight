@@ -290,53 +290,58 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
         //logger.info("stop testing network xml");
         
-    	Context zmqContext = ZMQ.context(1);
-    	Socket publisher = zmqContext.socket(ZMQ.PUB);
-    	publisher.bind("tcp://192.168.64.1:5555");
-        int counter = 0;
-        
-        try{
-        	Thread.sleep(1000);
-        }
-        catch(Exception e){
-        	e.printStackTrace();
-        }
-        
+    	Context zmqContext = ZMQ.context(1);    
         Socket requester = zmqContext.socket(ZMQ.REQ);
-        requester.connect("tcp://192.168.64.14:7771");
-        boolean result = false;
-        result = requester.send("1", ZMQ.SNDMORE);
-        result = requester.send("192.168.126.91:5054",ZMQ.SNDMORE);
-        result = requester.send("192.168.64.1",ZMQ.SNDMORE);
-        result = requester.send("5555",0);
+        requester.connect("tcp://192.168.126.123:7773");
+        
+        requester.send("add", ZMQ.SNDMORE);
+        requester.send("sprout.cw.t",ZMQ.SNDMORE);
+        requester.send("192.168.126.91",0);
         String recvResult = requester.recvStr();
         logger.info("Receive result : {}", recvResult);
-        
         try{
-            Thread.sleep(1000);
+            Thread.sleep(10000);
         }
         catch(Exception e){
             e.printStackTrace();
         }
         
-        while(true){
-            try{
-                Thread.sleep(10000);
-            }
-            catch(Exception e){
-                e.printStackTrace();
-            }
-            if(counter%2==0){
-            	publisher.send("192.168.126.92:5054");
-            }
-            else{
-            	publisher.send("192.168.126.91:5054");
-            }
-            counter+=1;
+        requester.send("add", ZMQ.SNDMORE);
+        requester.send("sprout.cw.t",ZMQ.SNDMORE);
+        requester.send("192.168.126.92",0);
+        recvResult = requester.recvStr();
+        logger.info("Receive result : {}", recvResult);
+        try{
+            Thread.sleep(10000);
+        }
+        catch(Exception e){
+            e.printStackTrace();
         }
         
+        requester.send("add", ZMQ.SNDMORE);
+        requester.send("sprout.cw.t",ZMQ.SNDMORE);
+        requester.send("192.168.126.93",0);
+        recvResult = requester.recvStr();
+        logger.info("Receive result : {}", recvResult);
+        try{
+            Thread.sleep(10000);
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
         
-        
+        requester.send("delete", ZMQ.SNDMORE);
+        requester.send("sprout.cw.t",ZMQ.SNDMORE);
+        requester.send("192.168.126.93",0);
+        recvResult = requester.recvStr();
+        logger.info("Receive result : {}", recvResult);
+        try{
+            Thread.sleep(10000);
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
+       
     }
  
     @Override
