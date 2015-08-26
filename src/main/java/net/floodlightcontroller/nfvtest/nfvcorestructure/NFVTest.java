@@ -291,6 +291,19 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         //logger.info("stop testing network xml");
         
     	Context zmqContext = ZMQ.context(1);  
+    	Socket subscriber = zmqContext.socket(ZMQ.SUB);
+    	subscriber.connect("tcp://192.168.126.81:7775");
+		String finalResult = "";
+    	
+    	for(int i=0; i<10; i++){
+    		boolean hasMore = true;
+    		while(hasMore){
+    			String result = subscriber.recvStr();
+    			finalResult+=result;
+    			hasMore = subscriber.hasReceiveMore();
+    		}
+    		System.out.println(finalResult);
+    	}
     	
         Socket requester = zmqContext.socket(ZMQ.REQ);
         requester.connect("tcp://192.168.126.81:7774");
@@ -298,12 +311,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         requester.send("shutdown", 0);
         String recvResult = requester.recvStr();
         logger.info("Receive result : {}", recvResult);
-        try{
-            Thread.sleep(10000);
-        }
-        catch(Exception e){
-            e.printStackTrace();
-        }
        
     }
  
