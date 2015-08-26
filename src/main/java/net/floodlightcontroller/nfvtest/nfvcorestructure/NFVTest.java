@@ -193,7 +193,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         logger = LoggerFactory.getLogger(NFVTest.class);
         ipsServerList = new ArrayList<IpsServer>();
         
-        /*logger.info("start testing network xml");
+        logger.info("start testing network xml");
         //TestHostServer testHostServer = new TestHostServer();
         //testHostServer.testVmAllocator();
 		this.controllerConfig = 
@@ -203,13 +203,13 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 				new HostServerConfig("net-b6.cs.hku.hk", "1.1.1.2", "2.2.2.2", 20, 32*1024, 100*1024, 1,
 						             "xx", "xx", "/home/net/nfvenv");
 		
-		StageVmInfo vmInfo1 = new StageVmInfo(1,1024,2*1024,"img1.img");
-		StageVmInfo vmInfo2 = new StageVmInfo(1,1024,2*1024,"img2.img");
+		StageVmInfo vmInfo1 = new StageVmInfo(1,1024,2*1024,"bono.img");
+		StageVmInfo vmInfo2 = new StageVmInfo(1,1024,2*1024,"sprout.img");
 		ArrayList<StageVmInfo> list = new ArrayList<StageVmInfo>();
 		list.add(vmInfo1);
 		list.add(vmInfo2);
 			
-		this.serviceChainConfig = new ServiceChainConfig("test-chain", 3, list);
+		this.serviceChainConfig = new ServiceChainConfig("test-chain", 2, list);
 		byte[] prefix = new byte[3];
 		prefix[0] = 0x52;
 		prefix[1] = 0x54;
@@ -264,7 +264,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
 		InitServiceChainRequset m2 = new InitServiceChainRequset("hehe", this.serviceChain);
-		mh.sendTo("chainHandler", m2);*/
+		mh.sendTo("chainHandler", m2);
 		
 		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);
@@ -286,11 +286,11 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		}
 		catch (Exception e){
 			e.printStackTrace();
-		}*/
+		}
 		
         //logger.info("stop testing network xml");
         
-    	Context zmqContext = ZMQ.context(1);  
+    	/*Context zmqContext = ZMQ.context(1);  
     	Socket subscriber = zmqContext.socket(ZMQ.SUB);
     	subscriber.connect("tcp://192.168.126.81:7775");
 		String finalResult = "";
@@ -310,7 +310,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         
         requester.send("shutdown", 0);
         String recvResult = requester.recvStr();
-        logger.info("Receive result : {}", recvResult);
+        logger.info("Receive result : {}", recvResult);*/
        
     }
  
