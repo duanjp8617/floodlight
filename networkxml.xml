@@ -1,0 +1,12 @@
+<network>
+  <name>network-name</name>
+  <forward  mode='route'/>
+  <bridge name='virbr-name' stp='on' delay='0'/>
+  <mac address='mac-address'/>
+  <ip address='base-ip-xxx.xxx.xxx.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='start-ip-xxx.xxx.xxx.xxx' end='xxx.xxx.xxx.254'/>
+    </dhcp>
+  </ip>
+</network>
+

@@ -191,13 +191,13 @@ public class VmWorker extends MessageProcessor{
 			Node name = doc.getElementsByTagName("name").item(0);
 			name.setTextContent(networkName);
 
-			Node forward = doc.getElementsByTagName("forward").item(0);
+			/*Node forward = doc.getElementsByTagName("forward").item(0);
 			Element eForward = (Element)forward;
 			eForward.setAttribute("dev", "eth2");
 
 			Node nInterface = eForward.getElementsByTagName("interface").item(0);
 			Element eInterface = (Element)nInterface;
-			eInterface.setAttribute("dev", "eth2");
+			eInterface.setAttribute("dev", "eth2");*/
 
 			Node bridge = doc.getElementsByTagName("bridge").item(0);
 			Element eBridge = (Element)bridge;
