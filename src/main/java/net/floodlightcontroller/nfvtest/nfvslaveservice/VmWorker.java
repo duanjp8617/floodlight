@@ -322,23 +322,6 @@ public class VmWorker extends MessageProcessor{
 				devices.appendChild(eInterface);
 			}
 			
-			Element eMInterface = doc.createElement("interface");
-			eMInterface.setAttribute("type", "network");
-			
-			Element eMMac = doc.createElement("mac");
-			eMMac.setAttribute("address", vmInstance.managementMac);
-			eMInterface.appendChild(eMMac);
-			
-			Element eMSource = doc.createElement("source");
-			eMSource.setAttribute("network", vmInstance.serviceChainConfig.getManagementNetwork());
-			eMInterface.appendChild(eMSource);
-			
-			Element eMModle = doc.createElement("model");
-			eMModle.setAttribute("type", "virtio");
-			eMInterface.appendChild(eMModle);
-			
-			devices.appendChild(eMInterface);
-			
 			if(vmInstance.operationIp!="nil"){
 				Element eOInterface = doc.createElement("interface");
 				eOInterface.setAttribute("type", "network");
@@ -357,6 +340,23 @@ public class VmWorker extends MessageProcessor{
 				
 				devices.appendChild(eOInterface);
 			}
+			
+			Element eMInterface = doc.createElement("interface");
+			eMInterface.setAttribute("type", "network");
+			
+			Element eMMac = doc.createElement("mac");
+			eMMac.setAttribute("address", vmInstance.managementMac);
+			eMInterface.appendChild(eMMac);
+			
+			Element eMSource = doc.createElement("source");
+			eMSource.setAttribute("network", vmInstance.serviceChainConfig.getManagementNetwork());
+			eMInterface.appendChild(eMSource);
+			
+			Element eMModle = doc.createElement("model");
+			eMModle.setAttribute("type", "virtio");
+			eMInterface.appendChild(eMModle);
+			
+			devices.appendChild(eMInterface);
 			
 			doc.getDocumentElement().normalize();
 			TransformerFactory transformerFactory = TransformerFactory.newInstance();

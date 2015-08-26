@@ -323,4 +323,57 @@ public class ConcreteMessage {
 			return this.subscriber;
 		}
 	}
+	
+	/*
+	 * The following requests are sent to the DNSUpdator processor.
+	 */
+	static public class DNSUpdateRequest extends Message{
+		private final String sourceId;
+		private final String domainName;
+		private final String ipAddress;
+		private final String addOrDelete;
+		
+		public DNSUpdateRequest(String sourceId, String domainName, String ipAddress, String addOrDelete){
+			this.sourceId = sourceId;
+			this.domainName = domainName;
+			this.ipAddress = ipAddress;
+			this.addOrDelete = addOrDelete;
+		}
+		
+		public String getSourceId(){
+			return this.sourceId;
+		}
+		
+		public String getDomainName(){
+			return this.domainName;
+		}
+		
+		public String getIpAddress(){
+			return this.ipAddress;
+		}
+		
+		public String getAddOrDelete(){
+			return this.addOrDelete;
+		}
+	}
+	
+	static public class DNSUpdateReply extends Message{
+		private final DNSUpdateRequest request;
+		private final String sourceId;
+		
+		public DNSUpdateReply(String sourceId, DNSUpdateRequest request){
+			this.request = request;
+			this.sourceId = sourceId;
+		}
+		
+		public String getSourceId(){
+			return this.sourceId;
+		}
+		
+		public DNSUpdateRequest getDNSUpdateReq(){
+			return this.request;
+		}
+	}
+	
+	
 }

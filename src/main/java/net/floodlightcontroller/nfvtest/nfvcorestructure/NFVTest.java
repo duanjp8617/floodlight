@@ -69,6 +69,7 @@ import net.floodlightcontroller.nfvtest.message.MessageHub;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.AddHostServerRequest;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.AllocateVmRequest;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.HostInitializationRequest;
+import net.floodlightcontroller.nfvtest.nfvslaveservice.DNSUpdator;
 import net.floodlightcontroller.nfvtest.nfvslaveservice.ServiceChainHandler;
 import net.floodlightcontroller.nfvtest.nfvslaveservice.SubscriberConnector;
 import net.floodlightcontroller.nfvtest.nfvslaveservice.VmAllocator;
@@ -238,13 +239,17 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 																			zmqContext);
 		subscriberConnector.registerWithMessageHub(mh);
 		
+		DNSUpdator dnsUpdator = new DNSUpdator("dnsUpdator", "192.168.126.123", "7773", zmqContext);
+		dnsUpdator.registerWithMessageHub(mh);
+		dnsUpdator.connect();
+		
 		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler");
 		chainHandler.registerWithMessageHub(mh);
 		chainHandler.startPollerThread();
 		
 		mh.startProcessors();
 		
-		HostInitializationRequest m = new HostInitializationRequest("hehe",this.hostServer);
+		/*HostInitializationRequest m = new HostInitializationRequest("hehe",this.hostServer);
 		mh.sendTo("vmWorker", m);
 		try{
 			Thread.sleep(5000);
@@ -264,7 +269,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
 		InitServiceChainRequset m2 = new InitServiceChainRequset("hehe", this.serviceChain);
-		mh.sendTo("chainHandler", m2);
+		mh.sendTo("chainHandler", m2);*/
 		
 		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);

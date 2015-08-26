@@ -23,7 +23,6 @@ public class ServiceChainHandler extends MessageProcessor {
 	private final HashMap<String, NFVServiceChain> serviceChainMap;
 	private final HashMap<UUID, Pending> pendingMap;
 	private NFVZmqPoller poller;
-	
 
 	public ServiceChainHandler(String id){
 		this.id = id;
