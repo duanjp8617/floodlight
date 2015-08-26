@@ -74,33 +74,65 @@ public class SubscriberConnector extends MessageProcessor{
 			}
 			
 			String ipAddress = this.request.getManagementIp();
-			String port = this.request.getPort();
 			
+			String port1 = this.request.getPort1();
+			String port2 = this.request.getPort2();
+			Socket subscriber1 = null;
+				
 			for(int i=0; i<1000; i++){
-				Socket subscriber = zmqContext.socket(ZMQ.SUB);
-				subscriber.monitor("inproc://monitor"+ipAddress, ZMQ.EVENT_CONNECTED);
+				subscriber1 = zmqContext.socket(ZMQ.SUB);
+				subscriber1.monitor("inproc://monitor"+ipAddress, ZMQ.EVENT_CONNECTED);
 			
 				Socket monitor = zmqContext.socket(ZMQ.PAIR);
 				monitor.setReceiveTimeOut(10000);
 				monitor.connect("inproc://monitor"+ipAddress);
 				ZMQ.Event event;
 			
-				subscriber.connect("tcp://"+ipAddress+":"+port);
+				subscriber1.connect("tcp://"+ipAddress+":"+port1);
 	        	event = ZMQ.Event.recv(monitor);
 	        	
 	        	if((event != null)&&(event.getEvent() == ZMQ.EVENT_CONNECTED)){
-	        		subscriber.subscribe("".getBytes());
-	        		
-	        		SubConnReply reply = new SubConnReply("hehe", this.request, subscriber);
-	        		mh.sendTo(this.request.getSourceId(), reply);
-	        		
+	        		subscriber1.subscribe("".getBytes());
 	        		break;
 	        	}
 	        	else{
 	        		monitor.close();
-	        		subscriber.close();
+	        		subscriber1.close();
 	        	}
 			}
+			
+			if(this.request.getVmInstance().serviceChainConfig.nVmInterface == 3){
+				SubConnReply reply = new SubConnReply("hehe", this.request, subscriber1, null);
+        		mh.sendTo(this.request.getSourceId(), reply);
+        		return;
+			}
+			
+			Socket subscriber2 = null;
+			for(int i=0; i<1000; i++){
+				subscriber2 = zmqContext.socket(ZMQ.SUB);
+				subscriber2.monitor("inproc://monitor"+ipAddress, ZMQ.EVENT_CONNECTED);
+			
+				Socket monitor = zmqContext.socket(ZMQ.PAIR);
+				monitor.setReceiveTimeOut(10000);
+				monitor.connect("inproc://monitor"+ipAddress);
+				ZMQ.Event event;
+			
+				subscriber2.connect("tcp://"+ipAddress+":"+port2);
+	        	event = ZMQ.Event.recv(monitor);
+	        	
+	        	if((event != null)&&(event.getEvent() == ZMQ.EVENT_CONNECTED)){
+	        		subscriber2.subscribe("".getBytes());  		
+	        		break;
+	        	}
+	        	else{
+	        		monitor.close();
+	        		subscriber2.close();
+	        	}
+			}
+			
+			SubConnReply reply = new SubConnReply("hehe", this.request, subscriber1, subscriber2);
+    		mh.sendTo(this.request.getSourceId(), reply);
+    		return;
 		}
 	}
 	

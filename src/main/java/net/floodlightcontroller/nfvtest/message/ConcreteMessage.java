@@ -272,14 +272,16 @@ public class ConcreteMessage {
 	static public class SubConnRequest extends Message{
 		private final String sourceId;
 		private final String managementIp;
-		private final String port;
+		private final String port1;
+		private final String port2;
 		private final VmInstance vmInstance;
 		
-		public SubConnRequest(String sourceId, String managementIp, String port,
+		public SubConnRequest(String sourceId, String managementIp, String port1, String port2,
 							  VmInstance vmInstance){
 			this.sourceId = sourceId;
 			this.managementIp = managementIp;
-			this.port = port;
+			this.port1 = port1;
+			this.port2 = port2;
 			this.vmInstance = vmInstance;
 		}
 		
@@ -291,8 +293,12 @@ public class ConcreteMessage {
 			return this.managementIp;
 		}
 		
-		public String getPort(){
-			return this.port;
+		public String getPort1(){
+			return this.port1;
+		}
+		
+		public String getPort2(){
+			return this.port2;
 		}
 		
 		public VmInstance getVmInstance(){
@@ -303,12 +309,15 @@ public class ConcreteMessage {
 	static public class SubConnReply extends Message{
 		private final String sourceId;
 		private final SubConnRequest request;
-		private final Socket subscriber;
-		
-		public SubConnReply(String sourceId, SubConnRequest request, Socket subscriber){
+		private final Socket subscriber1;
+		private final Socket subscriber2;
+			
+		public SubConnReply(String sourceId, SubConnRequest request, Socket subscriber1, 
+					        Socket subscriber2){
 			this.sourceId = sourceId;
 			this.request = request;
-			this.subscriber = subscriber;
+			this.subscriber1 = subscriber1;
+			this.subscriber2 = subscriber2;
 		}
 		
 		public String getSourceId(){
@@ -319,8 +328,12 @@ public class ConcreteMessage {
 			return this.request;
 		}
 		
-		public Socket getSubscriber(){
-			return this.subscriber;
+		public Socket getSubscriber1(){
+			return this.subscriber1;
+		}
+		
+		public Socket getSubscriber2(){
+			return this.subscriber2;
 		}
 	}
 	
@@ -332,16 +345,18 @@ public class ConcreteMessage {
 		private final String domainName;
 		private final String ipAddress;
 		private final String addOrDelete;
-		private final Socket socket;
+		private final Socket socket1;
+		private final Socket socket2;
 		private final VmInstance vmInstance;
 		
 		public DNSUpdateRequest(String sourceId, String domainName, String ipAddress, String addOrDelete,
-				                Socket socket, VmInstance vmInstance){
+				                Socket socket1, Socket socket2, VmInstance vmInstance){
 			this.sourceId = sourceId;
 			this.domainName = domainName;
 			this.ipAddress = ipAddress;
 			this.addOrDelete = addOrDelete;
-			this.socket = socket;
+			this.socket1 = socket1;
+			this.socket2 = socket2;
 			this.vmInstance = vmInstance;
 		}
 		
@@ -361,8 +376,12 @@ public class ConcreteMessage {
 			return this.addOrDelete;
 		}
 		
-		public Socket getSocket(){
-			return this.socket;
+		public Socket getSocket1(){
+			return this.socket1;
+		}
+		
+		public Socket getSocket2(){
+			return this.socket2;
 		}
 		
 		public VmInstance getVmInstance(){

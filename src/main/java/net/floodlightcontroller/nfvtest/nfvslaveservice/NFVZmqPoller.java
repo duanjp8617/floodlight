@@ -88,7 +88,8 @@ public class NFVZmqPoller implements Runnable{
 			strList.add(result);
 			hasMore = socket.hasReceiveMore();
 		}
-		StatUpdateRequest request = new StatUpdateRequest("hehe", managementIp, strList);
+		String realManagementIp = managementIp.substring(0, managementIp.indexOf(":"));
+		StatUpdateRequest request = new StatUpdateRequest("hehe", realManagementIp, strList);
 		this.mh.sendTo("chainHandler", request);
 	}
 	
