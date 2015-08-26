@@ -80,6 +80,10 @@ public class ServiceChainHandler extends MessageProcessor {
 			StatUpdateRequest request = (StatUpdateRequest)m;
 			statUpdate(request);
 		}
+		if(m instanceof DNSUpdateReply){
+			DNSUpdateReply reply = (DNSUpdateReply)m;
+			handleDNSUpdateReply(reply);
+		}
 	}
 	
 	private void initServiceChain(InitServiceChainRequset originalRequest){
@@ -121,7 +125,7 @@ public class ServiceChainHandler extends MessageProcessor {
 					VmInstance vmInstance = newReplz.getVmInstance();
 					//serviceChain.addNodeToChain(new NFVNode(vmInstance));
 					SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
-																"5555", vmInstance);
+																"7776", vmInstance);
 					this.mh.sendTo("subscriberConnector", request);
 				}
 			}
@@ -133,7 +137,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			if(this.serviceChainMap.containsKey(serviceChainName)){
 				//this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
 				SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
-						"5555", vmInstance);
+						"7776", vmInstance);
 				this.mh.sendTo("subscriberConnector", request);
 			}
 		}
@@ -141,13 +145,42 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private void handleSubConnReply(SubConnReply reply){
 		SubConnRequest request = reply.getSubConnRequest();
-		
 		VmInstance vmInstance = request.getVmInstance();
+		
+		if(vmInstance.operationIp.equals("nil")){
+			String serviceChainName = vmInstance.serviceChainConfig.name;
+			this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
+		
+			String managementIp = request.getManagementIp();
+			Socket subscriber = reply.getSubscriber();
+			this.serviceChainMap.get(serviceChainName).setScaleIndicator(vmInstance.stageIndex, false);
+			this.poller.register(new Pair<String, Socket>(managementIp, subscriber));
+		}
+		else{
+			Socket subscriber = reply.getSubscriber();
+			String domainName = "";
+			if(vmInstance.stageIndex == 0){
+				domainName = "bono.cw.t";
+			}
+			else {
+				domainName = "sprout.cw.t";
+			}
+			DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+																 vmInstance.operationIp, "add",
+																 subscriber, vmInstance);
+			this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+		}
+	}
+	
+	private void handleDNSUpdateReply(DNSUpdateReply reply){
+		DNSUpdateRequest request = reply.getDNSUpdateReq();
+		VmInstance vmInstance = request.getVmInstance();
+		
 		String serviceChainName = vmInstance.serviceChainConfig.name;
 		this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
-		
-		String managementIp = request.getManagementIp();
-		Socket subscriber = reply.getSubscriber();
+	
+		String managementIp = vmInstance.managementIp;
+		Socket subscriber = request.getSocket();
 		this.serviceChainMap.get(serviceChainName).setScaleIndicator(vmInstance.stageIndex, false);
 		this.poller.register(new Pair<String, Socket>(managementIp, subscriber));
 	}
@@ -160,7 +193,12 @@ public class ServiceChainHandler extends MessageProcessor {
 			NFVServiceChain chain = this.serviceChainMap.get(chainName);
 			synchronized(chain){
 				if(chain.hasNode(managementIp)){
-					chain.updateNodeStat(managementIp, statList);
+					//chain.updateNodeStat(managementIp, statList);
+					String result = "";
+					for(int i=0; i<statList.size(); i++){
+						result = result + statList.get(i) + " ";
+					}
+					System.out.println("Get Node Stat: "+ result);
 					
 					NFVNode node = chain.getNode(managementIp);
 					Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);

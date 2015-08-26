@@ -198,7 +198,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         //TestHostServer testHostServer = new TestHostServer();
         //testHostServer.testVmAllocator();
 		this.controllerConfig = 
-				new ControllerConfig("1.1.1.1", "/home/jpduan/Desktop/nfvenv", "basexml.xml", "networkxml.xml");
+				new ControllerConfig("net-b6.cs.hku.hk", "/home/net/base-env", "basexml.xml", "networkxml.xml");
 		
 		this.hostServerConfig = 
 				new HostServerConfig("net-b6.cs.hku.hk", "1.1.1.2", "2.2.2.2", 20, 32*1024, 100*1024, 1,
@@ -249,7 +249,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		mh.startProcessors();
 		
-		/*HostInitializationRequest m = new HostInitializationRequest("hehe",this.hostServer);
+		HostInitializationRequest m = new HostInitializationRequest("hehe",this.hostServer);
 		mh.sendTo("vmWorker", m);
 		try{
 			Thread.sleep(5000);
@@ -269,7 +269,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
 		InitServiceChainRequset m2 = new InitServiceChainRequset("hehe", this.serviceChain);
-		mh.sendTo("chainHandler", m2);*/
+		mh.sendTo("chainHandler", m2);
 		
 		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);
@@ -291,7 +291,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		}
 		catch (Exception e){
 			e.printStackTrace();
-		}
+		}*/
 		
         //logger.info("stop testing network xml");
         

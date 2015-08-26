@@ -332,12 +332,17 @@ public class ConcreteMessage {
 		private final String domainName;
 		private final String ipAddress;
 		private final String addOrDelete;
+		private final Socket socket;
+		private final VmInstance vmInstance;
 		
-		public DNSUpdateRequest(String sourceId, String domainName, String ipAddress, String addOrDelete){
+		public DNSUpdateRequest(String sourceId, String domainName, String ipAddress, String addOrDelete,
+				                Socket socket, VmInstance vmInstance){
 			this.sourceId = sourceId;
 			this.domainName = domainName;
 			this.ipAddress = ipAddress;
 			this.addOrDelete = addOrDelete;
+			this.socket = socket;
+			this.vmInstance = vmInstance;
 		}
 		
 		public String getSourceId(){
@@ -354,6 +359,14 @@ public class ConcreteMessage {
 		
 		public String getAddOrDelete(){
 			return this.addOrDelete;
+		}
+		
+		public Socket getSocket(){
+			return this.socket;
+		}
+		
+		public VmInstance getVmInstance(){
+			return this.vmInstance;
 		}
 	}
 	
