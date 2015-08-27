@@ -272,7 +272,7 @@ public class NFVServiceChain {
 		if(this.managementIpNodeMap.containsKey(managementIp)){
 			NFVNode node = this.managementIpNodeMap.get(managementIp);
 			
-			if(statList.get(1) == "cpu"){
+			if(statList.get(1).equals("cpu")){
 				
 				String cpu = statList.get(2);
 				String[] cpuStatArray = cpu.trim().split("\\s+");
@@ -305,7 +305,7 @@ public class NFVServiceChain {
 									    new Integer(1), new Long(0), 
 								 	    new Integer(0), new Long(0));
 			}
-			else if(statList.get(1) == "transaction_counter"){
+			else if(statList.get(1).equals("transaction_counter")){
 				String tranCounter = statList.get(3);
 				String[] tranCounterArray = tranCounter.trim().split("\\s+");
 				
