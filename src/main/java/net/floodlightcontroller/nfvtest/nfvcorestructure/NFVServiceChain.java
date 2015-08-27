@@ -289,10 +289,8 @@ public class NFVServiceChain {
 			
 				String interrupt = statList.get(6);
 				String[] intStatArray = interrupt.trim().split("\\s+");
-				//int eth0RecvInt = Integer.parseInt(intStatArray[0]);
-				//int eth0SendInt = Integer.parseInt(intStatArray[1]);
-				int eth0RecvInt = 1;
-				int eth0SendInt = 0;
+				int eth0RecvInt = Integer.parseInt(intStatArray[0]);
+				int eth0SendInt = Integer.parseInt(intStatArray[1]);
 				
 				String eth0 = statList.get(8);
 				String[] eth0StatArray = eth0.trim().split("\\s+");
