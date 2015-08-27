@@ -304,14 +304,12 @@ public class NFVServiceChain {
 								 	    new Integer(0), new Long(0));
 			}
 			else if(statList.get(1).equals("transaction_counter")){
-				String tranCounter = statList.get(3);
-				String[] tranCounterArray = tranCounter.trim().split("\\s+");
 				
-				int goodTran = Integer.parseInt(tranCounterArray[0]);
-				int badTran = Integer.parseInt(tranCounterArray[1]);
-				int srdSt250ms = Integer.parseInt(tranCounterArray[3]);
-				int srdLt250ms = Integer.parseInt(tranCounterArray[2])+
-								 Integer.parseInt(tranCounterArray[4]);
+				int goodTran = Integer.parseInt(statList.get(3));
+				int badTran = Integer.parseInt(statList.get(4));
+				int srdSt250ms = Integer.parseInt(statList.get(6));
+				int srdLt250ms = Integer.parseInt(statList.get(5))+
+								 Integer.parseInt(statList.get(7));
 				
 				node.updateTranProperty(new Integer(goodTran), 
 									    new Integer(badTran), 
