@@ -195,13 +195,8 @@ public class ServiceChainHandler extends MessageProcessor {
 		for(String chainName : this.serviceChainMap.keySet()){
 			NFVServiceChain chain = this.serviceChainMap.get(chainName);
 			synchronized(chain){
-				if(chain.hasNode(managementIp)){
-					//chain.updateNodeStat(managementIp, statList);
-					String result = "";
-					for(int i=0; i<statList.size(); i++){
-						result = result + statList.get(i) + " ";
-					}
-					System.out.println("Get Node Stat: "+ result);
+				if(chain.hasNode(managementIp)&&(chain.serviceChainConfig.nVmInterface==3)){
+					chain.updateDataNodeStat(managementIp, statList);
 					
 					NFVNode node = chain.getNode(managementIp);
 					Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
@@ -298,6 +293,9 @@ public class ServiceChainHandler extends MessageProcessor {
 					}
 					
 					break;
+				}
+				if(chain.hasNode(managementIp)&&(chain.serviceChainConfig.nVmInterface==2)){
+					chain.updateControlNodeStat(managementIp, statList);
 				}
 			}
 		}

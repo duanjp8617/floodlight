@@ -226,7 +226,7 @@ public class NFVServiceChain {
 		return returnVal;
 	}
 	
-	public synchronized void updateNodeStat(String managementIp, ArrayList<String> statList){
+	public synchronized void updateDataNodeStat(String managementIp, ArrayList<String> statList){
 		if(this.managementIpNodeMap.containsKey(managementIp)){
 			NFVNode node = this.managementIpNodeMap.get(managementIp);
 			
@@ -265,6 +265,61 @@ public class NFVServiceChain {
 									new Integer(eth0SendInt), new Long(eth0SendPkt),
 									new Integer(eth1RecvInt), new Long(eth1RecvPkt), 
 									new Integer(eth1SendInt), new Long(eth1SendPkt));
+		}
+	}
+	
+	public synchronized void updateControlNodeStat(String managementIp, ArrayList<String> statList){
+		if(this.managementIpNodeMap.containsKey(managementIp)){
+			NFVNode node = this.managementIpNodeMap.get(managementIp);
+			
+			if(statList.get(1) == "cpu"){
+				
+				String cpu = statList.get(2);
+				String[] cpuStatArray = cpu.trim().split("\\s+");
+				float sum = 0;
+				for(int i=0; i<cpuStatArray.length; i++){
+					sum += Float.parseFloat(cpuStatArray[i]);
+				}
+				float cpuUsage = (sum-Float.parseFloat(cpuStatArray[3]))*100/sum;
+			
+				String mem = statList.get(4);
+				String[] memStatArray = mem.trim().split("\\s+");
+				float memUsage = Float.parseFloat(memStatArray[1])*100/Float.parseFloat(memStatArray[0]);
+				memUsage = 100-memUsage;
+			
+				String interrupt = statList.get(6);
+				String[] intStatArray = interrupt.trim().split("\\s+");
+				//int eth0RecvInt = Integer.parseInt(intStatArray[0]);
+				//int eth0SendInt = Integer.parseInt(intStatArray[1]);
+				int eth0RecvInt = 1;
+				int eth0SendInt = 0;
+				
+				String eth0 = statList.get(8);
+				String[] eth0StatArray = eth0.trim().split("\\s+");
+				long eth0RecvPkt = Long.parseLong(eth0StatArray[1]);
+				long eth0SendPkt = Long.parseLong(eth0StatArray[9]);
+			
+				node.updateNodeProperty(new Float(cpuUsage), new Float(memUsage), 
+									    new Integer(eth0RecvInt), new Long(eth0RecvPkt), 
+									    new Integer(eth0SendInt), new Long(eth0SendPkt),
+									    new Integer(1), new Long(0), 
+								 	    new Integer(0), new Long(0));
+			}
+			else if(statList.get(1) == "transaction_counter"){
+				String tranCounter = statList.get(3);
+				String[] tranCounterArray = tranCounter.trim().split("\\s+");
+				
+				int goodTran = Integer.parseInt(tranCounterArray[0]);
+				int badTran = Integer.parseInt(tranCounterArray[1]);
+				int srdSt250ms = Integer.parseInt(tranCounterArray[3]);
+				int srdLt250ms = Integer.parseInt(tranCounterArray[2])+
+								 Integer.parseInt(tranCounterArray[4]);
+				
+				node.updateTranProperty(new Integer(goodTran), 
+									    new Integer(badTran), 
+									    new Integer(srdSt250ms), 
+									    new Integer(srdLt250ms));
+			}
 		}
 	}
 	

@@ -120,23 +120,30 @@ public class NFVNode {
 	public class NFVNodeProperty{
 		private final SimpleSM cpuState;
 		private final SimpleSM memState;
+		
 		private final SimpleSM eth0RecvState;
 		private final SimpleSM eth0SendState;
 		private final SimpleSM eth1RecvState;
 		private final SimpleSM eth1SendState;
 		
-		
+		private final SimpleSM tranState;
+	
 		public final CircularList<Float> cpuUsage;
 		public final CircularList<Float> memUsage; 
 		
 		public final CircularList<Integer> eth0RecvInt;
-		public final CircularList<Long> eth0RecvPkt;
+		public final CircularList<Long>    eth0RecvPkt;
 		public final CircularList<Integer> eth0SendInt;
 	
 		public final CircularList<Integer> eth1RecvInt;
-		public final CircularList<Long> eth1RecvPkt;
+		public final CircularList<Long>    eth1RecvPkt;
 		public final CircularList<Integer> eth1SendInt;
 		
+		public final CircularList<Integer> goodTran;
+		public final CircularList<Integer> badTran;
+		public final CircularList<Integer> srdSt250ms;
+		public final CircularList<Integer> srdLt250ms;
+		 
 		public NFVNodeProperty(int listSize){
 			cpuUsage = new CircularList<Float>(listSize, new Float(0));
 			memUsage = new CircularList<Float>(listSize, new Float(0));
@@ -149,12 +156,43 @@ public class NFVNode {
 			eth1RecvPkt = new CircularList<Long>(listSize, new Long(0));
 			eth1SendInt = new CircularList<Integer>(listSize, new Integer(0));
 			
+			goodTran = new CircularList<Integer>(listSize, new Integer(0));
+			badTran = new CircularList<Integer>(listSize, new Integer(0));
+			srdSt250ms = new CircularList<Integer>(listSize, new Integer(0));
+			srdLt250ms = new CircularList<Integer>(listSize, new Integer(0));
+			
 			cpuState = new SimpleSM(listSize);
 			memState = new SimpleSM(listSize);
+			
 			eth0RecvState = new SimpleSM(listSize);
 			eth0SendState = new SimpleSM(listSize);
 			eth1RecvState = new SimpleSM(listSize);
 			eth1SendState = new SimpleSM(listSize);
+			
+			tranState = new SimpleSM(listSize);
+		}
+		
+		public void updateTranProperty(Integer goodTran, Integer badTran,
+				                       Integer srdSt250ms, Integer srdLt250ms){
+			this.goodTran.add(goodTran);
+			this.badTran.add(badTran);
+			this.srdSt250ms.add(srdSt250ms);
+			this.srdLt250ms.add(srdLt250ms);
+		}
+		
+		public int getTranState(){
+			if(goodTran.getFilledUp()&&badTran.getFilledUp()&&srdSt250ms.getFilledUp()
+			   &&srdLt250ms.getFilledUp()){
+				tranState.updateTransientState(checkTranStatus(goodTran.getCircularList(),
+															   badTran.getCircularList(),
+															   srdSt250ms.getCircularList(),
+															   srdLt250ms.getCircularList()));
+				return tranState.getState();
+			}
+			else{
+				return NFVNode.NORMAL;
+			}
+			
 		}
 		
 		public void updateNodeProperty(Float cpuUsage, Float memUsage, 
@@ -235,6 +273,29 @@ public class NFVNode {
 			}
 		}
 		
+		private int checkTranStatus(ArrayList<Integer> goodTranList, ArrayList<Integer> badTranList,
+									ArrayList<Integer> srdSt250List, ArrayList<Integer> srdLt250List){
+			float totalGoodTran = 0;
+			float totalBadTran = 0;
+			float totalSrdSt250 = 0;
+			float totalSrdLt250 = 0;
+			
+			for(int i=0; i<goodTranList.size(); i++){
+				totalGoodTran += goodTranList.get(i).floatValue();
+				totalBadTran += goodTranList.get(i).floatValue();
+				totalSrdSt250 += srdSt250List.get(i).floatValue();
+				totalSrdLt250 += srdLt250List.get(i).floatValue();
+			}
+			
+			if( ((totalGoodTran/(totalGoodTran+totalBadTran))>=0.99) && 
+			    ((totalSrdSt250/(totalSrdSt250+totalSrdLt250))>=0.95) ){
+				return NFVNode.NORMAL;
+			}
+			else{
+				return NFVNode.OVERLOAD;
+			}
+		}
+		
 		private <E extends Comparable<E>> int checkStatus(ArrayList<E> list, E lowerT, E upperT){
 			int largerThanUpperT = 0;
 			int smallerThanLowerT = 0;
@@ -297,6 +358,7 @@ public class NFVNode {
 	
 	private NFVNodeProperty property;
 	private int state;
+	private int tranState;
 	private int activeFlows;
 	private static Logger logger;
 	
@@ -309,6 +371,7 @@ public class NFVNode {
 		this.vmInstance = vmInstance;
 		this.property = new NFVNodeProperty(4);
 		this.state = NFVNode.IDLE;
+		this.tranState = NFVNode.NORMAL;
 		this.activeFlows = 0;
 		logger = LoggerFactory.getLogger(NFVNode.class);
 	}
@@ -383,7 +446,30 @@ public class NFVNode {
 			String output = "Node-"+this.getManagementIp()+" is OVERLOAD : "+stat;
 			logger.info("{}", output);
 		}
-		//}
+	}
+	
+	public void updateTranProperty(Integer goodTran, Integer badTran, Integer srdSt250ms, Integer srdLt250ms){
+		String stat = goodTran.toString()+" "+badTran.toString()+" "+srdSt250ms.toString()+" "+srdLt250ms.toString()+" ";
+		float p1 = goodTran.floatValue()/(goodTran.floatValue()+badTran.floatValue());
+		float p2 = srdSt250ms.floatValue()/(srdSt250ms.floatValue()+srdLt250ms.floatValue());
+		stat = stat + new Float(p1).toString() + " " + new Float(p2).toString();
+		
+		this.property.updateTranProperty(goodTran, badTran, srdSt250ms, srdLt250ms);
+		this.tranState = this.property.getTranState();
+		
+		if(this.tranState == NFVNode.IDLE){
+			String output = "Tran Node-"+this.getManagementIp()+" is IDLE : "+stat;
+			logger.info("{}", output);
+		}
+		if(this.tranState == NFVNode.NORMAL){
+			String output = "Tran Node-"+this.getManagementIp()+" is NORMAL : "+stat;
+			logger.info("{}", output);
+		}
+		if(this.tranState == NFVNode.OVERLOAD){
+			String output = "Tran Node-"+this.getManagementIp()+" is OVERLOAD : "+stat;
+			logger.info("{}", output);
+		}
+		
 	}
 	
 	public int getState(){
