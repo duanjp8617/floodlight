@@ -282,13 +282,18 @@ public class NFVNode {
 			
 			for(int i=0; i<goodTranList.size(); i++){
 				totalGoodTran += goodTranList.get(i).floatValue();
-				totalBadTran += goodTranList.get(i).floatValue();
+				totalBadTran += badTranList.get(i).floatValue();
 				totalSrdSt250 += srdSt250List.get(i).floatValue();
 				totalSrdLt250 += srdLt250List.get(i).floatValue();
 			}
 			
-			if( ((totalGoodTran/(totalGoodTran+totalBadTran))>=0.99) && 
-			    ((totalSrdSt250/(totalSrdSt250+totalSrdLt250))>=0.95) ){
+			float tranRatio = ((totalGoodTran+totalBadTran)==0)?1:
+				                                  (totalGoodTran/(totalGoodTran+totalBadTran));
+			float srdRatio = ((totalSrdSt250+totalSrdLt250)==0)?1:
+                                                  (totalSrdSt250/(totalSrdSt250+totalSrdLt250));
+				                                  
+			
+			if( (tranRatio>=0.99) && (srdRatio>=0.95) ){
 				return NFVNode.NORMAL;
 			}
 			else{
