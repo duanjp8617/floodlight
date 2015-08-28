@@ -29,6 +29,9 @@ public class NFVServiceChain {
 		this.nfvNodeMaps = new ArrayList<Map<String, NFVNode>>();
 		this.rrStore = new int[this.serviceChainConfig.stages.size()];
 		this.baseNodeIpList = new ArrayList<String>(this.serviceChainConfig.stages.size());
+		for(int i=0; i<this.serviceChainConfig.stages.size(); i++){
+			this.baseNodeIpList.add("fakeIp");
+		}
 		this.managementIpNodeMap = new HashMap<String, NFVNode>();
 		
 		if(serviceChainConfig.nVmInterface == 3){
