@@ -68,7 +68,7 @@ public class NFVServiceChain {
 				stageMap.put(node.getManagementIp(), node);
 				this.managementIpNodeMap.put(node.getManagementIp(), node);
 				
-				this.baseNodeIpList.add(node.vmInstance.stageIndex, node.getManagementIp());
+				this.baseNodeIpList.set(node.vmInstance.stageIndex, node.getManagementIp());
 				
 				if(this.serviceChainConfig.nVmInterface == 3){
 					this.entryMacNodeMap.put(node.vmInstance.macList.get(0), node);

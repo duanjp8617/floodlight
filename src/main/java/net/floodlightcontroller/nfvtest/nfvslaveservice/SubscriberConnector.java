@@ -84,7 +84,7 @@ public class SubscriberConnector extends MessageProcessor{
 				subscriber1.monitor("inproc://monitor"+ipAddress, ZMQ.EVENT_CONNECTED);
 			
 				Socket monitor = zmqContext.socket(ZMQ.PAIR);
-				monitor.setReceiveTimeOut(10000);
+				monitor.setReceiveTimeOut(5000);
 				monitor.connect("inproc://monitor"+ipAddress);
 				ZMQ.Event event;
 			
