@@ -296,8 +296,69 @@ public class ServiceChainHandler extends MessageProcessor {
 				}
 				if(chain.hasNode(managementIp)&&(chain.serviceChainConfig.nVmInterface==2)){
 					chain.updateControlNodeStat(managementIp, statList);
+					NFVNode node = chain.getNode(managementIp);
+					if(node.vmInstance.stageIndex == 1){
+						break;
+					}
+					
+					Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
+					
+					int nOverload = 0;
+					for(String ip : stageMap.keySet()){
+						NFVNode n = stageMap.get(ip);
+						if(n.getTranState() == NFVNode.OVERLOAD){
+							nOverload += 1;
+						}
+					}
+					
+					if(nOverload == stageMap.size()){
+						//Let's find out which stage needs scaling.
+						controlPlaneScaleUp(chain);
+					}
+					
 				}
 			}
+		}
+	}
+	
+	private void controlPlaneScaleUp(NFVServiceChain chain){
+		
+		int nBonoOverload = 0;
+		Map<String, NFVNode> bonoMap = chain.getStageMap(0);
+		for(String ip : bonoMap.keySet()){
+			NFVNode n = bonoMap.get(ip);
+			if(n.getState() == NFVNode.OVERLOAD){
+				nBonoOverload += 1;
+			}
+		}
+		
+		int nSproutOverload = 0;
+		Map<String, NFVNode> sproutMap = chain.getStageMap(1);
+		for(String ip : sproutMap.keySet()){
+			NFVNode n = sproutMap.get(ip);
+			if(n.getState() == NFVNode.OVERLOAD){
+				nSproutOverload += 1;
+			}
+		}
+		
+		if((nBonoOverload>0)&&(!chain.getScaleIndicator(0))){
+			chain.setScaleIndicator(0, true);
+			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
+	                  							chain.serviceChainConfig.name,
+	                  							0);
+			Pending pending = new Pending(1, null);
+			this.pendingMap.put(newRequest.getUUID(), pending);
+			this.mh.sendTo("vmAllocator", newRequest);
+		}
+		
+		if((nSproutOverload>0)&&(!chain.getScaleIndicator(1))){
+			chain.setScaleIndicator(1, true);
+			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
+												chain.serviceChainConfig.name,
+												1);
+			Pending pending = new Pending(1, null);
+			this.pendingMap.put(newRequest.getUUID(), pending);
+			this.mh.sendTo("vmAllocator", newRequest);
 		}
 	}
 }

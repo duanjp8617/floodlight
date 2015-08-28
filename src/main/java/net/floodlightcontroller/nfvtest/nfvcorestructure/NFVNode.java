@@ -214,7 +214,7 @@ public class NFVNode {
 			if(cpuUsage.getFilledUp()){
 				cpuState.updateTransientState(checkStatus(cpuUsage.getCircularList(), 
 														  new Float(30.0),
-														  new Float(80.0)));
+														  new Float(85.0)));
 			}
 			if(memUsage.getFilledUp()){
 				memState.updateTransientState(checkStatus(memUsage.getCircularList(),
@@ -479,6 +479,10 @@ public class NFVNode {
 	
 	public int getState(){
 		return this.state;
+	}
+	
+	public int getTranState(){
+		return this.tranState;
 	}
 	
 	public void addActiveFlow(){

@@ -204,8 +204,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 				new HostServerConfig("net-b6.cs.hku.hk", "1.1.1.2", "2.2.2.2", 20, 32*1024, 100*1024, 1,
 						             "xx", "xx", "/home/net/nfvenv");
 		
-		StageVmInfo vmInfo1 = new StageVmInfo(1,1024,2*1024,"bono.img");
-		StageVmInfo vmInfo2 = new StageVmInfo(1,1024,2*1024,"sprout.img");
+		StageVmInfo vmInfo1 = new StageVmInfo(1,2*1024,2*1024,"bono.img");
+		StageVmInfo vmInfo2 = new StageVmInfo(1,2*1024,2*1024,"sprout.img");
 		ArrayList<StageVmInfo> list = new ArrayList<StageVmInfo>();
 		list.add(vmInfo1);
 		list.add(vmInfo2);
