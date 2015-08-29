@@ -296,7 +296,7 @@ public class ServiceChainHandler extends MessageProcessor {
 				}
 				if(chain.hasNode(managementIp)&&(chain.serviceChainConfig.nVmInterface==2)){
 					chain.updateControlNodeStat(managementIp, statList);
-					/*NFVNode node = chain.getNode(managementIp);
+					NFVNode node = chain.getNode(managementIp);
 					
 					if(node.vmInstance.stageIndex == 0){
 						Map<String, NFVNode> stageMap = chain.getStageMap(0);
@@ -312,11 +312,12 @@ public class ServiceChainHandler extends MessageProcessor {
 						if(nOverload == stageMap.size()){
 							//Let's find out which stage needs scaling.
 							controlPlaneScaleUp(chain);
-							break;
 						}
 					}
 					
-					Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
+					break;
+					
+					/*Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
 					
 					int nOverload = 0;
 					for(String ip : stageMap.keySet()){
@@ -335,9 +336,9 @@ public class ServiceChainHandler extends MessageProcessor {
 							Pending pending = new Pending(1, null);
 							this.pendingMap.put(newRequest.getUUID(), pending);
 							this.mh.sendTo("vmAllocator", newRequest);
-					}*/
+					}
 					
-					break;
+					break;*/
 				}
 			}
 		}
@@ -363,7 +364,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			}
 		}
 		
-		if((nBonoOverload>0)&&(!chain.getScaleIndicator(0))){
+		if((nBonoOverload==bonoMap.size())&&(!chain.getScaleIndicator(0))){
 			chain.setScaleIndicator(0, true);
 			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 	                  							chain.serviceChainConfig.name,
@@ -373,7 +374,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			this.mh.sendTo("vmAllocator", newRequest);
 		}
 		
-		if((nSproutOverload>0)&&(!chain.getScaleIndicator(1))){
+		if((nSproutOverload==sproutMap.size())&&(!chain.getScaleIndicator(1))){
 			chain.setScaleIndicator(1, true);
 			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 												chain.serviceChainConfig.name,
