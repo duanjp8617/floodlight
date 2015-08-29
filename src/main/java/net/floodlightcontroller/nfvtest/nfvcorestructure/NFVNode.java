@@ -156,11 +156,6 @@ public class NFVNode {
 			eth1RecvPkt = new CircularList<Long>(listSize, new Long(0));
 			eth1SendInt = new CircularList<Integer>(listSize, new Integer(0));
 			
-			goodTran = new CircularList<Integer>(listSize, new Integer(0));
-			badTran = new CircularList<Integer>(listSize, new Integer(0));
-			srdSt250ms = new CircularList<Integer>(listSize, new Integer(0));
-			srdLt250ms = new CircularList<Integer>(listSize, new Integer(0));
-			
 			cpuState = new SimpleSM(listSize);
 			memState = new SimpleSM(listSize);
 			
@@ -169,7 +164,12 @@ public class NFVNode {
 			eth1RecvState = new SimpleSM(listSize);
 			eth1SendState = new SimpleSM(listSize);
 			
-			tranState = new SimpleSM(listSize);
+			goodTran = new CircularList<Integer>(10, new Integer(0));
+			badTran = new CircularList<Integer>(10, new Integer(0));
+			srdSt250ms = new CircularList<Integer>(10, new Integer(0));
+			srdLt250ms = new CircularList<Integer>(10, new Integer(0));
+			
+			tranState = new SimpleSM(10);
 		}
 		
 		public void updateTranProperty(Integer goodTran, Integer badTran,
@@ -214,7 +214,7 @@ public class NFVNode {
 			if(cpuUsage.getFilledUp()){
 				cpuState.updateTransientState(checkStatus(cpuUsage.getCircularList(), 
 														  new Float(30.0),
-														  new Float(85.0)));
+														  new Float(90.0)));
 			}
 			if(memUsage.getFilledUp()){
 				memState.updateTransientState(checkStatus(memUsage.getCircularList(),
@@ -441,15 +441,15 @@ public class NFVNode {
 		//if(this.vmInstance.stageIndex == 0){
 		if(this.state == NFVNode.IDLE){
 			String output = "Node-"+this.getManagementIp()+" is IDLE : "+stat;
-			logger.info("{}", output);
+			//logger.info("{}", output);
 		}
 		if(this.state == NFVNode.NORMAL){
 			String output = "Node-"+this.getManagementIp()+" is NORMAL : "+stat;
-			logger.info("{}", output);
+			//logger.info("{}", output);
 		}
 		if(this.state == NFVNode.OVERLOAD){
 			String output = "Node-"+this.getManagementIp()+" is OVERLOAD : "+stat;
-			logger.info("{}", output);
+			//logger.info("{}", output);
 		}
 	}
 	

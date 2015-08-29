@@ -201,7 +201,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 				new ControllerConfig("net-b6.cs.hku.hk", "/home/net/base-env", "basexml.xml", "networkxml.xml");
 		
 		this.hostServerConfig = 
-				new HostServerConfig("net-b6.cs.hku.hk", "1.1.1.2", "2.2.2.2", 20, 32*1024, 100*1024, 1,
+				new HostServerConfig("net-b4.cs.hku.hk", "1.1.1.2", "2.2.2.2", 20, 32*1024, 100*1024, 1,
 						             "xx", "xx", "/home/net/nfvenv");
 		
 		StageVmInfo vmInfo1 = new StageVmInfo(1,2*1024,2*1024,"bono.img");

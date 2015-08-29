@@ -296,9 +296,24 @@ public class ServiceChainHandler extends MessageProcessor {
 				}
 				if(chain.hasNode(managementIp)&&(chain.serviceChainConfig.nVmInterface==2)){
 					chain.updateControlNodeStat(managementIp, statList);
-					NFVNode node = chain.getNode(managementIp);
-					if(node.vmInstance.stageIndex == 1){
-						break;
+					/*NFVNode node = chain.getNode(managementIp);
+					
+					if(node.vmInstance.stageIndex == 0){
+						Map<String, NFVNode> stageMap = chain.getStageMap(0);
+						
+						int nOverload = 0;
+						for(String ip : stageMap.keySet()){
+							NFVNode n = stageMap.get(ip);
+							if(n.getTranState() == NFVNode.OVERLOAD){
+								nOverload += 1;
+							}
+						}
+						
+						if(nOverload == stageMap.size()){
+							//Let's find out which stage needs scaling.
+							controlPlaneScaleUp(chain);
+							break;
+						}
 					}
 					
 					Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
@@ -306,16 +321,23 @@ public class ServiceChainHandler extends MessageProcessor {
 					int nOverload = 0;
 					for(String ip : stageMap.keySet()){
 						NFVNode n = stageMap.get(ip);
-						if(n.getTranState() == NFVNode.OVERLOAD){
+						if(n.getState() == NFVNode.OVERLOAD){
 							nOverload += 1;
 						}
 					}
 					
-					if(nOverload == stageMap.size()){
-						//Let's find out which stage needs scaling.
-						controlPlaneScaleUp(chain);
-					}
+					if( (nOverload == stageMap.size())&&
+						    (!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
+							chain.setScaleIndicator(node.vmInstance.stageIndex, true);
+							AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
+									                  node.vmInstance.serviceChainConfig.name,
+									                              node.vmInstance.stageIndex);
+							Pending pending = new Pending(1, null);
+							this.pendingMap.put(newRequest.getUUID(), pending);
+							this.mh.sendTo("vmAllocator", newRequest);
+					}*/
 					
+					break;
 				}
 			}
 		}
