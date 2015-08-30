@@ -194,7 +194,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         logger = LoggerFactory.getLogger(NFVTest.class);
         ipsServerList = new ArrayList<IpsServer>();
         
-        /*logger.info("start testing network xml");
+        logger.info("start testing network xml");
         //TestHostServer testHostServer = new TestHostServer();
         //testHostServer.testVmAllocator();
 		this.controllerConfig = 
@@ -269,7 +269,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
 		InitServiceChainRequset m2 = new InitServiceChainRequset("hehe", this.serviceChain);
-		mh.sendTo("chainHandler", m2);*/
+		mh.sendTo("chainHandler", m2);
 		
 		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);
@@ -291,12 +291,12 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		}
 		catch (Exception e){
 			e.printStackTrace();
-		}*/
+		}
 		
         //logger.info("stop testing network xml");
         
-    	Context zmqContext = ZMQ.context(1);  
-    	/*Socket subscriber = zmqContext.socket(ZMQ.SUB);
+    	/*Context zmqContext = ZMQ.context(1);  
+    	Socket subscriber = zmqContext.socket(ZMQ.SUB);
     	subscriber.connect("tcp://192.168.124.72:7773");
 		String finalResult = "";
     	
@@ -308,7 +308,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     			hasMore = subscriber.hasReceiveMore();
     		}
     		System.out.println(finalResult);
-    	}*/
+    	}
     	
         Socket requester = zmqContext.socket(ZMQ.REQ);
         requester.connect("tcp://192.168.124.72:7773");
@@ -316,7 +316,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         requester.send("add", ZMQ.SNDMORE);
         requester.send("192.168.65.31", 0);
         String recvResult = requester.recvStr();
-        logger.info("Receive result : {}", recvResult);
+        logger.info("Receive result : {}", recvResult);*/
        
     }
  
