@@ -197,7 +197,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         logger.info("start testing network xml");
         //TestHostServer testHostServer = new TestHostServer();
         //testHostServer.testVmAllocator();
-		this.controllerConfig = 
+		/*this.controllerConfig = 
 				new ControllerConfig("net-b6.cs.hku.hk", "/home/net/base-env", "basexml.xml", "networkxml.xml");
 		
 		this.hostServerConfig = 
@@ -239,9 +239,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 																			zmqContext);
 		subscriberConnector.registerWithMessageHub(mh);
 		
-		DNSUpdator dnsUpdator = new DNSUpdator("dnsUpdator", "192.168.126.123", "7773", zmqContext);
-		dnsUpdator.registerWithMessageHub(mh);
-		dnsUpdator.connect();
+		//DNSUpdator dnsUpdator = new DNSUpdator("dnsUpdator", "192.168.126.123", "7773", zmqContext);
+		//dnsUpdator.registerWithMessageHub(mh);
+		//dnsUpdator.connect();
 		
 		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler");
 		chainHandler.registerWithMessageHub(mh);
@@ -269,7 +269,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
 		InitServiceChainRequset m2 = new InitServiceChainRequset("hehe", this.serviceChain);
-		mh.sendTo("chainHandler", m2);
+		mh.sendTo("chainHandler", m2);*/
 		
 		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);
