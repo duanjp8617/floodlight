@@ -45,8 +45,6 @@ public class DNSUpdator extends MessageProcessor{
     	}
     	else{
     		System.out.println("DNS connection failure");
-    		while(true){
-    		}
     	}
 	}
 	
