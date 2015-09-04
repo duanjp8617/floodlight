@@ -201,16 +201,16 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 				new ControllerConfig("net-b6.cs.hku.hk", "/home/net/base-env", "basexml.xml", "networkxml.xml");
 		
 		this.hostServerConfig = 
-				new HostServerConfig("net-b4.cs.hku.hk", "1.1.1.2", "2.2.2.2", 6, 32*1024, 100*1024, 1,
+				new HostServerConfig("net-b6.cs.hku.hk", "1.1.1.2", "2.2.2.2", 6, 32*1024, 100*1024, 1,
 						             "xx", "xx", "/home/net/nfvenv");
 		
-		StageVmInfo vmInfo1 = new StageVmInfo(1,2*1024,2*1024,"bono.img");
-		StageVmInfo vmInfo2 = new StageVmInfo(1,2*1024,2*1024,"sprout.img");
+		StageVmInfo vmInfo1 = new StageVmInfo(1,2*1024,2*1024,"img1.img");
+		//StageVmInfo vmInfo2 = new StageVmInfo(1,2*1024,2*1024,"sprout.img");
 		ArrayList<StageVmInfo> list = new ArrayList<StageVmInfo>();
 		list.add(vmInfo1);
-		list.add(vmInfo2);
+		//list.add(vmInfo2);
 			
-		this.serviceChainConfig = new ServiceChainConfig("test-chain", 2, list);
+		this.serviceChainConfig = new ServiceChainConfig("test-chain", 3, list);
 		byte[] prefix = new byte[3];
 		prefix[0] = 0x52;
 		prefix[1] = 0x54;
@@ -295,7 +295,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
         //logger.info("stop testing network xml");
         
-    	/*Context zmqContext = ZMQ.context(1);  
+    	Context zmqContext = ZMQ.context(1);  
     	Socket subscriber = zmqContext.socket(ZMQ.SUB);
     	subscriber.connect("tcp://192.168.124.72:7773");
 		String finalResult = "";
