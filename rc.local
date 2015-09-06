@@ -1,0 +1,31 @@
+#!/bin/sh -e
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+
+ETH0IP="`ifconfig eth0 2>/dev/null|awk '/inet addr:/ {print $2}'|sed 's/addr://'`"
+ETH1IP="`ifconfig eth1 2>/dev/null|awk '/inet addr:/ {print $2}'|sed 's/addr://'`"
+
+ETH0BASE="$(echo $ETH0IP | cut -d. -f1-3)"
+ETH0LV="$(echo $ETH0IP | cut -d. -f4)"
+
+ETH1BASE="$(echo $ETH1IP | cut -d. -f1-3)"
+ETH1LV="$(echo $ETH1IP | cut -d. -f4)"
+
+CONTROLLERNET=202.45.128.0
+
+sudo route delete default
+sudo route add default gw $ETH0BASE".1" dev eth0
+
+sudo route add -net $CONTROLLERNET netmask 255.255.255.0 gateway $ETH1BASE".1" dev eth1
+
+exit 0
+
