@@ -470,6 +470,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         	
     		List<NFVNode> routeList = this.serviceChain.forwardRoute();
     		IOFSwitch hitSwitch = sw;
+    		//here I need to know the the HostServer class that hitSwitch is on.
+    		HostServer localHostServer = null;
     		
     		for(int i=0; i<routeList.size(); i++){
     			NFVNode currentNode = routeList.get(i);
@@ -493,11 +495,42 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     			}
     			else{
     				//temporarily ignore this condition.
+    				String localServerIp = localHostServer.hostServerConfig.managementIp;
+    				HostServer remoteHostServer = currentNode.vmInstance.hostServer;
+    				String remoteServerIp = remoteHostServer.hostServerConfig.managementIp;
+    				
+    				int localPort = localHostServer.tunnelPortMap.get(remoteServerIp).intValue();
+    				int remotePort = remoteHostServer.tunnelPortMap.get(localServerIp).intValue();
+    				
+    				//first, push flow rules on hitSwitch. Without changing the mac address, push 
+    				//The flow to the localPort on hitSwitch.
+    				Match flowMatch = createMatch(hitSwitch, inPort, srcIp, dstIp,
+							  					  transportProtocol, srcPort, dstPort);
+    				OFFlowMod flowMod = createFlowMod(hitSwitch, flowMatch, 
+	                          					      MacAddress.of(currentNode.getMacAddress(0)),
+	                          					  	  OFPort.of(localPort));
+    				hitSwitch.write(flowMod);
+    				
+    				flowMatch = createMatch(nodeSwitch, OFPort.of(remotePort), srcIp, dstIp,
+		  					                transportProtocol, srcPort, dstPort);
+    				flowMod = createFlowMod(nodeSwitch, flowMatch, 
+    					                    MacAddress.of(currentNode.getMacAddress(0)),
+    					                    OFPort.of(currentNode.getPort(0)));
+    				nodeSwitch.write(flowMod);
+    				
+    				
+    				RouteTuple routeTuple = new RouteTuple(srcIp.getInt(), dstIp.getInt(), 
+    		       transportProtocol.equals(IpProtocol.TCP)?RouteTuple.TCP:RouteTuple.UDP,
+    		    								     srcPort.getPort(), dstPort.getPort(), 
+    		    				   DatapathId.of(currentNode.getBridgeDpid(0)).getLong());
+    		    				
+    		    	this.routeMap.put(routeTuple, currentNode.getManagementIp());
     			}
     			
     			currentNode.addActiveFlow();
     			hitSwitch = this.switchService.getSwitch(DatapathId.of(currentNode.getBridgeDpid(1)));
     			inPort = OFPort.of(currentNode.getPort(1));
+    			localHostServer = currentNode.vmInstance.hostServer;
     		}
     	}
     }

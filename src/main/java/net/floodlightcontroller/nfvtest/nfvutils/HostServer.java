@@ -31,9 +31,11 @@ public class HostServer {
 		public final String operationMac;
 		public final String operationIp;
 		
+		public final HostServer hostServer;
+		
 		public VmInstance(HostServerConfig hConfig, ServiceChainConfig sConfig, ControllerConfig cConfig,
 				   int stageIndex, String vmName,String managementMac, String managementIp, 
-				   String operationMac, String operationIp){
+				   String operationMac, String operationIp, HostServer hostServer){
 			this.stageIndex = stageIndex;
 			this.vmName = vmName;
 			
@@ -49,11 +51,13 @@ public class HostServer {
 			this.managementIp = managementIp;
 			this.operationMac = operationMac;
 			this.operationIp = operationIp;
+			
+			this.hostServer = hostServer;
 		}
 		
 		public VmInstance(HostServerConfig hConfig, ServiceChainConfig sConfig, ControllerConfig cConfig,
 				   int stageIndex, String vmName, String managementMac, String managementIp, 
-				   List<String> macList, List<String> dpidList){
+				   List<String> macList, List<String> dpidList, HostServer hostServer){
 			this.stageIndex = stageIndex;
 			this.vmName = vmName;
 			
@@ -77,6 +81,7 @@ public class HostServer {
 			this.bridgeDpidList.add(dpidList.get(this.stageIndex));
 			this.bridgeDpidList.add(dpidList.get(this.stageIndex+1));
 			
+			this.hostServer = hostServer;
 		}
 		
 		public StageVmInfo getStageVmInfo(){
@@ -218,7 +223,7 @@ public class HostServer {
 				
 				newVm = new VmInstance(this.hostServerConfig, chainConfig, this.controllerConfig,
 						stageIndex,vmName, managementPair.first, managementPair.second, 
-						operationPair.first, operationPair.second);
+						operationPair.first, operationPair.second, this);
 			}
 			else{
 				ArrayList<String> macAddrList = new ArrayList<String>();
@@ -233,7 +238,7 @@ public class HostServer {
 				
 				newVm = new VmInstance(this.hostServerConfig, chainConfig, this.controllerConfig,
 						stageIndex,vmName, managementPair.first, managementPair.second,
-						macAddrList, this.serviceChainDpidMap.get(chainName));
+						macAddrList, this.serviceChainDpidMap.get(chainName), this);
 			}
 			
 			return newVm;

@@ -347,6 +347,7 @@ public class HostAgent{
 		//The agent is connected to server src.
 		int vniIndex = vni;
 		List<String> srcBridgeList = null;
+		List<String> dstBridgeList = null;
 		
 		for(String chainName : src.serviceChainConfigMap.keySet()){
 			ServiceChainConfig chainConfig = src.serviceChainConfigMap.get(chainName);
@@ -355,8 +356,15 @@ public class HostAgent{
 			}
 		}
 		
+		for(String chainName : dst.serviceChainConfigMap.keySet()){
+			ServiceChainConfig chainConfig = dst.serviceChainConfigMap.get(chainName);
+			if(chainConfig.bridges.size()>0){
+				dstBridgeList = chainConfig.bridges;
+			}
+		}
 		
-		if((srcBridgeList==null)){
+		
+		if((srcBridgeList==null)||(dstBridgeList==null)){
 			return -1;
 		}
 		
