@@ -110,12 +110,15 @@ public class VmAllocator extends MessageProcessor {
 			this.hostServerList.add(request.getHostServer());
 		}
 		else{
-			HostServer serverToAdd = request.getHostServer();
-			HostAgent newAgent = new HostAgent(serverToAdd.hostServerConfig);
-			int returnVal = 0;
-			for(int i=0; i<this.hostServerList.size(); i++){
-				HostAgent oldAgent = new HostAgent(this.hostServerList.get(i).hostServerConfig);
-				try{
+			try{
+				HostServer serverToAdd = request.getHostServer();
+				HostAgent newAgent = new HostAgent(serverToAdd.hostServerConfig);
+				newAgent.connect();
+				int returnVal = 0;
+				for(int i=0; i<this.hostServerList.size(); i++){
+					HostAgent oldAgent = new HostAgent(this.hostServerList.get(i).hostServerConfig);
+					oldAgent.connect();
+					
 					returnVal=oldAgent.createTunnelTo(this.hostServerList.get(i), serverToAdd, this.vni);
 					if(returnVal>0){
 						this.vni = returnVal;
@@ -124,12 +127,15 @@ public class VmAllocator extends MessageProcessor {
 					if(returnVal>0){
 						this.vni = returnVal;
 					}
+					
+					oldAgent.disconnect();
 				}
-				catch (Exception e){
-					e.printStackTrace();
-				}
-				
+				newAgent.disconnect();
 			}
+			catch(Exception e){
+				e.printStackTrace();
+			}
+			this.hostServerList.add(request.getHostServer());
 		}
 	}
 	
