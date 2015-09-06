@@ -203,18 +203,18 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 				new ControllerConfig("202.45.128.151", "/home/net/base-env", "basexml.xml", "networkxml.xml");
 		
 		this.hostServerConfig = 
-				new HostServerConfig("202.45.128.149", "1.1.1.2", "2.2.2.2", 6, 32*1024, 100*1024, 1,
+				new HostServerConfig("202.45.128.149", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
 						             "xx", "xx", "/home/net/nfvenv");
 		
 		this.hostServerConfig1 = 
-				new HostServerConfig("202.45.128.151", "1.1.1.2", "2.2.2.2", 6, 32*1024, 100*1024, 1,
+				new HostServerConfig("202.45.128.151", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
 						             "xx", "xx", "/home/net/nfvenv");
 		
 		StageVmInfo vmInfo1 = new StageVmInfo(1,2*1024,2*1024,"img1.img");
-		//StageVmInfo vmInfo2 = new StageVmInfo(1,2*1024,2*1024,"sprout.img");
+		StageVmInfo vmInfo2 = new StageVmInfo(1,2*1024,2*1024,"img2.img");
 		ArrayList<StageVmInfo> list = new ArrayList<StageVmInfo>();
 		list.add(vmInfo1);
-		//list.add(vmInfo2);
+		list.add(vmInfo2);
 			
 		this.serviceChainConfig = new ServiceChainConfig("test-chain", 3, list);
 		byte[] prefix = new byte[3];
@@ -293,9 +293,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			e.printStackTrace();
 		}
 		
-		//this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
-		//InitServiceChainRequset m2 = new InitServiceChainRequset("hehe", this.serviceChain);
-		//mh.sendTo("chainHandler", m2);
+		this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
+		InitServiceChainRequset m4 = new InitServiceChainRequset("hehe", this.serviceChain);
+		mh.sendTo("chainHandler", m4);
 		
 		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);
