@@ -154,6 +154,9 @@ public class HostServer {
 	
 	private HostServerAllocation allocation;
 	
+	public final Map<String, Integer> tunnelPortMap;
+	public int tunnelPort;
+	
 	public HostServer(ControllerConfig controllerConfig,
 			   		  HostServerConfig hostServerConfig,
 			   		  Map<String, ServiceChainConfig> serviceChainConfigMap,
@@ -194,6 +197,9 @@ public class HostServer {
 				this.serviceChainONetworkMap.put(chainName, null);
 			}
 		}
+		
+		this.tunnelPortMap = new HashMap<String, Integer>();
+		this.tunnelPort = 10;
 	}
 	
 	public VmInstance allocateVmInstance(String chainName, int stageIndex){

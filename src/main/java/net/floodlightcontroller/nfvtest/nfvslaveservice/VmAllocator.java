@@ -3,8 +3,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 import net.floodlightcontroller.nfvtest.message.Message;
 import net.floodlightcontroller.nfvtest.message.MessageProcessor;
-import net.floodlightcontroller.nfvtest.message.ConcreteMessage.KillSelfRequest;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
+import net.floodlightcontroller.nfvtest.nfvutils.HostAgent;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.*;
 import net.floodlightcontroller.nfvtest.message.Pending;
@@ -18,12 +18,14 @@ import java.util.UUID;
 public class VmAllocator extends MessageProcessor {
 	private final ArrayList<HostServer> hostServerList;
 	private final HashMap<UUID, Pending> pendingMap;
+	private int vni;
 	
 	public VmAllocator(String id){
 		this.id = id;
 		this.queue = new LinkedBlockingQueue<Message>();
 		this.hostServerList = new ArrayList<HostServer>();
 		this.pendingMap = new HashMap<UUID, Pending>();
+		this.vni=100;
 	}
 	
 	
@@ -104,7 +106,31 @@ public class VmAllocator extends MessageProcessor {
 	}
 	
 	private void addHostServer(AddHostServerRequest request){
-		this.hostServerList.add(request.getHostServer());
+		if(this.hostServerList.size()==0){
+			this.hostServerList.add(request.getHostServer());
+		}
+		else{
+			HostServer serverToAdd = request.getHostServer();
+			HostAgent newAgent = new HostAgent(serverToAdd.hostServerConfig);
+			int returnVal = 0;
+			for(int i=0; i<this.hostServerList.size(); i++){
+				HostAgent oldAgent = new HostAgent(this.hostServerList.get(i).hostServerConfig);
+				try{
+					returnVal=oldAgent.createTunnelTo(this.hostServerList.get(i), serverToAdd, this.vni);
+					if(returnVal>0){
+						this.vni = returnVal;
+					}
+					returnVal=newAgent.createTunnelTo(serverToAdd, this.hostServerList.get(i), this.vni);
+					if(returnVal>0){
+						this.vni = returnVal;
+					}
+				}
+				catch (Exception e){
+					e.printStackTrace();
+				}
+				
+			}
+		}
 	}
 	
 	private void deallocateVm(DeallocateVmRequest originalRequest){

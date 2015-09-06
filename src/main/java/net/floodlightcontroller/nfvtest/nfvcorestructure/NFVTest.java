@@ -139,9 +139,11 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     
 	private ControllerConfig controllerConfig;
 	private HostServerConfig hostServerConfig;
+	private HostServerConfig hostServerConfig1;
 	private ServiceChainConfig serviceChainConfig;
 	private MacAddressAllocator macAllocator;
 	private HostServer hostServer;
+	private HostServer hostServer1;
 	private IpAddressAllocator ipAllocator;
 	private NFVServiceChain serviceChain;
 	
@@ -197,11 +199,15 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         logger.info("start testing network xml");
         //TestHostServer testHostServer = new TestHostServer();
         //testHostServer.testVmAllocator();
-		/*this.controllerConfig = 
-				new ControllerConfig("net-b6.cs.hku.hk", "/home/net/base-env", "basexml.xml", "networkxml.xml");
+		this.controllerConfig = 
+				new ControllerConfig("202.45.128.151", "/home/net/base-env", "basexml.xml", "networkxml.xml");
 		
 		this.hostServerConfig = 
-				new HostServerConfig("net-b6.cs.hku.hk", "1.1.1.2", "2.2.2.2", 6, 32*1024, 100*1024, 1,
+				new HostServerConfig("202.45.128.149", "1.1.1.2", "2.2.2.2", 6, 32*1024, 100*1024, 1,
+						             "xx", "xx", "/home/net/nfvenv");
+		
+		this.hostServerConfig1 = 
+				new HostServerConfig("202.45.128.151", "1.1.1.2", "2.2.2.2", 6, 32*1024, 100*1024, 1,
 						             "xx", "xx", "/home/net/nfvenv");
 		
 		StageVmInfo vmInfo1 = new StageVmInfo(1,2*1024,2*1024,"img1.img");
@@ -221,6 +227,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		HashMap<String, ServiceChainConfig> map = new HashMap<String, ServiceChainConfig>();
 		map.put(this.serviceChainConfig.name, this.serviceChainConfig);
 		hostServer = new HostServer(this.controllerConfig, this.hostServerConfig, map, this.macAllocator,
+										this.ipAllocator);
+		hostServer1 = new HostServer(this.controllerConfig, this.hostServerConfig1, map, this.macAllocator,
 										this.ipAllocator);
 		
 		this.flowMap = new HashMap<FlowTuple, Integer>();
@@ -258,8 +266,17 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			e.printStackTrace();
 		}
 		
-		AddHostServerRequest m1 = new AddHostServerRequest("hehe", this.hostServer);
-		mh.sendTo("vmAllocator", m1);
+		HostInitializationRequest m1 = new HostInitializationRequest("hehe",this.hostServer1);
+		mh.sendTo("vmWorker", m1);
+		try{
+			Thread.sleep(5000);
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
+		
+		AddHostServerRequest m2 = new AddHostServerRequest("hehe", this.hostServer);
+		mh.sendTo("vmAllocator", m2);
 		try{
 			Thread.sleep(200);
 		}
@@ -267,9 +284,18 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			e.printStackTrace();
 		}
 		
-		this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
-		InitServiceChainRequset m2 = new InitServiceChainRequset("hehe", this.serviceChain);
-		mh.sendTo("chainHandler", m2);*/
+		AddHostServerRequest m3 = new AddHostServerRequest("hehe", this.hostServer1);
+		mh.sendTo("vmAllocator", m3);
+		try{
+			Thread.sleep(200);
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
+		
+		//this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
+		//InitServiceChainRequset m2 = new InitServiceChainRequset("hehe", this.serviceChain);
+		//mh.sendTo("chainHandler", m2);
 		
 		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);

@@ -11,6 +11,7 @@ import net.schmizz.sshj.common.IOUtils;
 import net.schmizz.sshj.connection.channel.direct.Session;
 
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.HostServerConfig;
+import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig;
 
 import java.util.List;
 
@@ -338,6 +339,60 @@ public class HostAgent{
 			session.close();
 			return false;
 		
+		}
+	}
+	
+	public int createTunnelTo(HostServer src, HostServer dst, int vni)throws
+		IOException, UserAuthException, TransportException{
+		//The agent is connected to server src.
+		int vniIndex = vni;
+		List<String> srcBridgeList = null;
+		
+		for(String chainName : src.serviceChainConfigMap.keySet()){
+			ServiceChainConfig chainConfig = src.serviceChainConfigMap.get(chainName);
+			if(chainConfig.bridges.size()>0){
+				srcBridgeList = chainConfig.bridges;
+			}
+		}
+		
+		
+		if((srcBridgeList==null)){
+			return -1;
+		}
+		
+		String dstIp = dst.hostServerConfig.managementIp;
+		src.tunnelPortMap.put(dstIp, new Integer(src.tunnelPort));
+		
+		for(int i=0; i<srcBridgeList.size(); i++){
+			this.createTunnelPort(srcBridgeList.get(i), dstIp, src.tunnelPort, vniIndex);
+			vniIndex+=1;
+		}
+		src.tunnelPort +=1;
+		
+		
+		return vniIndex;
+	}
+	
+	public boolean createTunnelPort(String bridgeName, String dstIp, int tunnelPort, int vniIndex)throws
+		IOException, UserAuthException, TransportException{
+		
+		String ovsPortName = "tun"+new Integer(vniIndex).toString();
+		String strCmd = "sudo ovs-vsctl add-port "+bridgeName+" "+ovsPortName+" -- set interface "+
+						ovsPortName+" type=vxlan options:remote_ip=\""+dstIp+"\""+" options:key="+
+						new Integer(vniIndex).toString()+" ofport_request="+new Integer(tunnelPort).toString();
+		
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec(strCmd);
+		command.join(10, TimeUnit.SECONDS);
+
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+	
 		}
 	}
 	
