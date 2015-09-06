@@ -146,6 +146,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	private HostServer hostServer1;
 	private IpAddressAllocator ipAllocator;
 	private NFVServiceChain serviceChain;
+	private HashMap<DatapathId, HostServer> dpidHostServerMap;
 	
 	private HashMap<FlowTuple, Integer> flowMap;
 	private HashMap<RouteTuple, String> routeMap;
@@ -296,6 +297,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
 		InitServiceChainRequset m4 = new InitServiceChainRequset("hehe", this.serviceChain);
 		mh.sendTo("chainHandler", m4);
+		
+		dpidHostServerMap = vmAllocator.dpidHostServerMap;
 		
 		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);
@@ -471,7 +474,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     		List<NFVNode> routeList = this.serviceChain.forwardRoute();
     		IOFSwitch hitSwitch = sw;
     		//here I need to know the the HostServer class that hitSwitch is on.
-    		HostServer localHostServer = null;
+    		HostServer localHostServer = this.dpidHostServerMap.get(hitSwitch.getId());
     		
     		for(int i=0; i<routeList.size(); i++){
     			NFVNode currentNode = routeList.get(i);

@@ -12,20 +12,25 @@ import net.floodlightcontroller.nfvtest.message.Pending;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
+
+import org.projectfloodlight.openflow.types.DatapathId;
 
 
 public class VmAllocator extends MessageProcessor {
 	private final ArrayList<HostServer> hostServerList;
 	private final HashMap<UUID, Pending> pendingMap;
 	private int vni;
-	
+	public final HashMap<DatapathId, HostServer> dpidHostServerMap;
+
 	public VmAllocator(String id){
 		this.id = id;
 		this.queue = new LinkedBlockingQueue<Message>();
 		this.hostServerList = new ArrayList<HostServer>();
 		this.pendingMap = new HashMap<UUID, Pending>();
 		this.vni=100;
+		this.dpidHostServerMap = new HashMap<DatapathId, HostServer>();
 	}
 	
 	
@@ -134,6 +139,13 @@ public class VmAllocator extends MessageProcessor {
 				e.printStackTrace();
 			}
 			this.hostServerList.add(request.getHostServer());
+		}
+		HostServer hostServer = request.getHostServer();
+		for(String chainName : hostServer.serviceChainDpidMap.keySet()){
+			List<String> dpidList = hostServer.serviceChainDpidMap.get(chainName);
+			for(int i=0; i<dpidList.size(); i++){
+				this.dpidHostServerMap.put(DatapathId.of(dpidList.get(i)), hostServer);
+			}
 		}
 	}
 	
