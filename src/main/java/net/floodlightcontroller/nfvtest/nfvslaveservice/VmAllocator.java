@@ -120,9 +120,6 @@ public class VmAllocator extends MessageProcessor {
 					oldAgent.connect();
 					
 					returnVal=oldAgent.createTunnelTo(this.hostServerList.get(i), serverToAdd, this.vni);
-					if(returnVal>0){
-						this.vni = returnVal;
-					}
 					returnVal=newAgent.createTunnelTo(serverToAdd, this.hostServerList.get(i), this.vni);
 					if(returnVal>0){
 						this.vni = returnVal;
