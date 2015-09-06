@@ -85,6 +85,7 @@ public class VmAllocator extends MessageProcessor {
 				Pending pending = new Pending(1, originalRequest);
 				this.pendingMap.put(newRequest.getUUID(), pending);
 				this.mh.sendTo("vmWorker", newRequest);
+				break;
 			}
 		}
 	}
