@@ -194,7 +194,8 @@ public class NFVServiceChain {
 					routeList.add(stageMap.get(managementIp));
 				}
 				else{
-					String[] nodeArray = stageMap.keySet()
+					Map<String, NFVNode> bufferMap = this.bufferNodeMaps.get(i);
+					String[] nodeArray = bufferMap.keySet()
 										 .toArray(new String[stageScaleDownMap.size()]);
 					
 					managementIp = nodeArray[0];
@@ -209,7 +210,7 @@ public class NFVServiceChain {
 						}
 					}
 					
-					routeList.add(stageMap.get(managementIp));
+					routeList.add(bufferMap.get(managementIp));
 				}
 				
 			}
