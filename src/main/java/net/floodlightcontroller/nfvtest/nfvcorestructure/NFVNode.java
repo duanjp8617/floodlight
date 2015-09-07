@@ -523,7 +523,7 @@ public class NFVNode {
 		this.activeFlows = 0;
 		logger = LoggerFactory.getLogger(NFVNode.class);
 		
-		this.bufferProperty = new NFVBufferNodeProperty(4);
+		this.bufferProperty = new NFVBufferNodeProperty(10);
 	}
 	
 	public String getChainName(){

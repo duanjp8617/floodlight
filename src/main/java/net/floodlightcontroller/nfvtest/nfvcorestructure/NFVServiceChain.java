@@ -25,6 +25,7 @@ public class NFVServiceChain {
 	public final List<Map<String, Integer>> scaleDownList;
 	
 	private final List<Map<String, NFVNode>> bufferNodeMaps;
+	private final boolean[] bufferScaleIndicators;
 	
 	NFVServiceChain(ServiceChainConfig serviceChainConfig){
 		this.serviceChainConfig = serviceChainConfig;
@@ -69,6 +70,7 @@ public class NFVServiceChain {
 			Map<String, NFVNode> nodeMap = new HashMap<String, NFVNode>();
 			this.bufferNodeMaps.add(nodeMap);
 		}
+		this.bufferScaleIndicators = new boolean[this.serviceChainConfig.stages.size()];
 	}
 	
 
@@ -371,6 +373,10 @@ public class NFVServiceChain {
 	
 	public synchronized void setScaleIndicator(int stage, boolean val){
 		this.scaleIndicators[stage] = val;
+	}
+	
+	public synchronized void setBufferScaleIndicator(int stage, boolean val){
+		this.bufferScaleIndicators[stage] = val;
 	}
 	
 	public synchronized int getNodeWithLeastFlows(int stageIndex, 

@@ -161,7 +161,12 @@ public class ServiceChainHandler extends MessageProcessor {
 		
 			String managementIp = request.getManagementIp();
 			Socket subscriber1 = reply.getSubscriber1();
-			this.serviceChainMap.get(serviceChainName).setScaleIndicator(vmInstance.stageIndex, false);
+			if(!vmInstance.isBufferNode){
+				this.serviceChainMap.get(serviceChainName).setScaleIndicator(vmInstance.stageIndex, false);
+			}
+			else{
+				this.serviceChainMap.get(serviceChainName).setBufferScaleIndicator(vmInstance.stageIndex, false);
+			}
 			this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 		}
 		else{
@@ -191,7 +196,12 @@ public class ServiceChainHandler extends MessageProcessor {
 		String managementIp = vmInstance.managementIp;
 		Socket subscriber1 = request.getSocket1();
 		Socket subscriber2 = request.getSocket2();
-		this.serviceChainMap.get(serviceChainName).setScaleIndicator(vmInstance.stageIndex, false);
+		if(!vmInstance.isBufferNode){
+			this.serviceChainMap.get(serviceChainName).setScaleIndicator(vmInstance.stageIndex, false);
+		}
+		else{
+			this.serviceChainMap.get(serviceChainName).setBufferScaleIndicator(vmInstance.stageIndex, false);
+		}
 		this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 		this.poller.register(new Pair<String, Socket>(managementIp+":2", subscriber2));
 	}
@@ -203,6 +213,22 @@ public class ServiceChainHandler extends MessageProcessor {
 		for(String chainName : this.serviceChainMap.keySet()){
 			NFVServiceChain chain = this.serviceChainMap.get(chainName);
 			synchronized(chain){
+				if(chain.hasNode(managementIp)){
+					NFVNode node = chain.getNode(managementIp);
+					if(node.vmInstance.isBufferNode){
+						chain.updateDataNodeStat(managementIp, statList);
+						if(node.getState() == NFVNode.OVERLOAD){
+							chain.setBufferScaleIndicator(node.vmInstance.stageIndex, true);
+							AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
+									                  node.vmInstance.serviceChainConfig.name,
+									                              node.vmInstance.stageIndex, true);
+							Pending pending = new Pending(1, null);
+							this.pendingMap.put(newRequest.getUUID(), pending);
+							this.mh.sendTo("vmAllocator", newRequest);
+						}
+						break;
+					}
+				}
 				if(chain.hasNode(managementIp)&&(chain.serviceChainConfig.nVmInterface==3)){
 					chain.updateDataNodeStat(managementIp, statList);
 					
