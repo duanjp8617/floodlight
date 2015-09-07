@@ -32,10 +32,11 @@ public class HostServer {
 		public final String operationIp;
 		
 		public final HostServer hostServer;
+		public final boolean isBufferNode;
 		
 		public VmInstance(HostServerConfig hConfig, ServiceChainConfig sConfig, ControllerConfig cConfig,
 				   int stageIndex, String vmName,String managementMac, String managementIp, 
-				   String operationMac, String operationIp, HostServer hostServer){
+				   String operationMac, String operationIp, HostServer hostServer, boolean isBufferNode){
 			this.stageIndex = stageIndex;
 			this.vmName = vmName;
 			
@@ -53,11 +54,12 @@ public class HostServer {
 			this.operationIp = operationIp;
 			
 			this.hostServer = hostServer;
+			this.isBufferNode = isBufferNode;
 		}
 		
 		public VmInstance(HostServerConfig hConfig, ServiceChainConfig sConfig, ControllerConfig cConfig,
 				   int stageIndex, String vmName, String managementMac, String managementIp, 
-				   List<String> macList, List<String> dpidList, HostServer hostServer){
+				   List<String> macList, List<String> dpidList, HostServer hostServer, boolean isBufferNode){
 			this.stageIndex = stageIndex;
 			this.vmName = vmName;
 			
@@ -82,6 +84,7 @@ public class HostServer {
 			this.bridgeDpidList.add(dpidList.get(this.stageIndex+1));
 			
 			this.hostServer = hostServer;
+			this.isBufferNode = isBufferNode;
 		}
 		
 		public StageVmInfo getStageVmInfo(){
@@ -207,7 +210,7 @@ public class HostServer {
 		this.tunnelPort = 10;
 	}
 	
-	public VmInstance allocateVmInstance(String chainName, int stageIndex){
+	public VmInstance allocateVmInstance(String chainName, int stageIndex, boolean isBufferNode){
 		if(allocation.allocate(serviceChainConfigMap.get(chainName), stageIndex)){
 			ServiceChainConfig chainConfig = serviceChainConfigMap.get(chainName);
 			VmInstance newVm;
@@ -223,7 +226,7 @@ public class HostServer {
 				
 				newVm = new VmInstance(this.hostServerConfig, chainConfig, this.controllerConfig,
 						stageIndex,vmName, managementPair.first, managementPair.second, 
-						operationPair.first, operationPair.second, this);
+						operationPair.first, operationPair.second, this, isBufferNode);
 			}
 			else{
 				ArrayList<String> macAddrList = new ArrayList<String>();
@@ -238,7 +241,7 @@ public class HostServer {
 				
 				newVm = new VmInstance(this.hostServerConfig, chainConfig, this.controllerConfig,
 						stageIndex,vmName, managementPair.first, managementPair.second,
-						macAddrList, this.serviceChainDpidMap.get(chainName), this);
+						macAddrList, this.serviceChainDpidMap.get(chainName), this, isBufferNode);
 			}
 			
 			return newVm;

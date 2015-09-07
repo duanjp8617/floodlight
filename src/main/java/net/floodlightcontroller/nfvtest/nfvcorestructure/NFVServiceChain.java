@@ -24,6 +24,8 @@ public class NFVServiceChain {
 	public final long[] scaleDownCounter;
 	public final List<Map<String, Integer>> scaleDownList;
 	
+	private final List<Map<String, NFVNode>> bufferNodeMaps;
+	
 	NFVServiceChain(ServiceChainConfig serviceChainConfig){
 		this.serviceChainConfig = serviceChainConfig;
 		this.nfvNodeMaps = new ArrayList<Map<String, NFVNode>>();
@@ -61,6 +63,12 @@ public class NFVServiceChain {
 			this.scaleDownList.add(nodeMap);
 			scaleDownCounter[i] = -1;
 		}
+		
+		this.bufferNodeMaps = new ArrayList<Map<String, NFVNode>>();
+		for(int i=0; i<this.serviceChainConfig.stages.size(); i++){
+			Map<String, NFVNode> nodeMap = new HashMap<String, NFVNode>();
+			this.bufferNodeMaps.add(nodeMap);
+		}
 	}
 	
 
@@ -68,7 +76,13 @@ public class NFVServiceChain {
 		if(node.vmInstance.serviceChainConfig.name == serviceChainConfig.name){
 			Map<String, NFVNode> stageMap = this.nfvNodeMaps.get(node.vmInstance.stageIndex);
 			if(stageMap.size() == 0){
-				stageMap.put(node.getManagementIp(), node);
+				if(!node.vmInstance.isBufferNode){
+					stageMap.put(node.getManagementIp(), node);
+				}
+				else{
+					Map<String, NFVNode> bufferMap = this.bufferNodeMaps.get(node.vmInstance.stageIndex);
+					bufferMap.put(node.getManagementIp(), node);
+				}
 				this.managementIpNodeMap.put(node.getManagementIp(), node);
 				
 				this.baseNodeIpList.set(node.vmInstance.stageIndex, node.getManagementIp());
@@ -80,7 +94,13 @@ public class NFVServiceChain {
 			}
 			else{
 				if(!stageMap.containsKey(node.getManagementIp())){
-					stageMap.put(node.getManagementIp(), node);
+					if(!node.vmInstance.isBufferNode){	
+						stageMap.put(node.getManagementIp(), node);
+					}
+					else{
+						Map<String, NFVNode> bufferMap = this.bufferNodeMaps.get(node.vmInstance.stageIndex);
+						bufferMap.put(node.getManagementIp(), node);
+					}
 					this.managementIpNodeMap.put(node.getManagementIp(), node);
 					
 					if(this.serviceChainConfig.nVmInterface == 3){
@@ -97,7 +117,13 @@ public class NFVServiceChain {
 			Map<String, NFVNode> stageMap = this.nfvNodeMaps.get(node.vmInstance.stageIndex);
 			if( (stageMap.containsKey(node.getManagementIp())) && 
 			    (node.getManagementIp()!=this.baseNodeIpList.get(node.vmInstance.stageIndex)) ){
-				stageMap.remove(node.getManagementIp());
+				if(!node.vmInstance.isBufferNode){
+					stageMap.remove(node.getManagementIp());
+				}
+				else{
+					Map<String, NFVNode> bufferMap = this.bufferNodeMaps.get(node.vmInstance.stageIndex);
+					bufferMap.remove(node.getManagementIp());
+				}
 				
 				this.managementIpNodeMap.remove(node.getManagementIp());
 				

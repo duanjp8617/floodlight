@@ -81,7 +81,8 @@ public class VmAllocator extends MessageProcessor {
 	private void allocateVm(AllocateVmRequest originalRequest){
 		for(HostServer hostServer : this.hostServerList){
 			VmInstance vmInstance = 
-					hostServer.allocateVmInstance(originalRequest.getChainName(), originalRequest.getStageIndex());
+					hostServer.allocateVmInstance(originalRequest.getChainName(), originalRequest.getStageIndex(),
+							                      originalRequest.getIsBufferNode());
 			if(vmInstance == null){
 				continue;
 			}

@@ -93,7 +93,15 @@ public class ServiceChainHandler extends MessageProcessor {
 		for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
 			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 												serviceChain.serviceChainConfig.name,
-												i);
+												i, false);
+			this.pendingMap.put(newRequest.getUUID(), pending);
+			this.mh.sendTo("vmAllocator", newRequest);
+		}
+		
+		for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
+			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
+												serviceChain.serviceChainConfig.name,
+												i, true);
 			this.pendingMap.put(newRequest.getUUID(), pending);
 			this.mh.sendTo("vmAllocator", newRequest);
 		}
@@ -101,7 +109,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private void allocateVm(AllocateVmRequest request){
 		AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(), request.getChainName(),
-											request.getStageIndex());
+											request.getStageIndex(), request.getIsBufferNode());
 		Pending pending = new Pending(1, null);
 		this.pendingMap.put(newRequest.getUUID(), pending);
 		this.mh.sendTo("vmAllocator", newRequest);
@@ -279,7 +287,7 @@ public class ServiceChainHandler extends MessageProcessor {
 						chain.setScaleIndicator(node.vmInstance.stageIndex, true);
 						AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 								                  node.vmInstance.serviceChainConfig.name,
-								                              node.vmInstance.stageIndex);
+								                              node.vmInstance.stageIndex, false);
 						Pending pending = new Pending(1, null);
 						this.pendingMap.put(newRequest.getUUID(), pending);
 						this.mh.sendTo("vmAllocator", newRequest);
@@ -368,7 +376,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			chain.setScaleIndicator(0, true);
 			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 	                  							chain.serviceChainConfig.name,
-	                  							0);
+	                  							0, false);
 			Pending pending = new Pending(1, null);
 			this.pendingMap.put(newRequest.getUUID(), pending);
 			this.mh.sendTo("vmAllocator", newRequest);
@@ -378,7 +386,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			chain.setScaleIndicator(1, true);
 			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 												chain.serviceChainConfig.name,
-												1);
+												1, false);
 			Pending pending = new Pending(1, null);
 			this.pendingMap.put(newRequest.getUUID(), pending);
 			this.mh.sendTo("vmAllocator", newRequest);
