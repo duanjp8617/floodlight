@@ -117,6 +117,148 @@ public class NFVNode {
 		}
 	}
 	
+	public class NFVBufferNodeProperty{
+		private final SimpleSM cpuState;
+		private final SimpleSM memState;
+		private final SimpleSM eth0RecvState;
+		private final SimpleSM eth0SendState;
+		private final SimpleSM eth1RecvState;
+		private final SimpleSM eth1SendState;
+		
+		public final CircularList<Float> cpuUsage;
+		public final CircularList<Float> memUsage;
+		public final CircularList<Long>    eth0RecvPkt;
+		public final CircularList<Long>    eth0SendPkt;
+		public final CircularList<Long>    eth1RecvPkt;
+		public final CircularList<Long>    eth1SendPkt;
+		
+		public NFVBufferNodeProperty(int listSize){
+			cpuState = new SimpleSM(listSize);
+			memState = new SimpleSM(listSize);
+			eth0RecvState = new SimpleSM(listSize);
+			eth0SendState = new SimpleSM(listSize);
+			eth1RecvState = new SimpleSM(listSize);
+			eth1SendState = new SimpleSM(listSize);
+			
+			cpuUsage = new CircularList<Float>(listSize, new Float(0));
+			memUsage = new CircularList<Float>(listSize, new Float(0));
+			eth0RecvPkt = new CircularList<Long>(listSize, new Long(0));
+			eth0SendPkt = new CircularList<Long>(listSize, new Long(0));
+			eth1RecvPkt = new CircularList<Long>(listSize, new Long(0));
+			eth1SendPkt = new CircularList<Long>(listSize, new Long(0));
+		}
+		
+		public void updateNodeProperty(Float cpuUsage, Float memUsage, 
+				  					   Long eth0RecvPkt, Long eth0SendPkt,
+				  					   Long eth1RecvPkt, Long eth1SendPkt){
+				this.cpuUsage.add(cpuUsage);
+				this.memUsage.add(memUsage);
+				this.eth0RecvPkt.add(eth0RecvPkt);
+				this.eth0SendPkt.add(eth0SendPkt);
+				this.eth1RecvPkt.add(eth1RecvPkt);
+				this.eth1SendPkt.add(eth1SendPkt);
+		}
+		
+		public int getNodeState(){
+			if(cpuUsage.getFilledUp()){
+				cpuState.updateTransientState(checkStatus(cpuUsage.getCircularList(), 
+														  new Float(30.0),
+														  new Float(60.0)));
+			}
+			if(memUsage.getFilledUp()){
+				memState.updateTransientState(checkStatus(memUsage.getCircularList(),
+														  new Float(20.0),
+														  new Float(50.0)));
+			}
+			if(eth0RecvPkt.getFilledUp()){
+				eth0RecvState.updateTransientState(checkStatus(eth0RecvPkt.getCircularList(),
+															   new Long(10000),
+															   new Long(50000)));
+			}
+			if(eth0SendPkt.getFilledUp()){
+				eth0SendState.updateTransientState(checkStatus(eth0SendPkt.getCircularList(),
+															   new Long(10000),
+															   new Long(50000)));
+			}
+			if(eth1RecvPkt.getFilledUp()){
+				eth1RecvState.updateTransientState(checkStatus(eth1RecvPkt.getCircularList(),
+															   new Long(10000),
+															   new Long(50000)));
+			}
+			if(eth1SendPkt.getFilledUp()){
+				eth1SendState.updateTransientState(checkStatus(eth1SendPkt.getCircularList(),
+															   new Long(10000),
+															   new Long(50000)));
+			}
+			
+			
+			int[] stateList = new int[6];
+			stateList[0] = cpuState.getState();
+			stateList[1] = memState.getState();
+			stateList[2] = eth0RecvState.getState();
+			stateList[3] = eth0SendState.getState();
+			stateList[4] = eth1RecvState.getState();
+			stateList[5] = eth1SendState.getState();
+			
+			int nNormal = 0;
+			int nIdle = 0;
+			
+			for(int i=0; i<6; i++){
+				if(stateList[i] == NFVNode.OVERLOAD){
+					return NFVNode.OVERLOAD;
+				}
+				else if(stateList[i] == NFVNode.NORMAL){
+					nNormal += 1;
+				}
+				else if(stateList[i] == NFVNode.IDLE){
+					nIdle += 1;
+				}
+			}
+			
+			if(nIdle == 6){
+				return NFVNode.IDLE;
+			}
+			else{
+				return NFVNode.NORMAL;
+			}
+		}
+		
+		private <E extends Comparable<E>> int checkStatus(ArrayList<E> list, E lowerT, E upperT){
+			int largerThanUpperT = 0;
+			int smallerThanLowerT = 0;
+			int inBetween = 0;
+			
+			for(E elem : list){
+				if(elem.compareTo(upperT)>0){
+					largerThanUpperT +=1;
+				}
+				else if(elem.compareTo(lowerT)<0){
+					smallerThanLowerT +=1;
+				}
+				else{
+					inBetween += 1;
+				}
+			}
+			
+			int returnVal = 0;
+			
+			if((largerThanUpperT == smallerThanLowerT)&&(largerThanUpperT == inBetween)){
+				returnVal = NFVNode.NORMAL;
+			}
+			else if((largerThanUpperT >= smallerThanLowerT)&&(largerThanUpperT >= inBetween)){
+				returnVal = NFVNode.OVERLOAD;
+			}
+			else if((inBetween>=largerThanUpperT)&&(inBetween>=smallerThanLowerT)){
+				returnVal = NFVNode.NORMAL;
+			}
+			else if((smallerThanLowerT>=inBetween)&&(smallerThanLowerT>=largerThanUpperT)){
+				returnVal = NFVNode.IDLE;
+			}
+			
+			return returnVal;
+		}
+	}
+	
 	public class NFVNodeProperty{
 		private final SimpleSM cpuState;
 		private final SimpleSM memState;
@@ -362,6 +504,7 @@ public class NFVNode {
 	public final VmInstance vmInstance;
 	
 	private NFVNodeProperty property;
+	private NFVBufferNodeProperty bufferProperty;
 	private int state;
 	private int tranState;
 	private int activeFlows;
@@ -379,6 +522,8 @@ public class NFVNode {
 		this.tranState = NFVNode.NORMAL;
 		this.activeFlows = 0;
 		logger = LoggerFactory.getLogger(NFVNode.class);
+		
+		this.bufferProperty = new NFVBufferNodeProperty(4);
 	}
 	
 	public String getChainName(){
@@ -434,9 +579,16 @@ public class NFVNode {
 		float recvInt = eth0RecvInt.floatValue();
 		stat = stat+" "+new Float(recvPkt/recvInt).toString();
 		
-		this.property.updateNodeProperty(cpuUsage, memUsage, eth0RecvInt, eth0RecvPkt, 
+		if(!this.vmInstance.isBufferNode){
+			this.property.updateNodeProperty(cpuUsage, memUsage, eth0RecvInt, eth0RecvPkt, 
 										 eth0SendInt, eth1RecvInt, eth1RecvPkt, eth1SendInt);
-		this.state = this.property.getNodeState();
+			this.state = this.property.getNodeState();
+		}
+		else{
+			this.bufferProperty.updateNodeProperty(cpuUsage, memUsage, eth0RecvPkt, eth0SendPkt, eth1RecvPkt, eth1SendPkt);
+			this.state = this.bufferProperty.getNodeState();
+		}
+		
 		
 		//if(this.vmInstance.stageIndex == 0){
 		if(this.state == NFVNode.IDLE){
