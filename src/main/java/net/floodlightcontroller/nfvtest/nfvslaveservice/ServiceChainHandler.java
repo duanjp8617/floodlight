@@ -88,7 +88,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private void initServiceChain(InitServiceChainRequset originalRequest){
 		NFVServiceChain serviceChain = originalRequest.getServiceChain();
-		Pending pending = new Pending(serviceChain.serviceChainConfig.stages.size(), 
+		Pending pending = new Pending(serviceChain.serviceChainConfig.stages.size()*2, 
 									  originalRequest);
 		for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
 			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
