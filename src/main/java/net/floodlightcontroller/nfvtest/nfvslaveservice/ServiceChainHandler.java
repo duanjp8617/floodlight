@@ -88,7 +88,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private void initServiceChain(InitServiceChainRequset originalRequest){
 		NFVServiceChain serviceChain = originalRequest.getServiceChain();
-		Pending pending = new Pending(serviceChain.serviceChainConfig.stages.size()*2, 
+		Pending pending = new Pending(serviceChain.serviceChainConfig.stages.size(), 
 									  originalRequest);
 		for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
 			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
@@ -98,13 +98,13 @@ public class ServiceChainHandler extends MessageProcessor {
 			this.mh.sendTo("vmAllocator", newRequest);
 		}
 		
-		for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
+		/*for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
 			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 												serviceChain.serviceChainConfig.name,
 												i, true);
 			this.pendingMap.put(newRequest.getUUID(), pending);
 			this.mh.sendTo("vmAllocator", newRequest);
-		}
+		}*/
 	}
 	
 	private void allocateVm(AllocateVmRequest request){
@@ -221,7 +221,7 @@ public class ServiceChainHandler extends MessageProcessor {
 							chain.setBufferScaleIndicator(node.vmInstance.stageIndex, true);
 							AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 									                  node.vmInstance.serviceChainConfig.name,
-									                              node.vmInstance.stageIndex, true);
+									                        node.vmInstance.stageIndex, true);
 							Pending pending = new Pending(1, null);
 							this.pendingMap.put(newRequest.getUUID(), pending);
 							this.mh.sendTo("vmAllocator", newRequest);
@@ -350,29 +350,6 @@ public class ServiceChainHandler extends MessageProcessor {
 					}
 					
 					break;
-					
-					/*Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
-					
-					int nOverload = 0;
-					for(String ip : stageMap.keySet()){
-						NFVNode n = stageMap.get(ip);
-						if(n.getState() == NFVNode.OVERLOAD){
-							nOverload += 1;
-						}
-					}
-					
-					if( (nOverload == stageMap.size())&&
-						    (!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
-							chain.setScaleIndicator(node.vmInstance.stageIndex, true);
-							AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
-									                  node.vmInstance.serviceChainConfig.name,
-									                              node.vmInstance.stageIndex);
-							Pending pending = new Pending(1, null);
-							this.pendingMap.put(newRequest.getUUID(), pending);
-							this.mh.sendTo("vmAllocator", newRequest);
-					}
-					
-					break;*/
 				}
 			}
 		}

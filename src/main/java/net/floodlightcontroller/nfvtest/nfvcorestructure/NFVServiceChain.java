@@ -195,24 +195,42 @@ public class NFVServiceChain {
 				}
 				else{
 					Map<String, NFVNode> bufferMap = this.bufferNodeMaps.get(i);
-					String[] nodeArray = bufferMap.keySet()
-										 .toArray(new String[bufferMap.size()]);
+					if(bufferMap.size()>0){
+						String[] nodeArray = bufferMap.keySet()
+										 	.toArray(new String[bufferMap.size()]);
 					
-					managementIp = nodeArray[0];
-					int smallestFlowNum = bufferMap.get(managementIp).getActiveFlows();
+						managementIp = nodeArray[0];
+						int smallestFlowNum = bufferMap.get(managementIp).getActiveFlows();
 					
-					for(int j=0; j<nodeArray.length; j++){
-						String tmp = nodeArray[j];
-						int flowNum = bufferMap.get(tmp).getActiveFlows();
-						if(flowNum<smallestFlowNum){
-							smallestFlowNum = flowNum;
-							managementIp = tmp;
+						for(int j=0; j<nodeArray.length; j++){
+							String tmp = nodeArray[j];
+							int flowNum = bufferMap.get(tmp).getActiveFlows();
+							if(flowNum<smallestFlowNum){
+								smallestFlowNum = flowNum;
+								managementIp = tmp;
+							}
 						}
-					}
 					
-					routeList.add(bufferMap.get(managementIp));
+						routeList.add(bufferMap.get(managementIp));
+					}
+					else{
+						 String[] nodeArray = stageMap.keySet()
+                                 .toArray(new String[stageMap.size()]);
+
+						 managementIp = nodeArray[0];
+						 int smallestFlowNum = stageMap.get(managementIp).getActiveFlows();
+
+						 for(int j=0; j<nodeArray.length; j++){
+							 String tmp = nodeArray[j];
+							 int flowNum = stageMap.get(tmp).getActiveFlows();
+							 if(flowNum<smallestFlowNum){
+								 smallestFlowNum = flowNum;
+								 managementIp = tmp;
+							 }
+						 }
+						 routeList.add(stageMap.get(managementIp));
+					}
 				}
-				
 			}
 		}
 		return routeList;
