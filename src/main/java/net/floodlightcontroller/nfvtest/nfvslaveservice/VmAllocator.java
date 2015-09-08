@@ -132,6 +132,9 @@ public class VmAllocator extends MessageProcessor {
 						this.vni = returnVal;
 					}
 					
+					oldAgent.createRouteTo(this.hostServerList.get(i), serverToAdd);
+					newAgent.createRouteTo(serverToAdd, this.hostServerList.get(i));
+					
 					oldAgent.disconnect();
 				}
 				newAgent.disconnect();

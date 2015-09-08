@@ -381,6 +381,36 @@ public class HostAgent{
 		return vniIndex;
 	}
 	
+	public boolean createRouteTo(HostServer src, HostServer dst)throws
+		IOException, UserAuthException, TransportException{
+		String dstOperationNetwork = null;
+		for(String chainName : src.serviceChainConfigMap.keySet()){
+			ServiceChainConfig chainConfig = src.serviceChainConfigMap.get(chainName);
+			if(!chainConfig.getOperationNetwork().equals("nil")){
+				dstOperationNetwork = chainConfig.getOperationNetwork();
+			}
+		}
+		if(dstOperationNetwork!=null){
+			String prefix = dstOperationNetwork.substring(0, dstOperationNetwork.lastIndexOf("."));
+			String strCmd = "sudo route add -net "+prefix+".0"+" netmask 255.255.255.0 gw "+
+							src.hostServerConfig.managementIp+" dev eth2";
+			final Session session = sshClient.startSession();
+			final Session.Command command = session.exec(strCmd);
+			command.join(10, TimeUnit.SECONDS);
+
+			if(command.getExitStatus().intValue()==0){
+				session.close();
+				return true;
+			}
+			else{
+				session.close();
+				return false;
+		
+			}
+		}
+		return false;
+	}
+	
 	public boolean createTunnelPort(String bridgeName, String dstIp, int tunnelPort, int vniIndex)throws
 		IOException, UserAuthException, TransportException{
 		
