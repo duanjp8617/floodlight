@@ -439,7 +439,7 @@ public class HostAgent{
 	
 		final Session session = sshClient.startSession();
 		final Session.Command command = session.exec("sudo ovs-vsctl add-port "+bridgeName+" "
-													 +port+" -- set interface "+port+" internal");
+													 +port+" -- set interface "+port+" type=internal");
 		command.join(60, TimeUnit.SECONDS);
 
 		if(command.getExitStatus().intValue()==0){
