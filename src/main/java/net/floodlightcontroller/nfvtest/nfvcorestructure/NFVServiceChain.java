@@ -209,22 +209,8 @@ public class NFVServiceChain {
 				else{
 					Map<String, NFVNode> bufferMap = this.bufferNodeMaps.get(i);
 					if(bufferMap.size()>0){
-						String[] nodeArray = bufferMap.keySet()
-										 	.toArray(new String[bufferMap.size()]);
-					
-						managementIp = nodeArray[0];
-						int smallestFlowNum = bufferMap.get(managementIp).getActiveFlows();
-					
-						for(int j=0; j<nodeArray.length; j++){
-							String tmp = nodeArray[j];
-							int flowNum = bufferMap.get(tmp).getActiveFlows();
-							if(flowNum<smallestFlowNum){
-								smallestFlowNum = flowNum;
-								managementIp = tmp;
-							}
-						}
-					
-						routeList.add(bufferMap.get(managementIp));
+						NFVNode bufferNode = selectFromBuffer(i);
+						routeList.add(bufferNode);
 					}
 					else{
 						 String[] nodeArray = stageMap.keySet()
@@ -247,6 +233,79 @@ public class NFVServiceChain {
 			}
 		}
 		return routeList;
+	}
+	
+	private synchronized NFVNode selectFromBuffer(int i){
+		Map<String, Integer> bufferScaleDownMap = this.bufferScaleDownList.get(i);
+		Map<String, NFVNode> bufferMap = this.bufferNodeMaps.get(i);
+		
+		HashSet<String> nonScaleDownSet = new HashSet<String>(bufferMap.keySet());
+		nonScaleDownSet.removeAll(bufferScaleDownMap.keySet());
+		
+		String[] nonScaleDownArray = nonScaleDownSet.toArray(new String[nonScaleDownSet.size()]);
+		
+		String managementIp = null;
+		
+		for(int j=0; j<nonScaleDownArray.length; j++){
+			String tmp = nonScaleDownArray[j];
+			if(bufferMap.get(tmp).getState() != NFVNode.OVERLOAD){
+				managementIp = tmp;
+				break;
+			}
+		}
+		
+		if(managementIp!=null){
+			int smallestFlowNum = bufferMap.get(managementIp).getActiveFlows();
+			
+			for(int j=0; j<nonScaleDownArray.length; j++){
+				String tmp = nonScaleDownArray[j];
+				int flowNum = bufferMap.get(tmp).getActiveFlows();
+				int state = bufferMap.get(tmp).getState();
+				if( (flowNum<smallestFlowNum) && (state!=NFVNode.OVERLOAD) ){
+					smallestFlowNum = flowNum;
+					managementIp = tmp;
+				}
+			}
+			
+			return bufferMap.get(managementIp);
+		}
+		else{
+			if(bufferScaleDownMap.size()>0){
+				String[] scaleDownArray = bufferScaleDownMap.keySet()
+					                     .toArray(new String[bufferScaleDownMap.size()]);
+				
+				managementIp = scaleDownArray[0];
+				int smallestFlowNum = bufferMap.get(managementIp).getActiveFlows();
+				
+				for(int j=0; j<scaleDownArray.length; j++){
+					String tmp = scaleDownArray[j];
+					int flowNum = bufferMap.get(tmp).getActiveFlows();
+					if(flowNum<smallestFlowNum){
+						smallestFlowNum = flowNum;
+						managementIp = tmp;
+					}
+				}
+				
+				return bufferMap.get(managementIp);
+			}
+			else{
+				String[] nodeArray = bufferMap.keySet()
+                        .toArray(new String[bufferMap.size()]);
+
+				managementIp = nodeArray[0];
+				int smallestFlowNum = bufferMap.get(managementIp).getActiveFlows();
+
+				for(int j=0; j<nodeArray.length; j++){
+					String tmp = nodeArray[j];
+					int flowNum = bufferMap.get(tmp).getActiveFlows();
+					if(flowNum<smallestFlowNum){
+						smallestFlowNum = flowNum;
+						managementIp = tmp;
+					}
+				}
+				return bufferMap.get(managementIp);
+			}
+		}
 	}
 	
 	public synchronized String getEntryDpid(){
