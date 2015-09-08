@@ -88,16 +88,11 @@ public class NFVServiceChain {
 	
 
 	public synchronized void addNodeToChain(NFVNode node){
-		if(node.vmInstance.serviceChainConfig.name == serviceChainConfig.name){
+		if((node.vmInstance.serviceChainConfig.name == serviceChainConfig.name)&&
+		   (!node.vmInstance.isBufferNode)){
 			Map<String, NFVNode> stageMap = this.nfvNodeMaps.get(node.vmInstance.stageIndex);
 			if(stageMap.size() == 0){
-				if(!node.vmInstance.isBufferNode){
-					stageMap.put(node.getManagementIp(), node);
-				}
-				else{
-					Map<String, NFVNode> bufferMap = this.bufferNodeMaps.get(node.vmInstance.stageIndex);
-					bufferMap.put(node.getManagementIp(), node);
-				}
+				stageMap.put(node.getManagementIp(), node);
 				this.managementIpNodeMap.put(node.getManagementIp(), node);
 				
 				this.baseNodeIpList.set(node.vmInstance.stageIndex, node.getManagementIp());
@@ -109,13 +104,7 @@ public class NFVServiceChain {
 			}
 			else{
 				if(!stageMap.containsKey(node.getManagementIp())){
-					if(!node.vmInstance.isBufferNode){	
-						stageMap.put(node.getManagementIp(), node);
-					}
-					else{
-						Map<String, NFVNode> bufferMap = this.bufferNodeMaps.get(node.vmInstance.stageIndex);
-						bufferMap.put(node.getManagementIp(), node);
-					}
+					stageMap.put(node.getManagementIp(), node);
 					this.managementIpNodeMap.put(node.getManagementIp(), node);
 					
 					if(this.serviceChainConfig.nVmInterface == 3){
@@ -125,21 +114,30 @@ public class NFVServiceChain {
 				}
 			}
 		}
+		
+		if((node.vmInstance.serviceChainConfig.name == serviceChainConfig.name)&&
+			(node.vmInstance.isBufferNode)){
+			Map<String, NFVNode> stageMap = this.bufferNodeMaps.get(node.vmInstance.stageIndex);
+			if(!stageMap.containsKey(node.getManagementIp())){
+				stageMap.put(node.getManagementIp(), node);
+				this.managementIpNodeMap.put(node.getManagementIp(), node);
+						
+				if(this.serviceChainConfig.nVmInterface == 3){
+					this.entryMacNodeMap.put(node.vmInstance.macList.get(0), node);
+					this.exitMacNodeMap.put(node.vmInstance.macList.get(1), node);
+				}
+			}
+		}
 	}
 	
 	public synchronized void deleteNodeFromChain(NFVNode node){
-		if(node.vmInstance.serviceChainConfig.name == serviceChainConfig.name){
-			Map<String, NFVNode> stageMap = this.nfvNodeMaps.get(node.vmInstance.stageIndex);
+		if((node.vmInstance.serviceChainConfig.name == serviceChainConfig.name)){
+			Map<String, NFVNode> stageMap = node.vmInstance.isBufferNode?
+								    this.bufferNodeMaps.get(node.vmInstance.stageIndex):
+									this.nfvNodeMaps.get(node.vmInstance.stageIndex);
 			if( (stageMap.containsKey(node.getManagementIp())) && 
 			    (node.getManagementIp()!=this.baseNodeIpList.get(node.vmInstance.stageIndex)) ){
-				if(!node.vmInstance.isBufferNode){
-					stageMap.remove(node.getManagementIp());
-				}
-				else{
-					Map<String, NFVNode> bufferMap = this.bufferNodeMaps.get(node.vmInstance.stageIndex);
-					bufferMap.remove(node.getManagementIp());
-				}
-				
+				stageMap.remove(node.getManagementIp());
 				this.managementIpNodeMap.remove(node.getManagementIp());
 				
 				if(this.serviceChainConfig.nVmInterface == 3){

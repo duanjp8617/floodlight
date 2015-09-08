@@ -1,8 +1,5 @@
 package net.floodlightcontroller.nfvtest.nfvcorestructure;
 
-import java.io.IOException;
-import java.io.StringWriter;
-import java.io.Writer;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,7 +32,6 @@ import org.projectfloodlight.openflow.types.U64;
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IOFMessageListener;
 import net.floodlightcontroller.core.IOFSwitch;
-import net.floodlightcontroller.core.IListener.Command;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
@@ -53,21 +49,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.floodlightcontroller.packet.ARP;
-import net.floodlightcontroller.packet.Ethernet;
-import net.floodlightcontroller.packet.ICMP;
-import net.floodlightcontroller.packet.IPacket;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 
-import java.util.Set;
-import java.util.Collection;
-
-import net.floodlightcontroller.learningswitch.LearningSwitch;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.InitServiceChainRequset;
 import net.floodlightcontroller.nfvtest.message.MessageHub;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.AddHostServerRequest;
-import net.floodlightcontroller.nfvtest.message.ConcreteMessage.AllocateVmRequest;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.HostInitializationRequest;
 import net.floodlightcontroller.nfvtest.nfvslaveservice.DNSUpdator;
 import net.floodlightcontroller.nfvtest.nfvslaveservice.ServiceChainHandler;
@@ -82,7 +70,6 @@ import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.HostServerConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.StageVmInfo;
 import net.floodlightcontroller.nfvtest.nfvutils.FlowTuple;
-import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 import net.floodlightcontroller.nfvtest.nfvutils.RouteTuple;
 
 import org.zeromq.ZMQ;
