@@ -94,6 +94,12 @@ public class VmWorker extends MessageProcessor{
 					agent.setBridgeDpid(chainConfig.bridges.get(i), 
 							            hostServer.serviceChainDpidMap.get(chainName).get(i));
 					agent.setController(chainConfig.bridges.get(i), hostServer.controllerConfig.managementIp);
+					
+					if(i==0){
+						//create an entry port for the first bridge.
+						agent.addPort(chainConfig.bridges.get(i), "entry");
+						agent.upPort("entry", hostServer.hostServerConfig.entryIp);
+					}
 				}
 				for(int i=0; i<chainConfig.stages.size(); i++){
 					baseImgList.add(chainConfig.getImgNameForStage(i));

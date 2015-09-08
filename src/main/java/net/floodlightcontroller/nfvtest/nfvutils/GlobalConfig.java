@@ -41,9 +41,12 @@ public class GlobalConfig {
 		public final String imgDir;
 		public final String xmlDir;
 		
+		public final String entryIp;
+		
 		public HostServerConfig(String managementIp, String internalIp, String publicIp,
 		   		   	     		int cpuCapacity, int memoryCapacity, int storageCapacity,
-		   		   	     		int interfaceSpeed, String userName, String passWord, String homeDir){
+		   		   	     		int interfaceSpeed, String userName, String passWord, String homeDir,
+		   		   	     		String entryIp){
 			this.managementIp = managementIp;
 			this.internalIp = internalIp;
 			this.publicIp = publicIp;
@@ -56,6 +59,8 @@ public class GlobalConfig {
 			this.homeDir = homeDir;
 			this.imgDir = homeDir+"/img";
 			this.xmlDir = homeDir+"/xml";
+			
+			this.entryIp = entryIp;
 		}
 		
 		public boolean equals(HostServerConfig anotherHost){

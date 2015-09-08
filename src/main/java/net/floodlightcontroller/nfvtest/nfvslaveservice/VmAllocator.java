@@ -166,7 +166,7 @@ public class VmAllocator extends MessageProcessor {
 		pending.addReply(newReply);
 		
 		if(newReply.getSuccessful()){
-			this.hostServerList.get(0).deallocateVmInstance(newRequest.getVmInstance());
+			newRequest.getVmInstance().hostServer.deallocateVmInstance(newRequest.getVmInstance());
 		}
 	}
 }

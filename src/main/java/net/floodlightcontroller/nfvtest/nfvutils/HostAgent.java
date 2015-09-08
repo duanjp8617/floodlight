@@ -434,4 +434,41 @@ public class HostAgent{
 		}
 	}
 	
+	public boolean addPort(String bridgeName, String port)throws
+	IOException, UserAuthException, TransportException{
+	
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo ovs-vsctl add-port "+bridgeName+" "
+													 +port+" -- set interface "+port+" internal");
+		command.join(60, TimeUnit.SECONDS);
+
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+	
+		}
+	}
+	
+	public boolean upPort(String port, String ip)throws
+	IOException, UserAuthException, TransportException{
+	
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo ifconfig "+port+" "+ip+" netmask 255.255.255.0 up");
+		command.join(60, TimeUnit.SECONDS);
+
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+	
+		}
+	}
+	
 }

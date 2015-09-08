@@ -173,22 +173,22 @@ public class NFVNode {
 			if(eth0RecvPkt.getFilledUp()){
 				eth0RecvState.updateTransientState(checkStatus(eth0RecvPkt.getCircularList(),
 															   new Long(10000),
-															   new Long(50000)));
+															   new Long(70000)));
 			}
 			if(eth0SendPkt.getFilledUp()){
 				eth0SendState.updateTransientState(checkStatus(eth0SendPkt.getCircularList(),
 															   new Long(10000),
-															   new Long(50000)));
+															   new Long(70000)));
 			}
 			if(eth1RecvPkt.getFilledUp()){
 				eth1RecvState.updateTransientState(checkStatus(eth1RecvPkt.getCircularList(),
 															   new Long(10000),
-															   new Long(50000)));
+															   new Long(70000)));
 			}
 			if(eth1SendPkt.getFilledUp()){
 				eth1SendState.updateTransientState(checkStatus(eth1SendPkt.getCircularList(),
 															   new Long(10000),
-															   new Long(50000)));
+															   new Long(70000)));
 			}
 			
 			
