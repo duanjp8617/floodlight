@@ -215,16 +215,83 @@ public class ServiceChainHandler extends MessageProcessor {
 			synchronized(chain){
 				if(chain.hasNode(managementIp)){
 					NFVNode node = chain.getNode(managementIp);
+					int stageIndex = node.vmInstance.stageIndex;
 					if(node.vmInstance.isBufferNode){
 						chain.updateDataNodeStat(managementIp, statList);
-						if(node.getState() == NFVNode.OVERLOAD){
-							chain.setBufferScaleIndicator(node.vmInstance.stageIndex, true);
-							AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
-									                  node.vmInstance.serviceChainConfig.name,
-									                        node.vmInstance.stageIndex, true);
-							Pending pending = new Pending(1, null);
-							this.pendingMap.put(newRequest.getUUID(), pending);
-							this.mh.sendTo("vmAllocator", newRequest);
+						
+						Map<String, NFVNode> bufferMap = chain.getBufferMap(node.vmInstance.stageIndex);
+						int nOverload = 0;
+						for(String ip : bufferMap.keySet()){
+							NFVNode n = bufferMap.get(ip);
+							if(n.getState() == NFVNode.OVERLOAD){
+								nOverload+=1;
+							}
+						}
+						
+						if(nOverload>0){
+							if(!chain.getBufferScaleIndicator(node.vmInstance.stageIndex)){
+								chain.setBufferScaleIndicator(node.vmInstance.stageIndex, true);
+								AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
+									                  	  node.vmInstance.serviceChainConfig.name,
+									                            node.vmInstance.stageIndex, true);
+								Pending pending = new Pending(1, null);
+								this.pendingMap.put(newRequest.getUUID(), pending);
+								this.mh.sendTo("vmAllocator", newRequest);
+								chain.bufferScaleDownList.get(stageIndex).clear();
+								chain.bufferScaleDownCounter[stageIndex] = -1;
+							}
+						}	
+						else{
+							if(chain.bufferScaleDownList.get(stageIndex).size()!=0){
+								Map<String, Integer> bufferScaleDownMap = 
+										                chain.bufferScaleDownList.get(stageIndex);
+								List<String> deletedNodeIndexList = new ArrayList<String>();
+								
+								for(String ip : bufferScaleDownMap.keySet()){
+									NFVNode n = chain.getNode(ip);
+									
+									if(n.getActiveFlows() == 0){
+										System.out.println("!!! ScaleDown: Node "+ip+" is deleted from the chain");
+										chain.deleteNodeFromChain(n);
+										deletedNodeIndexList.add(ip);
+										
+										//Do some other thing.
+										this.poller.unregister(n.getManagementIp());
+										DeallocateVmRequest deallocationRequest = 
+												new DeallocateVmRequest(this.getId(), n.vmInstance);
+										this.mh.sendTo("vmAllocator", deallocationRequest);
+									}
+								}
+								
+								for(int i=0; i<deletedNodeIndexList.size(); i++){
+									bufferScaleDownMap.remove(deletedNodeIndexList.get(i));
+								}
+								
+								if(bufferScaleDownMap.size() == 0){
+									chain.bufferScaleDownCounter[stageIndex] = -1;
+								}
+							}
+							else{
+								if(chain.bufferScaleDownCounter[stageIndex] == -1){
+									chain.bufferScaleDownCounter[stageIndex] = System.currentTimeMillis();
+								}
+								else{
+									if((System.currentTimeMillis()-chain.bufferScaleDownCounter[stageIndex])>=
+										                                        15000){
+										//The stage has been relatively idle for 15000s, put some 
+										//nodes to the scaleDownList
+										String[] keyArray = bufferMap.keySet()
+												                     .toArray(new String[bufferMap.size()]);
+										int numToAdd = bufferMap.size()/2;
+										for(int i=0; i<numToAdd; i++){
+											chain.bufferScaleDownList.get(stageIndex).put(keyArray[i],
+																		  new Integer(0));
+										}
+										
+										chain.bufferScaleDownCounter[stageIndex] = -1;
+									}						
+								}
+							}
 						}
 						break;
 					}

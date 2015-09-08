@@ -26,6 +26,8 @@ public class NFVServiceChain {
 	
 	private final List<Map<String, NFVNode>> bufferNodeMaps;
 	private final boolean[] bufferScaleIndicators;
+	public final long[] bufferScaleDownCounter;
+	public final List<Map<String, Integer>> bufferScaleDownList;
 	
 	NFVServiceChain(ServiceChainConfig serviceChainConfig){
 		this.serviceChainConfig = serviceChainConfig;
@@ -56,7 +58,6 @@ public class NFVServiceChain {
 		for(int i=0; i<scaleIndicators.length; i++){
 			scaleIndicators[i] = false;
 		}
-		
 		scaleDownList = new ArrayList<Map<String, Integer>>();
 		scaleDownCounter = new long[serviceChainConfig.stages.size()];
 		for(int i=0; i<this.serviceChainConfig.stages.size(); i++){
@@ -65,12 +66,24 @@ public class NFVServiceChain {
 			scaleDownCounter[i] = -1;
 		}
 		
+		
 		this.bufferNodeMaps = new ArrayList<Map<String, NFVNode>>();
 		for(int i=0; i<this.serviceChainConfig.stages.size(); i++){
 			Map<String, NFVNode> nodeMap = new HashMap<String, NFVNode>();
 			this.bufferNodeMaps.add(nodeMap);
 		}
+		
 		this.bufferScaleIndicators = new boolean[this.serviceChainConfig.stages.size()];
+		for(int i=0; i<bufferScaleIndicators.length; i++){
+			bufferScaleIndicators[i] = false;
+		}
+		bufferScaleDownList = new ArrayList<Map<String, Integer>>();
+		bufferScaleDownCounter = new long[serviceChainConfig.stages.size()];
+		for(int i=0; i<this.serviceChainConfig.stages.size(); i++){
+			Map<String, Integer> nodeMap = new HashMap<String, Integer>();
+			this.bufferScaleDownList.add(nodeMap);
+			this.bufferScaleDownCounter[i] = -1;
+		}
 	}
 	
 
@@ -453,5 +466,13 @@ public class NFVServiceChain {
 	
 	public synchronized boolean getScaleIndicator(int stage){
 		return this.scaleIndicators[stage];
+	}
+	
+	public synchronized boolean getBufferScaleIndicator(int stage){
+		return this.bufferScaleIndicators[stage];
+	}
+	
+	public synchronized Map<String, NFVNode> getBufferMap(int stageIndex){
+		return this.bufferNodeMaps.get(stageIndex);
 	}
 }
