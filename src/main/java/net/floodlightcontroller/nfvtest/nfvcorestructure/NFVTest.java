@@ -544,6 +544,39 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     			inPort = OFPort.of(currentNode.getPort(1));
     			localHostServer = currentNode.vmInstance.hostServer;
     		}
+    		
+    		//made an evil change
+    		NFVNode currentNode = routeList.get(routeList.size()-1);
+			IOFSwitch nodeSwitch = this.switchService.getSwitch(DatapathId.of(currentNode.getBridgeDpid(1)));
+			Match flowMatch = createMatch(nodeSwitch, OFPort.of(currentNode.getPort(1)), srcIp, dstIp,
+									      transportProtocol, srcPort, dstPort);
+			
+			HostServer hostServer = this.dpidHostServerMap.get(nodeSwitch.getId());
+			MacAddress dstMac = MacAddress.of(hostServer.exitMac);
+			OFPort outPort = OFPort.of(hostServer.entryExitPort);
+			
+			List<OFAction> actionList = new ArrayList<OFAction>();	
+			OFActions actions = nodeSwitch.getOFFactory().actions();
+			OFOxms oxms = nodeSwitch.getOFFactory().oxms();
+			
+			actionList.add(actions.setField(oxms.ethDst(dstMac)));
+			actionList.add(actions.output(outPort, Integer.MAX_VALUE));
+			actionList.add(actions.setField(oxms.ipv4Dst(IPv4Address.of("202.45.128.151"))));
+			
+			OFFlowMod.Builder fmb = nodeSwitch.getOFFactory().buildFlowAdd();
+			fmb.setHardTimeout(0);
+			fmb.setIdleTimeout(15);
+			fmb.setBufferId(OFBufferId.NO_BUFFER);
+			fmb.setCookie(U64.of(8617));
+			fmb.setPriority(5);
+			fmb.setOutPort(outPort);
+			fmb.setActions(actionList);
+			fmb.setMatch(flowMatch);
+			
+			Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
+			sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
+			fmb.setFlags(sfmf);
+			nodeSwitch.write(fmb.build());
     	}
     }
     
