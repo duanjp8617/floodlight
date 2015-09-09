@@ -358,7 +358,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
             	MacAddress srcMac = eth.getSourceMACAddress();
             	String switchDpid = this.serviceChain.getDpidForMac(srcMac.toString());
             	
-            	if(switchDpid != null){
+            	/*if(switchDpid != null){
             		if(!this.serviceChain.macOnRearSwitch(srcMac.toString())){
             			handleArp(eth, sw, pi);
             			return Command.STOP;
@@ -369,6 +369,28 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
             	}
             	else{
             		return Command.CONTINUE;
+            	}*/
+            	
+            	if((switchDpid != null)&&(!this.serviceChain.macOnRearSwitch(srcMac.toString()))){
+            		//comes from intermediate bridges.
+            		handleArp(eth, sw, pi, MacAddress.of(switchDpid));
+            		return Command.STOP;
+            	}
+            	if((switchDpid != null)&&(this.serviceChain.macOnRearSwitch(srcMac.toString()))){
+            		//come from the rear bridge.
+            		handleArp(eth, sw, pi, MacAddress.of(dpidHostServerMap.get(sw.getId()).exitMac));
+            		return Command.STOP;
+            	}
+            	if((dpidStageIndexMap.get(sw.getId()).intValue()==0)&&
+            	   (srcMac.equals(MacAddress.of(dpidHostServerMap.get(sw.getId()).entryMac)))){
+            		//come from the entry point.
+            		handleArp(eth, sw, pi, 
+            					  MacAddress.of(dpidHostServerMap
+            				      .get(sw.getId())
+            				      .serviceChainDpidMap
+            				      .get(this.serviceChain.serviceChainConfig.name)
+            				      .get(0)));
+            		return Command.STOP;
             	}
             }
         } 
@@ -387,14 +409,11 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         return Command.CONTINUE;
     }
     
-    private void handleArp(Ethernet eth, IOFSwitch sw, OFPacketIn pi){
+    private void handleArp(Ethernet eth, IOFSwitch sw, OFPacketIn pi, MacAddress senderMac){
     	ARP arpRequest = (ARP) eth.getPayload();
-        MacAddress srcMac = eth.getSourceMACAddress();
 
-        String switchDpid = this.serviceChain.getDpidForMac(srcMac.toString());
-        if(switchDpid != null){
-        	IPacket arpReply = new Ethernet()
-            .setSourceMACAddress(MacAddress.of(switchDpid))
+        IPacket arpReply = new Ethernet()
+            .setSourceMACAddress(senderMac)
             .setDestinationMACAddress(eth.getSourceMACAddress())
             .setEtherType(EthType.ARP)
             .setVlanID(eth.getVlanID())
@@ -406,14 +425,14 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
                 .setHardwareAddressLength((byte) 6)
                 .setProtocolAddressLength((byte) 4)
                 .setOpCode(ARP.OP_REPLY)
-                .setSenderHardwareAddress(MacAddress.of(switchDpid))
+                .setSenderHardwareAddress(senderMac)
                 .setSenderProtocolAddress(arpRequest.getTargetProtocolAddress())
                 .setTargetHardwareAddress(eth.getSourceMACAddress())
                 .setTargetProtocolAddress(arpRequest.getSenderProtocolAddress()));
         	
-        	OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
-        	List<OFAction> actions = new ArrayList<OFAction>();
-        	OFPort outPort = pi.getMatch().get(MatchField.IN_PORT);
+        OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+        List<OFAction> actions = new ArrayList<OFAction>();
+        OFPort outPort = pi.getMatch().get(MatchField.IN_PORT);
             actions.add(sw.getOFFactory().actions().buildOutput().setPort(outPort).setMaxLen(Integer.MAX_VALUE).build());
             pob.setActions(actions);
             pob.setBufferId(OFBufferId.NO_BUFFER);
@@ -421,7 +440,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
             byte[] packetData = arpReply.serialize();
             pob.setData(packetData);
             sw.write(pob.build());
-        }
     }
     
     private void serviceChainLoadBalancing(IOFSwitch sw, FloodlightContext cntx, OFPort initialInPort){
