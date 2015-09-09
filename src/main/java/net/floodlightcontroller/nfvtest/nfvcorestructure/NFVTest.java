@@ -560,8 +560,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			OFOxms oxms = nodeSwitch.getOFFactory().oxms();
 			
 			actionList.add(actions.setField(oxms.ethDst(dstMac)));
-			actionList.add(actions.output(outPort, Integer.MAX_VALUE));
 			actionList.add(actions.setField(oxms.ipv4Dst(IPv4Address.of("202.45.128.151"))));
+			actionList.add(actions.output(outPort, Integer.MAX_VALUE));
 			
 			OFFlowMod.Builder fmb = nodeSwitch.getOFFactory().buildFlowAdd();
 			fmb.setHardTimeout(0);
