@@ -23,6 +23,7 @@ public class VmAllocator extends MessageProcessor {
 	private final HashMap<UUID, Pending> pendingMap;
 	private int vni;
 	public final HashMap<DatapathId, HostServer> dpidHostServerMap;
+	public final HashMap<DatapathId, Integer> dpidStageIndexMap;
 
 	public VmAllocator(String id){
 		this.id = id;
@@ -31,6 +32,7 @@ public class VmAllocator extends MessageProcessor {
 		this.pendingMap = new HashMap<UUID, Pending>();
 		this.vni=100;
 		this.dpidHostServerMap = new HashMap<DatapathId, HostServer>();
+		this.dpidStageIndexMap = new HashMap<DatapathId, Integer>();
 	}
 	
 	
@@ -149,6 +151,7 @@ public class VmAllocator extends MessageProcessor {
 			List<String> dpidList = hostServer.serviceChainDpidMap.get(chainName);
 			for(int i=0; i<dpidList.size(); i++){
 				this.dpidHostServerMap.put(DatapathId.of(dpidList.get(i)), hostServer);
+				this.dpidStageIndexMap.put(DatapathId.of(dpidList.get(i)), new Integer(i));
 			}
 		}
 	}

@@ -134,6 +134,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	private IpAddressAllocator ipAllocator;
 	private NFVServiceChain serviceChain;
 	private HashMap<DatapathId, HostServer> dpidHostServerMap;
+	private HashMap<DatapathId, Integer> dpidStageIndexMap;
 	
 	private HashMap<FlowTuple, Integer> flowMap;
 	private HashMap<RouteTuple, String> routeMap;
@@ -191,12 +192,14 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 				new ControllerConfig("202.45.128.151", "/home/net/base-env", "basexml.xml", "networkxml.xml");
 		
 		this.hostServerConfig = 
-				new HostServerConfig("202.45.128.149", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
-						             "xx", "xx", "/home/net/nfvenv", "192.168.114.1");
+				new HostServerConfig("202.45.128.151", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
+						             "xx", "xx", "/home/net/nfvenv", "192.168.116.1", 
+						             "192.168.106.1");
 		
 		this.hostServerConfig1 = 
-				new HostServerConfig("202.45.128.151", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
-						             "xx", "xx", "/home/net/nfvenv", "192.168.116.1");
+				new HostServerConfig("202.45.128.149", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
+						             "xx", "xx", "/home/net/nfvenv", "192.168.114.1",
+						             "192.168.104.1");
 		
 		StageVmInfo vmInfo1 = new StageVmInfo(1,2*1024,2*1024,"img1.img");
 		StageVmInfo vmInfo2 = new StageVmInfo(1,2*1024,2*1024,"img2.img");
@@ -286,6 +289,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		mh.sendTo("chainHandler", m4);
 		
 		dpidHostServerMap = vmAllocator.dpidHostServerMap;
+		dpidStageIndexMap = vmAllocator.dpidStageIndexMap;
 		
 		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);
@@ -370,14 +374,14 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         } 
         
         if(pkt instanceof IPv4){
-        	IPv4 ip_pkt = (IPv4)pkt;
-       	 	int destIpAddress = ip_pkt.getDestinationAddress().getInt();
-       	 	if(destIpAddress == IPv4Address.of("192.168.57.51").getInt()){
-       	 		if(sw.getId().getLong() == DatapathId.of(this.serviceChain.getEntryDpid()).getLong()){
-       	 			serviceChainLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT));
-       	 			return Command.STOP;
-       	 		}
+        	//IPv4 ip_pkt = (IPv4)pkt;
+       	 	//int destIpAddress = ip_pkt.getDestinationAddress().getInt();
+       	 	//if(destIpAddress == IPv4Address.of("192.168.57.51").getInt()){
+       	 	if(dpidStageIndexMap.get(sw.getId()).intValue()==0){
+       	 		serviceChainLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT));
+       	 		return Command.STOP;
        	 	}
+       	 	//}
         }
         
         return Command.CONTINUE;

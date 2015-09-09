@@ -97,8 +97,14 @@ public class VmWorker extends MessageProcessor{
 					
 					if(i==0){
 						//create an entry port for the first bridge.
-						agent.addPort(chainConfig.bridges.get(i), "entry");
+						agent.addPort(chainConfig.bridges.get(i), "entry", hostServer.entryExitPort);
 						agent.upPort("entry", hostServer.hostServerConfig.entryIp);
+						hostServer.entryMac = agent.getMac(chainConfig.bridges.get(i), "entry");
+					}
+					if(i==chainConfig.bridges.size()-1){
+						agent.addPort(chainConfig.bridges.get(i), "exit", hostServer.entryExitPort);
+						agent.upPort("exit", hostServer.hostServerConfig.exitIp);
+						hostServer.exitMac = agent.getMac(chainConfig.bridges.get(i), "exit");
 					}
 				}
 				for(int i=0; i<chainConfig.stages.size(); i++){

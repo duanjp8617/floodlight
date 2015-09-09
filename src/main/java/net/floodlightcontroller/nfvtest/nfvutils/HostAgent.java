@@ -434,12 +434,14 @@ public class HostAgent{
 		}
 	}
 	
-	public boolean addPort(String bridgeName, String port)throws
+	public boolean addPort(String bridgeName, String port, int ofPort)throws
 	IOException, UserAuthException, TransportException{
 	
 		final Session session = sshClient.startSession();
 		final Session.Command command = session.exec("sudo ovs-vsctl add-port "+bridgeName+" "
-													 +port+" -- set interface "+port+" type=internal");
+													 +port+" -- set interface "+port
+													 +" type=internal ofport_request="
+													 +new Integer(ofPort).toString());
 		command.join(60, TimeUnit.SECONDS);
 
 		if(command.getExitStatus().intValue()==0){
@@ -468,6 +470,30 @@ public class HostAgent{
 			session.close();
 			return false;
 	
+		}
+	}
+	
+	public String getMac(String bridgeName, String port) throws
+	   	IOException, UserAuthException, TransportException{
+
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo ovs-ofctl show "+ bridgeName +
+							" | grep "+port);
+
+		command.join(2, TimeUnit.SECONDS);
+
+		if(command.getExitStatus().intValue()==0){
+			String result = IOUtils.readFully(command.getInputStream()).toString();
+
+			int start = result.indexOf("addr:");
+			start += 5;
+			String returnVal = result.substring(start, start+17);
+			System.out.println(returnVal);
+			return returnVal;
+		}
+		else{
+			session.close();
+			return "nil";
 		}
 	}
 	

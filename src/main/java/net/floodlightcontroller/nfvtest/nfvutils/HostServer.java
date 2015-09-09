@@ -164,6 +164,9 @@ public class HostServer {
 	
 	public final Map<String, Integer> tunnelPortMap;
 	public int tunnelPort;
+	public int entryExitPort;
+	public String entryMac;
+	public String exitMac;
 	
 	public HostServer(ControllerConfig controllerConfig,
 			   		  HostServerConfig hostServerConfig,
@@ -208,6 +211,9 @@ public class HostServer {
 		
 		this.tunnelPortMap = new HashMap<String, Integer>();
 		this.tunnelPort = 10;
+		this.entryExitPort=9;
+		this.entryMac = "nil";
+		this.exitMac = "nil";
 	}
 	
 	public VmInstance allocateVmInstance(String chainName, int stageIndex, boolean isBufferNode){
