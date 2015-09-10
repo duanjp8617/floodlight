@@ -77,7 +77,7 @@ public class NFVNode {
 	}
 	
 	
-	public class CircularList<E extends Comparable<E>>{
+	static public class CircularList<E extends Comparable<E>>{
 		private final ArrayList<E> list;
 		private final int size;
 		private int index;

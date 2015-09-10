@@ -8,6 +8,7 @@ import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
 import net.floodlightcontroller.nfvtest.message.Pending;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVNode;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVServiceChain;
+import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
 import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 
@@ -17,24 +18,34 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.zeromq.ZMQ;
+import org.zeromq.ZMQ.Context;
 import org.zeromq.ZMQ.Socket;
 
 public class ServiceChainHandler extends MessageProcessor {
 	private final HashMap<String, NFVServiceChain> serviceChainMap;
 	private final HashMap<UUID, Pending> pendingMap;
 	private NFVZmqPoller poller;
+	private final HashMap<String, HostServer> hostServerMap;
+	private final Context zmqContext;
 
-	public ServiceChainHandler(String id){
+	public ServiceChainHandler(String id, Context zmqContext){
 		this.id = id;
 		this.queue = new LinkedBlockingQueue<Message>();
 		serviceChainMap = new HashMap<String, NFVServiceChain>();
 		pendingMap = new HashMap<UUID, Pending>();
+		hostServerMap = new HashMap<String, HostServer>();
+		this.zmqContext = zmqContext;
 	}
 	
 	public void startPollerThread(){
 		poller = new NFVZmqPoller(this.mh);
 		Thread pollerThread = new Thread(this.poller);
 		pollerThread.start();
+	}
+	
+	public NFVZmqPoller getZmqPoller(){
+		return this.poller;
 	}
 	
 	@Override
@@ -83,6 +94,10 @@ public class ServiceChainHandler extends MessageProcessor {
 		if(m instanceof DNSUpdateReply){
 			DNSUpdateReply reply = (DNSUpdateReply)m;
 			handleDNSUpdateReply(reply);
+		}
+		if(m instanceof ServerToChainHandlerRequest){
+			ServerToChainHandlerRequest req = (ServerToChainHandlerRequest)m;
+			addServerToChainHandler(req);
 		}
 	}
 	
@@ -209,6 +224,10 @@ public class ServiceChainHandler extends MessageProcessor {
 	private void statUpdate(StatUpdateRequest request){
 		ArrayList<String> statList = request.getStatList();
 		String managementIp = request.getManagementIp();
+		if(this.hostServerMap.containsKey(managementIp)){
+			handleServerStat(managementIp, statList);
+			return;
+		}
 		
 		for(String chainName : this.serviceChainMap.keySet()){
 			NFVServiceChain chain = this.serviceChainMap.get(chainName);
@@ -466,5 +485,22 @@ public class ServiceChainHandler extends MessageProcessor {
 			this.pendingMap.put(newRequest.getUUID(), pending);
 			this.mh.sendTo("vmAllocator", newRequest);
 		}
+	}
+	
+	private void addServerToChainHandler(ServerToChainHandlerRequest request){
+		HostServer hostServer = request.getHostServer();
+		Socket subscriber = this.zmqContext.socket(ZMQ.SUB);
+		subscriber.connect("tcp://"+hostServer.hostServerConfig.managementIp+":"+"7776");
+		this.poller.register(new Pair<String, Socket> (hostServer.hostServerConfig.managementIp+":1"
+				                                       ,subscriber));
+		this.hostServerMap.put(hostServer.hostServerConfig.managementIp, hostServer);
+	}
+	
+	private void handleServerStat(String managementIp, ArrayList<String >statList){
+		String result = "";
+		for(int i=0; i<statList.size(); i++){
+			result += (statList.get(i))+" ";
+		}
+		System.out.println(result);
 	}
 }

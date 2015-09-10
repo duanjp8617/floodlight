@@ -168,6 +168,9 @@ public class HostServer {
 	public String entryMac;
 	public String exitMac;
 	
+	private long eth0Input;
+	private long eth0Output;
+	
 	public HostServer(ControllerConfig controllerConfig,
 			   		  HostServerConfig hostServerConfig,
 			   		  Map<String, ServiceChainConfig> serviceChainConfigMap,
@@ -214,6 +217,9 @@ public class HostServer {
 		this.entryExitPort=9;
 		this.entryMac = "nil";
 		this.exitMac = "nil";
+		
+		this.eth0Input  = 0;
+		this.eth0Output = 0;
 	}
 	
 	public VmInstance allocateVmInstance(String chainName, int stageIndex, boolean isBufferNode){

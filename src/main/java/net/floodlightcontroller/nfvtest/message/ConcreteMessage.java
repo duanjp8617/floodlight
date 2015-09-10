@@ -274,6 +274,25 @@ public class ConcreteMessage {
 		}
 	}
 	
+	static public class ServerToChainHandlerRequest extends Message{
+		private final String sourceId;
+		private final HostServer hostServer;
+		
+		public ServerToChainHandlerRequest(String sourceId, HostServer hostServer){
+			this.sourceId = sourceId;
+			this.hostServer = hostServer;
+		}
+		
+		public String getSourceId(){
+			return this.sourceId;
+		}
+		
+		public HostServer getHostServer(){
+			return this.hostServer;
+		}
+	}
+	
+	
 	//The following messages are sent to SubscriberConnector for processing.
 	static public class SubConnRequest extends Message{
 		private final String sourceId;

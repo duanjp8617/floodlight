@@ -12,6 +12,8 @@ import org.projectfloodlight.openflow.protocol.OFFlowRemoved;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
+import org.projectfloodlight.openflow.protocol.OFPortStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
@@ -54,6 +56,7 @@ import net.floodlightcontroller.packet.TCP;
 import net.floodlightcontroller.packet.UDP;
 
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.InitServiceChainRequset;
+import net.floodlightcontroller.nfvtest.message.ConcreteMessage.ServerToChainHandlerRequest;
 import net.floodlightcontroller.nfvtest.message.MessageHub;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.AddHostServerRequest;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.HostInitializationRequest;
@@ -242,11 +245,13 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		//dnsUpdator.registerWithMessageHub(mh);
 		//dnsUpdator.connect();
 		
-		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler");
+		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler", zmqContext);
 		chainHandler.registerWithMessageHub(mh);
 		chainHandler.startPollerThread();
 		
 		mh.startProcessors();
+		
+		//OFPortStatsRequest req = new OFStatsRequest();
 		
 		/*HostInitializationRequest m = new HostInitializationRequest("hehe",this.hostServer);
 		mh.sendTo("vmWorker", m);
@@ -290,6 +295,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		dpidHostServerMap = vmAllocator.dpidHostServerMap;
 		dpidStageIndexMap = vmAllocator.dpidStageIndexMap;
+		
+		ServerToChainHandlerRequest m5 = new ServerToChainHandlerRequest("hehe", this.hostServer1);
+		mh.sendTo("chainHandler", m5);
 		
 		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);
@@ -357,19 +365,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
             if (pkt instanceof ARP) {   
             	MacAddress srcMac = eth.getSourceMACAddress();
             	String switchDpid = this.serviceChain.getDpidForMac(srcMac.toString());
-            	
-            	/*if(switchDpid != null){
-            		if(!this.serviceChain.macOnRearSwitch(srcMac.toString())){
-            			handleArp(eth, sw, pi);
-            			return Command.STOP;
-            		}
-            		else{
-            			return Command.CONTINUE;
-            		}
-            	}
-            	else{
-            		return Command.CONTINUE;
-            	}*/
             	
             	if((switchDpid != null)&&(!this.serviceChain.macOnRearSwitch(srcMac.toString()))){
             		//comes from intermediate bridges.
