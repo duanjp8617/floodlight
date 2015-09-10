@@ -489,11 +489,28 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private void addServerToChainHandler(ServerToChainHandlerRequest request){
 		HostServer hostServer = request.getHostServer();
+		
 		Socket subscriber = this.zmqContext.socket(ZMQ.SUB);
+		subscriber.monitor("inproc://monitorServerConnection", ZMQ.EVENT_CONNECTED);
+		
+		Socket monitor = zmqContext.socket(ZMQ.PAIR);
+		monitor.setReceiveTimeOut(5000);
+		monitor.connect("inproc://monitorServerConnection");
+		ZMQ.Event event;	
+		
 		subscriber.connect("tcp://"+hostServer.hostServerConfig.managementIp+":"+"7776");
-		this.poller.register(new Pair<String, Socket> (hostServer.hostServerConfig.managementIp+":1"
-				                                       ,subscriber));
-		this.hostServerMap.put(hostServer.hostServerConfig.managementIp, hostServer);
+		
+		event = ZMQ.Event.recv(monitor);
+    	
+    	if((event != null)&&(event.getEvent() == ZMQ.EVENT_CONNECTED)){
+    		monitor.close();
+    		this.poller.register(new Pair<String, Socket> (hostServer.hostServerConfig.managementIp+":1"
+                    ,subscriber));
+    		this.hostServerMap.put(hostServer.hostServerConfig.managementIp, hostServer); 	
+    	}
+    	else{
+    		System.out.println("HostServer connection failure");
+    	}
 	}
 	
 	private void handleServerStat(String managementIp, ArrayList<String >statList){
