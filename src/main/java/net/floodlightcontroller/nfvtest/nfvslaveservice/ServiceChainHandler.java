@@ -504,6 +504,7 @@ public class ServiceChainHandler extends MessageProcessor {
     	
     	if((event != null)&&(event.getEvent() == ZMQ.EVENT_CONNECTED)){
     		monitor.close();
+    		subscriber.subscribe("".getBytes());
     		this.poller.register(new Pair<String, Socket> (hostServer.hostServerConfig.managementIp+":1"
                     ,subscriber));
     		this.hostServerMap.put(hostServer.hostServerConfig.managementIp, hostServer); 	
