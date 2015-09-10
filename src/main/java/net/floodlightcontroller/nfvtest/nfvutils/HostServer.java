@@ -366,7 +366,8 @@ public class HostServer {
 	}
 	
 	public void updateNodeProperty(Long eth0Input, Long eth0Output){
-		String stat = eth0Input.toString()+" "+eth0Output.toString();
+		String stat = new Float(eth0Input.floatValue()/1024/1024*8).toString()+" "
+	                            +new Float(eth0Output.floatValue()/1024/1024*8).toString();
 		this.serverProperty.updateServerProperty(eth0Input, eth0Output);
 		this.serverState  = this.serverProperty.getNodeState();
 		
