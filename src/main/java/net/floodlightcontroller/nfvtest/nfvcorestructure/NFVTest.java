@@ -191,10 +191,10 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		this.controllerConfig = 
 				new ControllerConfig("202.45.128.151", "/home/net/base-env", "basexml.xml", "networkxml.xml");
 		
-		this.hostServerConfig = 
-				new HostServerConfig("202.45.128.151", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
-						             "xx", "xx", "/home/net/nfvenv", "192.168.116.1", 
-						             "192.168.106.1");
+		//this.hostServerConfig = 
+		//		new HostServerConfig("202.45.128.151", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
+		//				             "xx", "xx", "/home/net/nfvenv", "192.168.116.1", 
+		//				             "192.168.106.1");
 		
 		this.hostServerConfig1 = 
 				new HostServerConfig("202.45.128.149", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
@@ -217,8 +217,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			
 		HashMap<String, ServiceChainConfig> map = new HashMap<String, ServiceChainConfig>();
 		map.put(this.serviceChainConfig.name, this.serviceChainConfig);
-		hostServer = new HostServer(this.controllerConfig, this.hostServerConfig, map, this.macAllocator,
-										this.ipAllocator);
+		//hostServer = new HostServer(this.controllerConfig, this.hostServerConfig, map, this.macAllocator,
+		//								this.ipAllocator);
 		hostServer1 = new HostServer(this.controllerConfig, this.hostServerConfig1, map, this.macAllocator,
 										this.ipAllocator);
 		
@@ -248,14 +248,14 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		mh.startProcessors();
 		
-		HostInitializationRequest m = new HostInitializationRequest("hehe",this.hostServer);
+		/*HostInitializationRequest m = new HostInitializationRequest("hehe",this.hostServer);
 		mh.sendTo("vmWorker", m);
 		try{
 			Thread.sleep(5000);
 		}
 		catch (Exception e){
 			e.printStackTrace();
-		}
+		}*/
 		
 		HostInitializationRequest m1 = new HostInitializationRequest("hehe",this.hostServer1);
 		mh.sendTo("vmWorker", m1);
@@ -266,14 +266,14 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			e.printStackTrace();
 		}
 		
-		AddHostServerRequest m2 = new AddHostServerRequest("hehe", this.hostServer);
+		/*AddHostServerRequest m2 = new AddHostServerRequest("hehe", this.hostServer);
 		mh.sendTo("vmAllocator", m2);
 		try{
 			Thread.sleep(200);
 		}
 		catch (Exception e){
 			e.printStackTrace();
-		}
+		}*/
 		
 		AddHostServerRequest m3 = new AddHostServerRequest("hehe", this.hostServer1);
 		mh.sendTo("vmAllocator", m3);
@@ -392,6 +392,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
             				      .get(0)));
             		return Command.STOP;
             	}
+            	return Command.CONTINUE;
             }
         } 
         
@@ -554,12 +555,15 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			HostServer hostServer = this.dpidHostServerMap.get(nodeSwitch.getId());
 			MacAddress dstMac = MacAddress.of(hostServer.exitMac);
 			OFPort outPort = OFPort.of(hostServer.entryExitPort);
+			String newSrcIp = hostServer.hostServerConfig.exitIp;
+			newSrcIp = newSrcIp.substring(0, newSrcIp.lastIndexOf(".")+1)+"5";
 			
 			List<OFAction> actionList = new ArrayList<OFAction>();	
 			OFActions actions = nodeSwitch.getOFFactory().actions();
 			OFOxms oxms = nodeSwitch.getOFFactory().oxms();
 			
 			actionList.add(actions.setField(oxms.ethDst(dstMac)));
+			actionList.add(actions.setField(oxms.ipv4Src(IPv4Address.of(newSrcIp))));
 			actionList.add(actions.setField(oxms.ipv4Dst(IPv4Address.of("202.45.128.151"))));
 			actionList.add(actions.output(outPort, Integer.MAX_VALUE));
 			
