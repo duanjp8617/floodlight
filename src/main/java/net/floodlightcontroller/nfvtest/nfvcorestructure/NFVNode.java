@@ -11,7 +11,7 @@ import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
 
 public class NFVNode {
 	
-	public class SimpleSM{
+	static public class SimpleSM{
 		private int state;
 		private final ArrayList<Integer> list;
 		private final int listSize;

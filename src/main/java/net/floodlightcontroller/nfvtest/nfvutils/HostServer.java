@@ -1,5 +1,8 @@
 package net.floodlightcontroller.nfvtest.nfvutils;
 
+import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVNode;
+import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVNode.CircularList;
+import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVNode.SimpleSM;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.*;
 import net.floodlightcontroller.nfvtest.nfvutils.MacAddressAllocator;
 import net.floodlightcontroller.nfvtest.nfvutils.FakeDhcpAllocator;
@@ -11,7 +14,86 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.ArrayList;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class HostServer {
+	public class HostServerProperty{
+		private final SimpleSM eth0InputState;
+		private final SimpleSM eth0OutputState;
+		public final CircularList<Float> eth0Input;
+		public final CircularList<Float> eth0Output;
+		
+		public HostServerProperty(int listSize){
+			this.eth0InputState = new SimpleSM(listSize);
+			this.eth0OutputState = new SimpleSM(listSize);
+			this.eth0Input = new CircularList<Float>(listSize, new Float(0));
+			this.eth0Output = new CircularList<Float>(listSize, new Float(0));
+		}
+		
+		public void updateServerProperty(Long eth0Input, Long eth0Output){
+			float eth0InputBits = (eth0Input.floatValue())/(1024*1024)*8;
+			float eth0OutputBits = (eth0Output.floatValue())/(1024*1024)*8;
+			this.eth0Input.add(new Float(eth0InputBits));
+			this.eth0Output.add(new Float(eth0OutputBits));
+		}
+		
+		public int getNodeState(){
+			if(eth0Input.getFilledUp()){
+				this.eth0InputState.updateTransientState(checkStatus(this.eth0Input.getCircularList(),
+																	 new Float(100.0),
+																	 new Float(500.0)));
+			}
+			if(eth0Output.getFilledUp()){
+				this.eth0OutputState.updateTransientState(checkStatus(this.eth0Output.getCircularList(),
+																	 new Float(100.0),
+																	 new Float(500.0)));
+			}
+			
+			if( (this.eth0OutputState.getState() == NFVNode.OVERLOAD)||
+				(this.eth0InputState.getState()==NFVNode.OVERLOAD)){
+				return NFVNode.OVERLOAD;
+			}
+			else{
+				return NFVNode.NORMAL;
+			}
+		}
+		
+		private <E extends Comparable<E>> int checkStatus(ArrayList<E> list, E lowerT, E upperT){
+			int largerThanUpperT = 0;
+			int smallerThanLowerT = 0;
+			int inBetween = 0;
+			
+			for(E elem : list){
+				if(elem.compareTo(upperT)>0){
+					largerThanUpperT +=1;
+				}
+				else if(elem.compareTo(lowerT)<0){
+					smallerThanLowerT +=1;
+				}
+				else{
+					inBetween += 1;
+				}
+			}
+			
+			int returnVal = 0;
+			
+			if((largerThanUpperT == smallerThanLowerT)&&(largerThanUpperT == inBetween)){
+				returnVal = NFVNode.NORMAL;
+			}
+			else if((largerThanUpperT >= smallerThanLowerT)&&(largerThanUpperT >= inBetween)){
+				returnVal = NFVNode.OVERLOAD;
+			}
+			else if((inBetween>=largerThanUpperT)&&(inBetween>=smallerThanLowerT)){
+				returnVal = NFVNode.NORMAL;
+			}
+			else if((smallerThanLowerT>=inBetween)&&(smallerThanLowerT>=largerThanUpperT)){
+				returnVal = NFVNode.IDLE;
+			}
+			
+			return returnVal;
+		}
+	}
 	
 	public class VmInstance {
 		public final ControllerConfig controllerConfig;
@@ -168,8 +250,9 @@ public class HostServer {
 	public String entryMac;
 	public String exitMac;
 	
-	private long eth0Input;
-	private long eth0Output;
+	private HostServerProperty serverProperty;
+	private int serverState;
+	private static Logger logger;
 	
 	public HostServer(ControllerConfig controllerConfig,
 			   		  HostServerConfig hostServerConfig,
@@ -218,8 +301,9 @@ public class HostServer {
 		this.entryMac = "nil";
 		this.exitMac = "nil";
 		
-		this.eth0Input  = 0;
-		this.eth0Output = 0;
+		this.serverProperty = new HostServerProperty(10);
+		this.serverState = NFVNode.IDLE;
+		logger = LoggerFactory.getLogger(HostServer.class);
 	}
 	
 	public VmInstance allocateVmInstance(String chainName, int stageIndex, boolean isBufferNode){
@@ -279,5 +363,24 @@ public class HostServer {
 		else{
 			return false;
 		}
+	}
+	
+	public void updateNodeProperty(Long eth0Input, Long eth0Output){
+		String stat = eth0Input.toString()+" "+eth0Output.toString();
+		this.serverProperty.updateServerProperty(eth0Input, eth0Output);
+		this.serverState  = this.serverProperty.getNodeState();
+		
+		if(this.serverState == NFVNode.OVERLOAD){
+			String output = "Server-"+this.hostServerConfig.managementIp+" is OVERLOAD: "+stat;
+			logger.info("{}", output);
+		}
+		if(this.serverState == NFVNode.NORMAL){
+			String output = "Server-"+this.hostServerConfig.managementIp+" is NORMAL: "+stat;
+			logger.info("{}", output);
+		}
+	}
+	
+	public int getState(){
+		return this.serverState;
 	}
 }

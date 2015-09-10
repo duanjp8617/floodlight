@@ -515,10 +515,15 @@ public class ServiceChainHandler extends MessageProcessor {
 	}
 	
 	private void handleServerStat(String managementIp, ArrayList<String >statList){
-		String result = "";
-		for(int i=0; i<statList.size(); i++){
-			result += (statList.get(i))+" ";
+		String eth0 = statList.get(8);
+		String[] eth0StatArray = eth0.trim().split("\\s+");
+		long eth0RecvBytes = Long.parseLong(eth0StatArray[0]);
+		long eth0SendBytes = Long.parseLong(eth0StatArray[8]);
+		if(this.hostServerMap.containsKey(managementIp)){
+			this.hostServerMap.get(managementIp).updateNodeProperty(new Long(eth0RecvBytes),
+																	new Long(eth0SendBytes));
+			
+			//Start checking whether there is bandwidth overload.
 		}
-		System.out.println(result);
 	}
 }
