@@ -245,7 +245,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		//dnsUpdator.registerWithMessageHub(mh);
 		//dnsUpdator.connect();
 		
-		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler", zmqContext);
+		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler", zmqContext, this.switchService);
 		chainHandler.registerWithMessageHub(mh);
 		chainHandler.startPollerThread();
 		
@@ -290,14 +290,22 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		}
 		
 		this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
-		InitServiceChainRequset m4 = new InitServiceChainRequset("hehe", this.serviceChain);
-		mh.sendTo("chainHandler", m4);
+		//InitServiceChainRequset m4 = new InitServiceChainRequset("hehe", this.serviceChain);
+		//mh.sendTo("chainHandler", m4);
 		
 		dpidHostServerMap = vmAllocator.dpidHostServerMap;
 		dpidStageIndexMap = vmAllocator.dpidStageIndexMap;
 		
 		ServerToChainHandlerRequest m5 = new ServerToChainHandlerRequest("hehe", this.hostServer1);
 		mh.sendTo("chainHandler", m5);
+		
+		try{
+			Thread.sleep(200);
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
+		chainHandler.startSwitchStatPoller();
 		
 		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);

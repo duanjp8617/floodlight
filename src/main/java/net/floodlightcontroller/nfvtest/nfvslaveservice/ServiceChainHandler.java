@@ -2,6 +2,7 @@ package net.floodlightcontroller.nfvtest.nfvslaveservice;
 
 import java.util.concurrent.LinkedBlockingQueue;
 
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.nfvtest.message.Message;
 import net.floodlightcontroller.nfvtest.message.MessageProcessor;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
@@ -26,16 +27,27 @@ public class ServiceChainHandler extends MessageProcessor {
 	private final HashMap<String, NFVServiceChain> serviceChainMap;
 	private final HashMap<UUID, Pending> pendingMap;
 	private NFVZmqPoller poller;
+	
 	private final HashMap<String, HostServer> hostServerMap;
 	private final Context zmqContext;
+	
+	private SwitchStatPoller statPoller;
+	private final IOFSwitchService switchService;
 
-	public ServiceChainHandler(String id, Context zmqContext){
+	public ServiceChainHandler(String id, Context zmqContext, IOFSwitchService switchService){
 		this.id = id;
 		this.queue = new LinkedBlockingQueue<Message>();
 		serviceChainMap = new HashMap<String, NFVServiceChain>();
 		pendingMap = new HashMap<UUID, Pending>();
 		hostServerMap = new HashMap<String, HostServer>();
 		this.zmqContext = zmqContext;
+		this.switchService = switchService;
+	}
+	
+	public void startSwitchStatPoller(){
+		this.statPoller = new SwitchStatPoller(this.mh, this.switchService, this.hostServerMap);
+		Thread thread = new Thread(this.statPoller);
+		thread.start();
 	}
 	
 	public void startPollerThread(){
