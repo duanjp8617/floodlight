@@ -370,6 +370,7 @@ public class HostAgent{
 		
 		String dstIp = dst.hostServerConfig.managementIp;
 		src.tunnelPortMap.put(dstIp, new Integer(src.tunnelPort));
+		src.portTunnelMap.put(new Integer(src.tunnelPort), dstIp);
 		
 		for(int i=0; i<srcBridgeList.size(); i++){
 			this.createTunnelPort(srcBridgeList.get(i), dstIp, src.tunnelPort, vniIndex);

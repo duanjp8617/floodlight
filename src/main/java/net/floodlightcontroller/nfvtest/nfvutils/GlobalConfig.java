@@ -12,15 +12,17 @@ public class GlobalConfig {
 		public final String xmlDir;
 		public final String xmlTemplateName;
 		public final String networkTemplateName;
+		public final int dcNum;
 		
 		public ControllerConfig(String managementIp, String homeDir, String xmlTemplateName,
-								String networkTemplateName){
+								String networkTemplateName, int dcNum){
 			this.managementIp = managementIp;
 			this.homeDir = homeDir;
 			this.imgDir = homeDir+"/img";
 			this.xmlDir = homeDir+"/xml";
 			this.xmlTemplateName = xmlTemplateName;
 			this.networkTemplateName = networkTemplateName;
+			this.dcNum = dcNum;
 		}
 	}
 	
@@ -44,10 +46,12 @@ public class GlobalConfig {
 		public final String entryIp;
 		public final String exitIp;
 		
+		public final int dcIndex;
+		
 		public HostServerConfig(String managementIp, String internalIp, String publicIp,
 		   		   	     		int cpuCapacity, int memoryCapacity, int storageCapacity,
 		   		   	     		int interfaceSpeed, String userName, String passWord, String homeDir,
-		   		   	     		String entryIp, String exitIp){
+		   		   	     		String entryIp, String exitIp, int dcIndex, int dcNum){
 			this.managementIp = managementIp;
 			this.internalIp = internalIp;
 			this.publicIp = publicIp;
@@ -63,6 +67,12 @@ public class GlobalConfig {
 			
 			this.entryIp = entryIp;
 			this.exitIp = exitIp;
+			
+			if(dcIndex>=dcNum){
+				dcIndex = 0;
+			}
+			
+			this.dcIndex = dcIndex;
 		}
 		
 		public boolean equals(HostServerConfig anotherHost){

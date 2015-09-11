@@ -245,6 +245,7 @@ public class HostServer {
 	private HostServerAllocation allocation;
 	
 	public final Map<String, Integer> tunnelPortMap;
+	public final Map<Integer, String> portTunnelMap;
 	public int tunnelPort;
 	public int entryExitPort;
 	public String entryMac;
@@ -296,6 +297,7 @@ public class HostServer {
 		}
 		
 		this.tunnelPortMap = new HashMap<String, Integer>();
+		this.portTunnelMap = new HashMap<Integer, String>();
 		this.tunnelPort = 10;
 		this.entryExitPort=9;
 		this.entryMac = "nil";

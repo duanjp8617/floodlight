@@ -192,7 +192,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         //TestHostServer testHostServer = new TestHostServer();
         //testHostServer.testVmAllocator();
 		this.controllerConfig = 
-				new ControllerConfig("202.45.128.151", "/home/net/base-env", "basexml.xml", "networkxml.xml");
+				new ControllerConfig("202.45.128.151", "/home/net/base-env",
+						             "basexml.xml", "networkxml.xml", 1);
 		
 		//this.hostServerConfig = 
 		//		new HostServerConfig("202.45.128.151", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
@@ -202,7 +203,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		this.hostServerConfig1 = 
 				new HostServerConfig("202.45.128.149", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
 						             "xx", "xx", "/home/net/nfvenv", "192.168.114.1",
-						             "192.168.104.1");
+						             "192.168.104.1", 0, this.controllerConfig.dcNum);
 		
 		StageVmInfo vmInfo1 = new StageVmInfo(1,2*1024,2*1024,"img1.img");
 		StageVmInfo vmInfo2 = new StageVmInfo(1,2*1024,2*1024,"img2.img");
