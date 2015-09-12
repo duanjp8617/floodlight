@@ -317,6 +317,9 @@ public class SwitchStatPoller implements Runnable{
 				}
 			}
 			
+			DcLinkStat dcLinkStat = new DcLinkStat("hehehe", dcNum, dcSendCopy, dcRecvCopy);
+			this.mh.sendTo("chainHandler", dcLinkStat);
+			
 			for(int i=0; i<dcNum; i++){
 				for(int j=0; j<dcNum; j++){
 					dcSend[i][j]=0;

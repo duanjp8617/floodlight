@@ -111,27 +111,30 @@ public class ServiceChainHandler extends MessageProcessor {
 			ServerToChainHandlerRequest req = (ServerToChainHandlerRequest)m;
 			addServerToChainHandler(req);
 		}
+		if(m instanceof DcLinkStat){
+			handleDcLinkStat((DcLinkStat)m);
+		}
 	}
 	
 	private void initServiceChain(InitServiceChainRequset originalRequest){
 		NFVServiceChain serviceChain = originalRequest.getServiceChain();
 		Pending pending = new Pending(serviceChain.serviceChainConfig.stages.size(), 
 									  originalRequest);
-		/*for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
+		for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
 			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 												serviceChain.serviceChainConfig.name,
 												i, false);
 			this.pendingMap.put(newRequest.getUUID(), pending);
 			this.mh.sendTo("vmAllocator", newRequest);
-		}*/
+		}
 		
-		for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
+		/*for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
 			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 												serviceChain.serviceChainConfig.name,
 												i, true);
 			this.pendingMap.put(newRequest.getUUID(), pending);
 			this.mh.sendTo("vmAllocator", newRequest);
-		}
+		}*/
 	}
 	
 	private void allocateVm(AllocateVmRequest request){
@@ -537,5 +540,10 @@ public class ServiceChainHandler extends MessageProcessor {
 			
 			//Start checking whether there is bandwidth overload.
 		}
+	}
+	
+	private void handleDcLinkStat(DcLinkStat request){
+		//Transform the request into a binary graph.
+		
 	}
 }

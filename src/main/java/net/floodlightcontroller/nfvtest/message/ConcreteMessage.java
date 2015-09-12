@@ -435,37 +435,31 @@ public class ConcreteMessage {
 	//The following messages are sent from SwitchStatPoller
 	static public class DcLinkStat extends Message{
 		private final String sourceId;
-		private final int fromDc;
-		private final int toDc;
-		private final float sendSpeed;
-		private final float recvSpeed;
+		private final int size;
+		private final float[][] dcSendSpeed;
+		private final float[][] dcRecvSpeed;
 		
-		public DcLinkStat(String sourceId, int fromDc, int toDc, float sendSpeed, float recvSpeed){
+		public DcLinkStat(String sourceId, int size, float[][] dcSendSpeed, float[][] dcRecvSpeed){
 			this.sourceId = sourceId;
-			this.fromDc = fromDc;
-			this.toDc = toDc;
-			this.sendSpeed = sendSpeed;
-			this.recvSpeed = recvSpeed;
+			this.size = size;
+			this.dcSendSpeed = dcSendSpeed;
+			this.dcRecvSpeed = dcRecvSpeed;
 		}
 		
 		public String getSourceId(){
 			return this.sourceId;
 		}
 		
-		public int getFromDc(){
-			return this.fromDc;
+		public int getSize(){
+			return this.size;
 		}
 		
-		public int getToDc(){
-			return this.toDc;
+		public float[][] getDcSendSpeed(){
+			return this.dcSendSpeed;
 		}
 		
-		public float getSendSpeed(){
-			return this.sendSpeed;
-		}
-		
-		public float getRecvSpeed(){
-			return this.recvSpeed;
+		public float[][] getDcRecvSpeed(){
+			return this.dcRecvSpeed;
 		}
 	}
 }
