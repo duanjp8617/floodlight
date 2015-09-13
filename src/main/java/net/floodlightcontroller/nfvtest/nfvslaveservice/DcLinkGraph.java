@@ -1,12 +1,13 @@
 package net.floodlightcontroller.nfvtest.nfvslaveservice;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVNode;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVNode.SimpleSM;
 import net.floodlightcontroller.nfvtest.nfvutils.Dijkstra;
 
-
+import java.util.LinkedList;
 
 public class DcLinkGraph {
  
@@ -29,7 +30,7 @@ public class DcLinkGraph {
 		}
 	}
 	
-	public void updateDcLinkState(float[][] dcSend, float[][] dcRecv, int dcNum){
+	public synchronized void updateDcLinkState(float[][] dcSend, float[][] dcRecv, int dcNum){
 		
 		if(dcNum!=this.dcNum){
 			return;
@@ -70,9 +71,11 @@ public class DcLinkGraph {
 					if((dcLinkState[i][j].getState()==NFVNode.IDLE)&&
 					   (dcLinkState[j][i].getState()==NFVNode.IDLE)){
 						this.dcLinkGraph[i][j] = 1;
+						this.dcLinkGraph[j][i] = 1;
 					}
 					else{
 						this.dcLinkGraph[i][j] = 0;
+						this.dcLinkGraph[j][i] = 0;
 					}
 				}
 			}
@@ -80,8 +83,66 @@ public class DcLinkGraph {
 	}
 	
 	public synchronized List<Integer> getPath(int src, int dst){
-		this.dijkstra.contructGraph(this.dcLinkGraph, this.dcNum);
-		return this.dijkstra.computePath(src, dst);
+		if((src>=this.dcNum)||(src<0)){
+			return null;
+		}
+		if((dst>=this.dcNum)||(dst<0)){
+			return null;
+		}
+		
+		LinkedList<Integer> queue = new LinkedList<Integer>();
+		boolean[] checkedNodes = new boolean[this.dcNum];
+		for(int i=0; i<this.dcNum; i++){
+			checkedNodes[i] = false;
+		}
+		
+		int[] generatedTree = new int[this.dcNum];
+		for(int i=0; i<this.dcNum; i++){
+			generatedTree[i] = i;
+		}
+		
+		queue.add(new Integer(src));
+		checkedNodes[src] = true;
+		
+		while(!queue.isEmpty()){
+			Integer head = queue.pop();
+			int headIndex = head.intValue();
+			
+			for(int i=0; i<this.dcNum; i++){
+				if(i==headIndex){
+					continue;
+				}
+				else{
+					if((!checkedNodes[i])&&(this.dcLinkGraph[headIndex][i]==1)){
+						generatedTree[i] = headIndex;
+						queue.add(new Integer(i));
+						checkedNodes[i] = true;
+					}
+				}
+			}
+		}
+		
+		if(generatedTree[dst] == dst){
+			List<Integer> returnList = new ArrayList<Integer>();
+			returnList.add(new Integer(src));
+			returnList.add(new Integer(dst));
+			return returnList;
+		}
+		else{
+			List<Integer> returnList = new ArrayList<Integer>();
+			returnList.add(new Integer(dst));
+			int current = dst;
+			while(generatedTree[current]!=current){
+				current = generatedTree[current];
+				returnList.add(new Integer(current));
+			}
+			for(int i=0; i<(returnList.size()/2); i++){
+				//switch i and returnList.size()-1-i
+				Integer tmp = returnList.get(returnList.size()-1-i);
+				returnList.set(returnList.size()-1-i, returnList.get(i));
+				returnList.set(i, tmp);
+			}
+			return returnList;
+		}
 	}
-	
 }

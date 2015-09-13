@@ -33,6 +33,9 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private SwitchStatPoller statPoller;
 	private final IOFSwitchService switchService;
+	
+	//private final HashMap<Integer, HashMap<String, HostServer>> dcHostServerMap;
+	//private final HashMap<>
 
 	public ServiceChainHandler(String id, Context zmqContext, IOFSwitchService switchService){
 		this.id = id;

@@ -24,6 +24,8 @@ public class VmAllocator extends MessageProcessor {
 	private int vni;
 	public final HashMap<DatapathId, HostServer> dpidHostServerMap;
 	public final HashMap<DatapathId, Integer> dpidStageIndexMap;
+	
+	//private final HashMap<Integer, HashMap<String, HostServer>> dcHostServerMap;
 
 	public VmAllocator(String id){
 		this.id = id;
