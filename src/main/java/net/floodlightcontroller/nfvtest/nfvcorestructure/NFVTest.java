@@ -290,7 +290,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			e.printStackTrace();
 		}
 		
-		this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
+		this.serviceChain = new NFVServiceChain(this.serviceChainConfig, this.controllerConfig);
 		//InitServiceChainRequset m4 = new InitServiceChainRequset("hehe", this.serviceChain);
 		//mh.sendTo("chainHandler", m4);
 		

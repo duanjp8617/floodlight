@@ -146,12 +146,15 @@ public class ConcreteMessage {
 		private final String chainName;
 		private final int stageIndex;
 		private final boolean isBufferNode;
+		private final int dcIndex;
 		
-		public AllocateVmRequest(String sourceId, String chainName, int stageIndex, boolean isBufferNode){
+		public AllocateVmRequest(String sourceId, String chainName, int stageIndex, 
+				                 boolean isBufferNode, int dcIndex){
 			this.sourceId = sourceId;
 			this.chainName = chainName;
 			this.stageIndex = stageIndex;
 			this.isBufferNode = isBufferNode;
+			this.dcIndex = dcIndex;
 		}
 		
 		public String getSourceId(){
@@ -168,6 +171,10 @@ public class ConcreteMessage {
 		
 		public boolean getIsBufferNode(){
 			return this.isBufferNode;
+		}
+		
+		public int getDcIndex(){
+			return this.dcIndex;
 		}
 	}
 	

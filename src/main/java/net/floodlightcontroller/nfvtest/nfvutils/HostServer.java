@@ -255,6 +255,8 @@ public class HostServer {
 	private int serverState;
 	private static Logger logger;
 	
+	private final Map<String, List<Map<String, VmInstance>>> chainVmMap;
+	
 	public HostServer(ControllerConfig controllerConfig,
 			   		  HostServerConfig hostServerConfig,
 			   		  Map<String, ServiceChainConfig> serviceChainConfigMap,
@@ -306,6 +308,17 @@ public class HostServer {
 		this.serverProperty = new HostServerProperty(10);
 		this.serverState = NFVNode.IDLE;
 		logger = LoggerFactory.getLogger(HostServer.class);
+		
+		this.chainVmMap = new HashMap<String, List<Map<String, VmInstance>>>();
+		for(String chainName : this.serviceChainConfigMap.keySet()){
+			ServiceChainConfig chainConfig = this.serviceChainConfigMap.get(chainName);
+			List<Map<String, VmInstance>> vmListMap = new ArrayList<Map<String, VmInstance>>();
+			for(int i=0; i<chainConfig.stages.size(); i++){
+				Map<String, VmInstance> vmMap = new HashMap<String, VmInstance>();
+				vmListMap.add(vmMap);
+			}
+			this.chainVmMap.put(chainName, vmListMap);
+		}
 	}
 	
 	public VmInstance allocateVmInstance(String chainName, int stageIndex, boolean isBufferNode){
@@ -344,6 +357,7 @@ public class HostServer {
 						macAddrList, this.serviceChainDpidMap.get(chainName), this, isBufferNode);
 			}
 			
+			this.chainVmMap.get(chainName).get(stageIndex).put(newVm.managementIp, newVm);			
 			return newVm;
 		}
 		else{
@@ -360,6 +374,10 @@ public class HostServer {
 				Pair<String, String> operationPair = new Pair<String, String>(vm.operationMac, vm.operationIp);
 				this.serviceChainONetworkMap.get(vm.serviceChainConfig.name).deallocateMacIp(operationPair);
 			}
+			
+			String chainName = vm.serviceChainConfig.name;
+			int stageIndex = vm.stageIndex;
+			this.chainVmMap.get(chainName).get(stageIndex).remove(vm.managementIp);
 			return true;
 		}
 		else{
@@ -385,5 +403,17 @@ public class HostServer {
 	
 	public int getState(){
 		return this.serverState;
+	}
+	
+	public String containsNode(String chainName, int stageIndex){
+		if(!this.chainVmMap.get(chainName).get(stageIndex).isEmpty()){
+			String[] ips = this.chainVmMap.get(chainName).get(stageIndex).keySet()
+					           .toArray(
+					           new String[this.chainVmMap.get(chainName).get(stageIndex).size()]);
+			return ips[0];
+		}
+		else{
+			return null;
+		}
 	}
 }
