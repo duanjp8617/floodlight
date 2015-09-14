@@ -17,7 +17,7 @@ public class DcLinkGraph {
 	
 	public final int[][] dcLinkGraph;
 	
-	DcLinkGraph(int dcNum){
+	public DcLinkGraph(int dcNum){
 		this.dcLinkState = new SimpleSM[dcNum][dcNum];
 		this.dcNum = dcNum;
 		this.dijkstra = new Dijkstra();

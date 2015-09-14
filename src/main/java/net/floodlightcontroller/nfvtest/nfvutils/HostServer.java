@@ -404,16 +404,4 @@ public class HostServer {
 	public int getState(){
 		return this.serverState;
 	}
-	
-	/*public String containsNode(String chainName, int stageIndex){
-		if(!this.chainVmMap.get(chainName).get(stageIndex).isEmpty()){
-			String[] ips = this.chainVmMap.get(chainName).get(stageIndex).keySet()
-					           .toArray(
-					           new String[this.chainVmMap.get(chainName).get(stageIndex).size()]);
-			return ips[0];
-		}
-		else{
-			return null;
-		}
-	}*/
 }

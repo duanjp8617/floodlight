@@ -4,7 +4,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import net.floodlightcontroller.nfvtest.message.Message;
 import net.floodlightcontroller.nfvtest.message.MessageProcessor;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
-import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.HostAgent;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.*;
@@ -30,7 +29,7 @@ public class VmAllocator extends MessageProcessor {
 	private final HashMap<Integer, TreeMap<TreeMapKey, HostServer>> serverLoadMap;
 	private final HashMap<String, HostServer> hostServerMap;
 	
-	private final HashMap<String, HashMap<String, List<HashMap<String, VmInstance>>>> serverVmMap;
+	//private final HashMap<String, HashMap<String, List<HashMap<String, VmInstance>>>> serverVmMap;
 	
 	public class TreeMapKey implements Comparable<TreeMapKey>{
 		public final Integer vmNum;
@@ -65,7 +64,7 @@ public class VmAllocator extends MessageProcessor {
 		this.hostServerMap = new HashMap<String, HostServer>();
 		this.serverLoadMap = new HashMap<Integer, TreeMap<TreeMapKey, HostServer>>();
 		
-		this.serverVmMap = new HashMap<String, HashMap<String, List<HashMap<String, VmInstance>>>>();
+		//this.serverVmMap = new HashMap<String, HashMap<String, List<HashMap<String, VmInstance>>>>();
 	}
 	
 	
@@ -125,15 +124,16 @@ public class VmAllocator extends MessageProcessor {
 						                      originalRequest.getIsBufferNode());
 		
 		while(vmInstance==null){
+			if(currentKey.compareTo(serverLoadTMap.firstKey()) == 0){
+				break;
+			}
+			
 			currentKey = serverLoadTMap.lowerKey(currentKey);
 			hostServer = serverLoadTMap.get(currentKey);
 			
 			vmInstance = 
 				hostServer.allocateVmInstance(originalRequest.getChainName(), originalRequest.getStageIndex(),
 							                  originalRequest.getIsBufferNode());
-			if(currentKey.compareTo(serverLoadTMap.firstKey()) == 0){
-				break;
-			}
 		}
 		
 		if(vmInstance!=null){
@@ -149,25 +149,27 @@ public class VmAllocator extends MessageProcessor {
 		}
 		else{
 			//do something to notify the sender of out of resource.
+			AllocateVmReply originalReply = new AllocateVmReply(this.getId(), null, originalRequest);
+			this.mh.sendTo(originalRequest.getSourceId(), originalReply);
 		}
 	}
 	
-	private synchronized void deallocateVm(DeallocateVmRequest originalRequest){
+	private void deallocateVm(DeallocateVmRequest originalRequest){
 		DestroyVmRequest newRequest = new DestroyVmRequest(this.getId(), originalRequest.getVmInstance());
 		Pending pending = new Pending(1, originalRequest);
 		this.pendingMap.put(newRequest.getUUID(), pending);
 		
-		VmInstance vmInstance = originalRequest.getVmInstance();
+		/*VmInstance vmInstance = originalRequest.getVmInstance();
 		String serverIp = vmInstance.hostServerConfig.managementIp;
 		String chainName = vmInstance.serviceChainConfig.name;
 		int stageIndex = vmInstance.stageIndex;
 		this.serverVmMap.get(serverIp).get(chainName)
-		                .get(stageIndex).remove(vmInstance.managementIp);
+		                .get(stageIndex).remove(vmInstance.managementIp);*/
 		
 		this.mh.sendTo("vmWorker", newRequest);
 	}
 	
-	private synchronized void handleCreateVmReply(CreateVmReply newReply){
+	private void handleCreateVmReply(CreateVmReply newReply){
 		CreateVmRequest newRequest = newReply.getRequest();
 		Pending pending = this.pendingMap.get(newRequest.getUUID());
 		pending.addReply(newReply);
@@ -179,12 +181,12 @@ public class VmAllocator extends MessageProcessor {
 					                                newReply.getRequest().getVmInstance(), originalRequest);
 			System.out.println("Sending AllocateVmReply to: "+originalReply.getAllocateVmRequest().getSourceId());
 			
-			VmInstance vmInstance = newReply.getRequest().getVmInstance();
+			/*VmInstance vmInstance = newReply.getRequest().getVmInstance();
 			String serverIp = vmInstance.hostServerConfig.managementIp;
 			String chainName = vmInstance.serviceChainConfig.name;
 			int stageIndex = vmInstance.stageIndex;
 			this.serverVmMap.get(serverIp).get(chainName)
-			                .get(stageIndex).put(vmInstance.managementIp, vmInstance);
+			                .get(stageIndex).put(vmInstance.managementIp, vmInstance);*/
 			
 			this.mh.sendTo(originalReply.getAllocateVmRequest().getSourceId(), originalReply);
 		}
@@ -275,7 +277,7 @@ public class VmAllocator extends MessageProcessor {
 			this.serverLoadMap.get(new Integer(dcIndex)).put(key,hostServer);
 		}
 		
-		HashMap<String, List<HashMap<String, VmInstance>>> vmMap = 
+		/*HashMap<String, List<HashMap<String, VmInstance>>> vmMap = 
 				new HashMap<String, List<HashMap<String, VmInstance>>>();
 		for(String chainName : hostServer.serviceChainConfigMap.keySet()){
 			ServiceChainConfig chainConfig = hostServer.serviceChainConfigMap.get(chainName);
@@ -286,7 +288,7 @@ public class VmAllocator extends MessageProcessor {
 			}
 			vmMap.put(chainName, chainList);
 		}
-		this.serverVmMap.put(hostServer.hostServerConfig.managementIp, vmMap);
+		this.serverVmMap.put(hostServer.hostServerConfig.managementIp, vmMap);*/
 	}
 	
 	public synchronized List<String> getHostServerList(int dcIndex){

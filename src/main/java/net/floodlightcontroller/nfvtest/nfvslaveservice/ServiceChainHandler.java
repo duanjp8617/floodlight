@@ -7,6 +7,7 @@ import net.floodlightcontroller.nfvtest.message.Message;
 import net.floodlightcontroller.nfvtest.message.MessageProcessor;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
 import net.floodlightcontroller.nfvtest.message.Pending;
+import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVException;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVNode;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVServiceChain;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
@@ -36,6 +37,8 @@ public class ServiceChainHandler extends MessageProcessor {
 	private final VmAllocator vmAllocator;
 	
 	private int dcNum;
+	
+	private final DcLinkGraph dcLinkGraph;
 
 	public ServiceChainHandler(String id, Context zmqContext, IOFSwitchService switchService,
 							   VmAllocator vmAllocator){
@@ -48,6 +51,8 @@ public class ServiceChainHandler extends MessageProcessor {
 		this.switchService = switchService;
 		this.dcNum = 0;
 		this.vmAllocator = vmAllocator;
+		
+		this.dcLinkGraph = new DcLinkGraph(this.dcNum);
 	}
 	
 	public void startSwitchStatPoller(){
@@ -161,20 +166,30 @@ public class ServiceChainHandler extends MessageProcessor {
 				for(int i=0; i<newReplyList.size(); i++){
 					AllocateVmReply newReplz = (AllocateVmReply)newReplyList.get(i);
 					VmInstance vmInstance = newReplz.getVmInstance();
-					SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
+					if(vmInstance==null){
+						throw new NFVException("Fatal: not enough resource at initialization phase");
+					}
+					else{
+						SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
 																"7776", "7775", vmInstance);
-					this.mh.sendTo("subscriberConnector", request);
+						this.mh.sendTo("subscriberConnector", request);
+					}
 				}
 			}
 		}
 		else{
 			pending.addReply(newReply);
 			VmInstance vmInstance = newReply.getVmInstance();
-			String serviceChainName = vmInstance.serviceChainConfig.name;
-			if(this.serviceChainMap.containsKey(serviceChainName)){
-				SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
-						"7776", "7775", vmInstance);
-				this.mh.sendTo("subscriberConnector", request);
+			if(vmInstance == null){
+				System.out.println("Not enough resource");
+			}
+			else{
+				String serviceChainName = vmInstance.serviceChainConfig.name;
+				if(this.serviceChainMap.containsKey(serviceChainName)){
+					SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
+							"7776", "7775", vmInstance);
+					this.mh.sendTo("subscriberConnector", request);
+				}
 			}
 		}
 	}
@@ -308,11 +323,11 @@ public class ServiceChainHandler extends MessageProcessor {
 										}
 									}
 									
-									if(nodeToScaleDown==null){
+									/*if(nodeToScaleDown==null){
 										String[] ipList = stageMap.keySet()
-								                  .toArray(new String[stageMap.size()]);
+								                 .toArray(new String[stageMap.size()]);
 										nodeToScaleDown = ipList[0];
-									}
+									}*/
 									
 									chain.scaleDownList.get(dcIndex).get(stageIndex).put(nodeToScaleDown, new Integer(0));
 									System.out.println("!!!Scale Down: Node "+nodeToScaleDown+" is put into the scaleDownList");
@@ -363,6 +378,17 @@ public class ServiceChainHandler extends MessageProcessor {
 							//Let's find out which stage needs scaling.
 							controlPlaneScaleUp(chain, dcIndex);
 						}
+						if(nOverload == 0){
+							controlPlaneScaleDown(chain, dcIndex, 0);
+							controlPlaneScaleDown(chain, dcIndex, 1);
+						}
+						if((nOverload>0)&&(nOverload<stageMap.size())){
+							chain.scaleDownList.get(dcIndex).get(0).clear();
+							chain.scaleDownCounter.get(dcIndex)[0] = -1;
+							
+							chain.scaleDownList.get(dcIndex).get(1).clear();
+							chain.scaleDownCounter.get(dcIndex)[1] = -1;
+						}
 					}
 					
 					break;
@@ -412,6 +438,83 @@ public class ServiceChainHandler extends MessageProcessor {
 		}
 	}
 	
+	private void controlPlaneScaleDown(NFVServiceChain chain, int dcIndex, int stageIndex){
+		Map<String, NFVNode> stageMap = chain.getStageMap(dcIndex, stageIndex);
+		if(chain.scaleDownList.get(dcIndex).get(stageIndex).size()!=0){
+			if((System.currentTimeMillis()-
+					chain.scaleDownCounter.get(dcIndex)[stageIndex])>=15000){
+				Map<String, Integer> stageScaleDownMap = 
+					            	chain.scaleDownList.get(dcIndex).get(stageIndex);
+				List<String> deletedNodeIndexList = new ArrayList<String>();
+			
+				for(String ip : stageScaleDownMap.keySet()){
+					NFVNode n = chain.getNode(ip);
+				
+					System.out.println("!!! ScaleDown: Node "+ip+" is deleted from the chain");
+					chain.deleteNodeFromChain(n);
+					deletedNodeIndexList.add(ip);
+					
+					//Do some other thing.
+					this.poller.unregister(n.getManagementIp()+":1");
+					this.poller.unregister(n.getManagementIp()+":2");
+					DeallocateVmRequest deallocationRequest = 
+							new DeallocateVmRequest(this.getId(), n.vmInstance);
+					this.mh.sendTo("vmAllocator", deallocationRequest);
+				}
+			
+				for(int i=0; i<deletedNodeIndexList.size(); i++){
+					stageScaleDownMap.remove(deletedNodeIndexList.get(i));
+				}
+			
+				if(stageScaleDownMap.size() == 0){
+					chain.scaleDownCounter.get(dcIndex)[stageIndex] = -1;
+				}
+			}
+		}
+		else{
+			if(chain.scaleDownCounter.get(dcIndex)[stageIndex] == -1){
+				chain.scaleDownCounter.get(dcIndex)[stageIndex] = 
+						                      System.currentTimeMillis();
+			}
+			else{
+				if((System.currentTimeMillis()-
+						chain.scaleDownCounter.get(dcIndex)[stageIndex])>=15000){
+					//The stage has been relatively idle for 15000s, put some 
+					//nodes to the scaleDownList
+					List<String> serverList = this.vmAllocator.getHostServerList(dcIndex);
+					String nodeToScaleDown = null;
+					
+					for(int i=0; i<serverList.size(); i++){
+						for(String mIp : stageMap.keySet()){
+							NFVNode currentNode = stageMap.get(mIp);
+							if(currentNode.vmInstance.hostServerConfig.managementIp
+									.equals(serverList.get(i))){
+								nodeToScaleDown = mIp;
+								break;
+							}
+						}
+					}
+					
+					/*if(nodeToScaleDown==null){
+						String[] ipList = stageMap.keySet()
+				                 .toArray(new String[stageMap.size()]);
+						nodeToScaleDown = ipList[0];
+					}*/
+					
+					chain.scaleDownList.get(dcIndex).get(stageIndex).put(nodeToScaleDown, new Integer(0));
+					
+					System.out.println("!!!Scale Down: Node "+nodeToScaleDown+" is put into the scaleDownList");
+					chain.scaleDownCounter.get(dcIndex)[stageIndex] = System.currentTimeMillis();
+					
+					DNSRemoveRequest request = new DNSRemoveRequest(this.getId(),
+							           (stageIndex==0)?"bono.cw.t":"sprout.cw.t",
+						   stageMap.get(nodeToScaleDown).vmInstance.operationIp);
+					this.mh.sendTo("dnsUpdator", request);
+				}						
+			}
+		}
+	}
+	
 	private void addServerToChainHandler(ServerToChainHandlerRequest request){
 		HostServer hostServer = request.getHostServer();
 		if(this.dcNum == 0){
@@ -448,15 +551,38 @@ public class ServiceChainHandler extends MessageProcessor {
 		long eth0RecvBytes = Long.parseLong(eth0StatArray[0]);
 		long eth0SendBytes = Long.parseLong(eth0StatArray[8]);
 		if(this.hostServerMap.containsKey(managementIp)){
-			this.hostServerMap.get(managementIp).updateNodeProperty(new Long(eth0RecvBytes),
-																	new Long(eth0SendBytes));
+			HostServer hostServer = this.hostServerMap.get(managementIp);
+			hostServer.updateNodeProperty(new Long(eth0RecvBytes),new Long(eth0SendBytes));
 			
 			//Start checking whether there is bandwidth overload.
+			if(hostServer.getState()==NFVNode.OVERLOAD){
+				int dcIndex = hostServer.hostServerConfig.dcIndex;
+				
+			}
 		}
 	}
 	
 	private void handleDcLinkStat(DcLinkStat request){
 		//Transform the request into a binary graph.
+		this.dcLinkGraph.updateDcLinkState(request.getDcSendSpeed(), request.getDcRecvSpeed(), 
+										   request.getSize());
+	}
+	
+	public List<HostServer> getPath(HostServer srcServer, HostServer dstServer){
+		int src = srcServer.hostServerConfig.dcIndex;
+		int dst = dstServer.hostServerConfig.dcIndex;
+		List<HostServer> returnList = new ArrayList<HostServer>();
+		returnList.add(srcServer);
 		
+		List<Integer> dcList = this.dcLinkGraph.getPath(src, dst);
+		if(dcList.size()>2){
+			for(int i=1; i<dcList.size()-1; i++){
+				List<String> serverList = this.vmAllocator.getHostServerList(dcList.get(i).intValue());
+				returnList.add(this.hostServerMap.get(serverList.get(0)));
+			}
+		}
+		
+		returnList.add(dstServer);
+		return returnList;
 	}
 }

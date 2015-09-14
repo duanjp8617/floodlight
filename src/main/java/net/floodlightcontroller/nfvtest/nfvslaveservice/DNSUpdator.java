@@ -76,6 +76,9 @@ public class DNSUpdator extends MessageProcessor{
 			DNSUpdateRequest req = (DNSUpdateRequest)m;
 			updateDNS(req);
 		}
+		if(m instanceof DNSRemoveRequest){
+			removeDNS((DNSRemoveRequest) m);
+		}
 	}
 	
 	private void updateDNS(DNSUpdateRequest request){
@@ -98,6 +101,24 @@ public class DNSUpdator extends MessageProcessor{
 		
 		DNSUpdateReply reply = new DNSUpdateReply(this.getId(), request);
 		this.mh.sendTo(request.getSourceId(), reply);
+	}
+	
+	private void removeDNS(DNSRemoveRequest request){
+		if(request.getDomainName().equals("sprout.cw.t")){
+			this.requester.send("remove", ZMQ.SNDMORE);
+			this.requester.send(request.getDomainName(), ZMQ.SNDMORE);
+			this.requester.send(request.getIpAddress(), 0);
+			String recvResult = requester.recvStr();
+		}
+		else{
+			Socket bonoRequester = this.zmqContext.socket(ZMQ.REQ);
+			bonoRequester.connect("tcp://192.168.124.72:7773");
+			bonoRequester.send("remove",  ZMQ.SNDMORE);
+			bonoRequester.send(request.getIpAddress(), 0);
+			String recvResult = bonoRequester.recvStr();
+			bonoRequester.close();
+		}
+		
 	}
 	
 }

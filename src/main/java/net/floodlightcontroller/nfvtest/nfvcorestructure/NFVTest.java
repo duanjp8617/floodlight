@@ -61,6 +61,7 @@ import net.floodlightcontroller.nfvtest.message.MessageHub;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.AddHostServerRequest;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.HostInitializationRequest;
 import net.floodlightcontroller.nfvtest.nfvslaveservice.DNSUpdator;
+import net.floodlightcontroller.nfvtest.nfvslaveservice.DcLinkGraph;
 import net.floodlightcontroller.nfvtest.nfvslaveservice.ServiceChainHandler;
 import net.floodlightcontroller.nfvtest.nfvslaveservice.SubscriberConnector;
 import net.floodlightcontroller.nfvtest.nfvslaveservice.VmAllocator;
@@ -142,6 +143,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	private HashMap<FlowTuple, Integer> flowMap;
 	private HashMap<RouteTuple, String> routeMap;
 	
+	private ServiceChainHandler chainHandler;
+	
 	@Override
 	public String getName() {
 	    return NFVTest.class.getSimpleName();
@@ -194,7 +197,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		this.controllerConfig = 
 				new ControllerConfig("202.45.128.151", "/home/net/base-env",
 						             "basexml.xml", "networkxml.xml", 1);
-		
 		//this.hostServerConfig = 
 		//		new HostServerConfig("202.45.128.151", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
 		//				             "xx", "xx", "/home/net/nfvenv", "192.168.116.1", 
@@ -246,7 +248,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		//dnsUpdator.registerWithMessageHub(mh);
 		//dnsUpdator.connect();
 		
-		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler", zmqContext, this.switchService);
+		this.chainHandler = new ServiceChainHandler("chainHandler", zmqContext, 
+																   this.switchService, vmAllocator);
 		chainHandler.registerWithMessageHub(mh);
 		chainHandler.startPollerThread();
 		
@@ -484,11 +487,12 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         	}
  
         	OFPort inPort = initialInPort;
-        	
-    		List<NFVNode> routeList = this.serviceChain.forwardRoute();
+        
     		IOFSwitch hitSwitch = sw;
     		//here I need to know the the HostServer class that hitSwitch is on.
     		HostServer localHostServer = this.dpidHostServerMap.get(hitSwitch.getId());
+    		List<NFVNode> routeList = 
+    				this.serviceChain.forwardRoute(localHostServer.hostServerConfig.dcIndex);
     		
     		for(int i=0; i<routeList.size(); i++){
     			NFVNode currentNode = routeList.get(i);
@@ -516,32 +520,81 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     				HostServer remoteHostServer = currentNode.vmInstance.hostServer;
     				String remoteServerIp = remoteHostServer.hostServerConfig.managementIp;
     				
-    				int localPort = localHostServer.tunnelPortMap.get(remoteServerIp).intValue();
-    				int remotePort = remoteHostServer.tunnelPortMap.get(localServerIp).intValue();
+    				if(localHostServer.hostServerConfig.dcIndex!=
+    						remoteHostServer.hostServerConfig.dcIndex){
+    					List<HostServer> serverList = this.chainHandler.getPath(localHostServer, 
+    																			remoteHostServer);
+    					
+    					//currently we are on stage i.
+    					String chainName = this.serviceChain.serviceChainConfig.name;
+    					OFPort currentPort = inPort;
+    					for(int j=0; j<serverList.size()-1; j++){
+    						HostServer currentServer = serverList.get(j);
+    						String currentSwitchDpid = currentServer.serviceChainDpidMap.get(chainName).get(i);
+    						String currentServerIp = currentServer.hostServerConfig.managementIp;
+    						
+    						HostServer nextServer = serverList.get(j+1);
+    						String nextServerIp = nextServer.hostServerConfig.managementIp;
+    						
+    						IOFSwitch currentSwitch = this.switchService.getSwitch(DatapathId.of(currentSwitchDpid));
+    						
+    						int localPort = currentServer.tunnelPortMap.get(nextServerIp).intValue();
+    						int remotePort = nextServer.tunnelPortMap.get(currentServerIp).intValue();
+    						
+    						Match flowMatch = createMatch(currentSwitch, currentPort, srcIp, dstIp,
+    													  transportProtocol, srcPort, dstPort);
+    						OFFlowMod flowMod = createFlowMod(currentSwitch, flowMatch, 
+    													  MacAddress.of(currentNode.getMacAddress(0)),
+    													  OFPort.of(localPort));
+    						currentSwitch.write(flowMod);
+    						currentPort = OFPort.of(remotePort);
+    					}
+    					
+    					HostServer currentServer = serverList.get(serverList.size()-2);
+    					String currentServerIp = currentServer.hostServerConfig.managementIp;
+    					
+    					HostServer nextServer = serverList.get(serverList.size()-1);
+    					String nextSwitchDpid = nextServer.serviceChainDpidMap.get(chainName).get(i);
+    					IOFSwitch nextSwitch = this.switchService.getSwitch(DatapathId.of(nextSwitchDpid));
+    					
+    					int remotePort = nextServer.tunnelPortMap.get(currentServerIp).intValue();
+    					
+    					Match flowMatch = createMatch(nextSwitch, OFPort.of(remotePort), srcIp, dstIp,
+					                                  transportProtocol, srcPort, dstPort);
+    					OFFlowMod flowMod = createFlowMod(nextSwitch, flowMatch, 
+			                                          MacAddress.of(currentNode.getMacAddress(0)),
+			                                          OFPort.of(currentNode.getPort(0)));
+    					nextSwitch.write(flowMod);
+    				}
+    				else{
     				
-    				//first, push flow rules on hitSwitch. Without changing the mac address, push 
-    				//The flow to the localPort on hitSwitch.
-    				Match flowMatch = createMatch(hitSwitch, inPort, srcIp, dstIp,
+    					int localPort = localHostServer.tunnelPortMap.get(remoteServerIp).intValue();
+    					int remotePort = remoteHostServer.tunnelPortMap.get(localServerIp).intValue();
+    				
+    					//first, push flow rules on hitSwitch. Without changing the mac address, push 
+    					//The flow to the localPort on hitSwitch.
+    					Match flowMatch = createMatch(hitSwitch, inPort, srcIp, dstIp,
 							  					  transportProtocol, srcPort, dstPort);
-    				OFFlowMod flowMod = createFlowMod(hitSwitch, flowMatch, 
+    					OFFlowMod flowMod = createFlowMod(hitSwitch, flowMatch, 
 	                          					      MacAddress.of(currentNode.getMacAddress(0)),
 	                          					  	  OFPort.of(localPort));
-    				hitSwitch.write(flowMod);
+    					hitSwitch.write(flowMod);
     				
-    				flowMatch = createMatch(nodeSwitch, OFPort.of(remotePort), srcIp, dstIp,
+    					flowMatch = createMatch(nodeSwitch, OFPort.of(remotePort), srcIp, dstIp,
 		  					                transportProtocol, srcPort, dstPort);
-    				flowMod = createFlowMod(nodeSwitch, flowMatch, 
+    					flowMod = createFlowMod(nodeSwitch, flowMatch, 
     					                    MacAddress.of(currentNode.getMacAddress(0)),
     					                    OFPort.of(currentNode.getPort(0)));
-    				nodeSwitch.write(flowMod);
+    					nodeSwitch.write(flowMod);
     				
     				
-    				RouteTuple routeTuple = new RouteTuple(srcIp.getInt(), dstIp.getInt(), 
-    		       transportProtocol.equals(IpProtocol.TCP)?RouteTuple.TCP:RouteTuple.UDP,
+    					RouteTuple routeTuple = new RouteTuple(srcIp.getInt(), dstIp.getInt(), 
+    							transportProtocol.equals(IpProtocol.TCP)?RouteTuple.TCP:RouteTuple.UDP,
     		    								     srcPort.getPort(), dstPort.getPort(), 
     		    				   DatapathId.of(currentNode.getBridgeDpid(0)).getLong());
     		    				
-    		    	this.routeMap.put(routeTuple, currentNode.getManagementIp());
+    					this.routeMap.put(routeTuple, currentNode.getManagementIp());
+    				}
     			}
     			
     			currentNode.addActiveFlow();
