@@ -33,11 +33,12 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private SwitchStatPoller statPoller;
 	private final IOFSwitchService switchService;
+	private final VmAllocator vmAllocator;
 	
-	//private final HashMap<Integer, HashMap<String, HostServer>> dcHostServerMap;
-	//private final HashMap<>
+	private int dcNum;
 
-	public ServiceChainHandler(String id, Context zmqContext, IOFSwitchService switchService){
+	public ServiceChainHandler(String id, Context zmqContext, IOFSwitchService switchService,
+							   VmAllocator vmAllocator){
 		this.id = id;
 		this.queue = new LinkedBlockingQueue<Message>();
 		serviceChainMap = new HashMap<String, NFVServiceChain>();
@@ -45,6 +46,8 @@ public class ServiceChainHandler extends MessageProcessor {
 		hostServerMap = new HashMap<String, HostServer>();
 		this.zmqContext = zmqContext;
 		this.switchService = switchService;
+		this.dcNum = 0;
+		this.vmAllocator = vmAllocator;
 	}
 	
 	public void startSwitchStatPoller(){
@@ -121,28 +124,22 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private void initServiceChain(InitServiceChainRequset originalRequest){
 		NFVServiceChain serviceChain = originalRequest.getServiceChain();
-		Pending pending = new Pending(serviceChain.serviceChainConfig.stages.size(), 
+		Pending pending = new Pending(serviceChain.serviceChainConfig.stages.size()*this.dcNum, 
 									  originalRequest);
-		for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
-			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
+		for(int i=0; i<this.dcNum; i++){
+			for(int j=0; j<serviceChain.serviceChainConfig.stages.size(); j++){
+				AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 												serviceChain.serviceChainConfig.name,
-												i, false);
-			this.pendingMap.put(newRequest.getUUID(), pending);
-			this.mh.sendTo("vmAllocator", newRequest);
+												j, false, i);
+				this.pendingMap.put(newRequest.getUUID(), pending);
+				this.mh.sendTo("vmAllocator", newRequest);
+			}
 		}
-		
-		/*for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
-			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
-												serviceChain.serviceChainConfig.name,
-												i, true);
-			this.pendingMap.put(newRequest.getUUID(), pending);
-			this.mh.sendTo("vmAllocator", newRequest);
-		}*/
 	}
 	
 	private void allocateVm(AllocateVmRequest request){
 		AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(), request.getChainName(),
-											request.getStageIndex(), request.getIsBufferNode());
+											request.getStageIndex(), request.getIsBufferNode(), request.getDcIndex());
 		Pending pending = new Pending(1, null);
 		this.pendingMap.put(newRequest.getUUID(), pending);
 		this.mh.sendTo("vmAllocator", newRequest);
@@ -164,7 +161,6 @@ public class ServiceChainHandler extends MessageProcessor {
 				for(int i=0; i<newReplyList.size(); i++){
 					AllocateVmReply newReplz = (AllocateVmReply)newReplyList.get(i);
 					VmInstance vmInstance = newReplz.getVmInstance();
-					//serviceChain.addNodeToChain(new NFVNode(vmInstance));
 					SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
 																"7776", "7775", vmInstance);
 					this.mh.sendTo("subscriberConnector", request);
@@ -176,7 +172,6 @@ public class ServiceChainHandler extends MessageProcessor {
 			VmInstance vmInstance = newReply.getVmInstance();
 			String serviceChainName = vmInstance.serviceChainConfig.name;
 			if(this.serviceChainMap.containsKey(serviceChainName)){
-				//this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
 				SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
 						"7776", "7775", vmInstance);
 				this.mh.sendTo("subscriberConnector", request);
@@ -196,12 +191,6 @@ public class ServiceChainHandler extends MessageProcessor {
 			Socket subscriber1 = reply.getSubscriber1();
 			this.serviceChainMap.get(serviceChainName).scaleIndicators
 			    .get(vmInstance.hostServerConfig.dcIndex)[vmInstance.stageIndex]=false;
-			/*if(!vmInstance.isBufferNode){
-				this.serviceChainMap.get(serviceChainName).setScaleIndicator(vmInstance.stageIndex, false);
-			}
-			else{
-				this.serviceChainMap.get(serviceChainName).setBufferScaleIndicator(vmInstance.stageIndex, false);
-			}*/
 			this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 		}
 		else{
@@ -233,12 +222,6 @@ public class ServiceChainHandler extends MessageProcessor {
 		Socket subscriber2 = request.getSocket2();
 		this.serviceChainMap.get(serviceChainName).scaleIndicators
             .get(vmInstance.hostServerConfig.dcIndex)[vmInstance.stageIndex]=false;
-		/*if(!vmInstance.isBufferNode){
-			this.serviceChainMap.get(serviceChainName).setScaleIndicator(vmInstance.stageIndex, false);
-		}
-		else{
-			this.serviceChainMap.get(serviceChainName).setBufferScaleIndicator(vmInstance.stageIndex, false);
-		}*/
 		this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 		this.poller.register(new Pair<String, Socket>(managementIp+":2", subscriber2));
 	}
@@ -246,6 +229,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	private void statUpdate(StatUpdateRequest request){
 		ArrayList<String> statList = request.getStatList();
 		String managementIp = request.getManagementIp();
+		
 		if(this.hostServerMap.containsKey(managementIp)){
 			handleServerStat(managementIp, statList);
 			return;
@@ -254,94 +238,6 @@ public class ServiceChainHandler extends MessageProcessor {
 		for(String chainName : this.serviceChainMap.keySet()){
 			NFVServiceChain chain = this.serviceChainMap.get(chainName);
 			synchronized(chain){
-				/*if(chain.hasNode(managementIp)&&(chain.serviceChainConfig.nVmInterface==3)){
-					NFVNode node = chain.getNode(managementIp);
-					int stageIndex = node.vmInstance.stageIndex;
-					if(node.vmInstance.isBufferNode){
-						chain.updateDataNodeStat(managementIp, statList);
-						Map<String, NFVNode> bufferMap = chain.getBufferMap(node.vmInstance.stageIndex);
-						
-						int nOverload = 0;
-						for(String ip : bufferMap.keySet()){
-							NFVNode n = bufferMap.get(ip);
-							if(n.getState() == NFVNode.OVERLOAD){
-								nOverload+=1;
-							}
-						}
-						
-						if(nOverload==0){
-							if(chain.bufferScaleDownList.get(stageIndex).size()!=0){
-								Map<String, Integer> bufferScaleDownMap = 
-										                chain.bufferScaleDownList.get(stageIndex);
-								List<String> deletedNodeIndexList = new ArrayList<String>();
-								
-								for(String ip : bufferScaleDownMap.keySet()){
-									NFVNode n = chain.getNode(ip);
-									
-									if(n.getActiveFlows() == 0){
-										System.out.println("!!! BufferScaleDown: Node "+ip+" is deleted from the chain");
-										chain.deleteNodeFromChain(n);
-										deletedNodeIndexList.add(ip);
-										
-										//Do some other thing.
-										this.poller.unregister(n.getManagementIp());
-										DeallocateVmRequest deallocationRequest = 
-												new DeallocateVmRequest(this.getId(), n.vmInstance);
-										this.mh.sendTo("vmAllocator", deallocationRequest);
-									}
-								}
-								
-								for(int i=0; i<deletedNodeIndexList.size(); i++){
-									bufferScaleDownMap.remove(deletedNodeIndexList.get(i));
-								}
-								
-								if(bufferScaleDownMap.size() == 0){
-									chain.bufferScaleDownCounter[stageIndex] = -1;
-								}
-							}
-							else{
-								if(chain.bufferScaleDownCounter[stageIndex] == -1){
-									chain.bufferScaleDownCounter[stageIndex] = System.currentTimeMillis();
-								}
-								else{
-									if((System.currentTimeMillis()-chain.bufferScaleDownCounter[stageIndex])>=
-										                                        15000){
-										//The stage has been relatively idle for 15000s, put some 
-										//nodes to the scaleDownList
-										String[] keyArray = bufferMap.keySet()
-												                     .toArray(new String[bufferMap.size()]);
-										int numToAdd = bufferMap.size()/2;
-										for(int i=0; i<numToAdd; i++){
-											chain.bufferScaleDownList.get(stageIndex).put(keyArray[i],
-																		  new Integer(0));
-										}
-										
-										chain.bufferScaleDownCounter[stageIndex] = -1;
-									}						
-								}
-							}
-						}
-						
-						if(nOverload==bufferMap.size()){
-							if(!chain.getBufferScaleIndicator(node.vmInstance.stageIndex)){
-								chain.setBufferScaleIndicator(node.vmInstance.stageIndex, true);
-								AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
-									                  	  node.vmInstance.serviceChainConfig.name,
-									                            node.vmInstance.stageIndex, true);
-								Pending pending = new Pending(1, null);
-								this.pendingMap.put(newRequest.getUUID(), pending);
-								this.mh.sendTo("vmAllocator", newRequest);
-								chain.bufferScaleDownList.get(stageIndex).clear();
-								chain.bufferScaleDownCounter[stageIndex] = -1;
-							}
-						}	
-						else if((nOverload>0)&&(nOverload<bufferMap.size())){
-							chain.bufferScaleDownList.get(stageIndex).clear();
-							chain.bufferScaleDownCounter[stageIndex] = -1;
-						}
-						break;
-					}
-				}*/
 				if(chain.hasNode(managementIp)&&(chain.serviceChainConfig.nVmInterface==3)){
 					chain.updateDataNodeStat(managementIp, statList);
 					
@@ -398,47 +294,51 @@ public class ServiceChainHandler extends MessageProcessor {
 										chain.scaleDownCounter.get(dcIndex)[stageIndex])>=15000){
 									//The stage has been relatively idle for 15000s, put some 
 									//nodes to the scaleDownList
-									String[] ipList = stageMap.keySet()
-											                  .toArray(new String[stageMap.size()]);
+									List<String> serverList = this.vmAllocator.getHostServerList(dcIndex);
+									String nodeToScaleDown = null;
 									
-									int numToAdd = ipList.length/2;
-									for(int i=0; i<numToAdd; i++){
-										int index = chain.getNodeWithLeastFlows(stageIndex, 
-												             flowNumList);
-										if(index < 0){
-											continue;
-										}
-										else{
-											String ip = flowNumList.get(index).first;
-											chain.scaleDownList.get(stageIndex).put(ip, 
-													                 new Integer(0));
-											flowNumList.remove(index);
-											System.out.println("!!!Scale Down: Node "+ip+" is put into the scaleDownList");
+									for(int i=0; i<serverList.size(); i++){
+										for(String mIp : stageMap.keySet()){
+											NFVNode currentNode = stageMap.get(mIp);
+											if(currentNode.vmInstance.hostServerConfig.managementIp
+													.equals(serverList.get(i))){
+												nodeToScaleDown = mIp;
+												break;
+											}
 										}
 									}
 									
-									chain.scaleDownCounter[stageIndex] = -1;
+									if(nodeToScaleDown==null){
+										String[] ipList = stageMap.keySet()
+								                  .toArray(new String[stageMap.size()]);
+										nodeToScaleDown = ipList[0];
+									}
+									
+									chain.scaleDownList.get(dcIndex).get(stageIndex).put(nodeToScaleDown, new Integer(0));
+									System.out.println("!!!Scale Down: Node "+nodeToScaleDown+" is put into the scaleDownList");
+		
+									chain.scaleDownCounter.get(dcIndex)[stageIndex] = -1;
 								}						
 							}
 						}
 					}
 					
 					if( (nOverload == stageMap.size())&&
-					    (!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
-						chain.setScaleIndicator(node.vmInstance.stageIndex, true);
+					    (!chain.scaleIndicators.get(dcIndex)[node.vmInstance.stageIndex]) ){
+						chain.scaleIndicators.get(dcIndex)[node.vmInstance.stageIndex] = true;
 						AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 								                  node.vmInstance.serviceChainConfig.name,
-								                              node.vmInstance.stageIndex, false);
+								                              stageIndex, false, dcIndex);
 						Pending pending = new Pending(1, null);
 						this.pendingMap.put(newRequest.getUUID(), pending);
 						this.mh.sendTo("vmAllocator", newRequest);
 						
-						chain.scaleDownList.get(stageIndex).clear();
-						chain.scaleDownCounter[stageIndex] = -1;
+						chain.scaleDownList.get(dcIndex).get(stageIndex).clear();
+						chain.scaleDownCounter.get(dcIndex)[stageIndex] = -1;
 					}
 					else if((nOverload > 0)&&(nOverload < stageMap.size())){
-						chain.scaleDownList.get(stageIndex).clear();
-						chain.scaleDownCounter[stageIndex] = -1;
+						chain.scaleDownList.get(dcIndex).get(stageIndex).clear();
+						chain.scaleDownCounter.get(dcIndex)[stageIndex] = -1;
 					}
 					
 					break;
@@ -491,21 +391,21 @@ public class ServiceChainHandler extends MessageProcessor {
 			}
 		}
 		
-		if((nBonoOverload==bonoMap.size())&&(!chain.getScaleIndicator(0))){
-			chain.setScaleIndicator(0, true);
+		if((nBonoOverload==bonoMap.size())&&(!chain.scaleIndicators.get(dcIndex)[0])){
+			chain.scaleIndicators.get(dcIndex)[0]=true;;
 			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 	                  							chain.serviceChainConfig.name,
-	                  							0, false);
+	                  							0, false, dcIndex);
 			Pending pending = new Pending(1, null);
 			this.pendingMap.put(newRequest.getUUID(), pending);
 			this.mh.sendTo("vmAllocator", newRequest);
 		}
 		
-		if((nSproutOverload==sproutMap.size())&&(!chain.getScaleIndicator(1))){
-			chain.setScaleIndicator(1, true);
+		if((nSproutOverload==sproutMap.size())&&(!chain.scaleIndicators.get(dcIndex)[1])){
+			chain.scaleIndicators.get(dcIndex)[1] = true;
 			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 												chain.serviceChainConfig.name,
-												1, false);
+												1, false, dcIndex);
 			Pending pending = new Pending(1, null);
 			this.pendingMap.put(newRequest.getUUID(), pending);
 			this.mh.sendTo("vmAllocator", newRequest);
@@ -514,6 +414,9 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private void addServerToChainHandler(ServerToChainHandlerRequest request){
 		HostServer hostServer = request.getHostServer();
+		if(this.dcNum == 0){
+			this.dcNum = hostServer.controllerConfig.dcNum;
+		}
 		
 		Socket subscriber = this.zmqContext.socket(ZMQ.SUB);
 		subscriber.monitor("inproc://monitorServerConnection", ZMQ.EVENT_CONNECTED);

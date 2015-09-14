@@ -4,6 +4,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import net.floodlightcontroller.nfvtest.message.Message;
 import net.floodlightcontroller.nfvtest.message.MessageProcessor;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
+import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.HostAgent;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.*;
@@ -29,7 +30,7 @@ public class VmAllocator extends MessageProcessor {
 	private final HashMap<Integer, TreeMap<TreeMapKey, HostServer>> serverLoadMap;
 	private final HashMap<String, HostServer> hostServerMap;
 	
-	//private final HashMap<Integer, HashMap<String, HostServer>> dcHostServerMap;
+	private final HashMap<String, HashMap<String, List<HashMap<String, VmInstance>>>> serverVmMap;
 	
 	public class TreeMapKey implements Comparable<TreeMapKey>{
 		public final Integer vmNum;
@@ -63,6 +64,8 @@ public class VmAllocator extends MessageProcessor {
 		
 		this.hostServerMap = new HashMap<String, HostServer>();
 		this.serverLoadMap = new HashMap<Integer, TreeMap<TreeMapKey, HostServer>>();
+		
+		this.serverVmMap = new HashMap<String, HashMap<String, List<HashMap<String, VmInstance>>>>();
 	}
 	
 	
@@ -110,7 +113,7 @@ public class VmAllocator extends MessageProcessor {
 		}
 	}
 	
-	private void allocateVm(AllocateVmRequest originalRequest){
+	private synchronized void allocateVm(AllocateVmRequest originalRequest){
 		int dcIndex = originalRequest.getDcIndex();
 		TreeMap<TreeMapKey, HostServer> serverLoadTMap = this.serverLoadMap.get(new Integer(dcIndex));
 		
@@ -149,14 +152,22 @@ public class VmAllocator extends MessageProcessor {
 		}
 	}
 	
-	private void deallocateVm(DeallocateVmRequest originalRequest){
+	private synchronized void deallocateVm(DeallocateVmRequest originalRequest){
 		DestroyVmRequest newRequest = new DestroyVmRequest(this.getId(), originalRequest.getVmInstance());
 		Pending pending = new Pending(1, originalRequest);
 		this.pendingMap.put(newRequest.getUUID(), pending);
+		
+		VmInstance vmInstance = originalRequest.getVmInstance();
+		String serverIp = vmInstance.hostServerConfig.managementIp;
+		String chainName = vmInstance.serviceChainConfig.name;
+		int stageIndex = vmInstance.stageIndex;
+		this.serverVmMap.get(serverIp).get(chainName)
+		                .get(stageIndex).remove(vmInstance.managementIp);
+		
 		this.mh.sendTo("vmWorker", newRequest);
 	}
 	
-	private void handleCreateVmReply(CreateVmReply newReply){
+	private synchronized void handleCreateVmReply(CreateVmReply newReply){
 		CreateVmRequest newRequest = newReply.getRequest();
 		Pending pending = this.pendingMap.get(newRequest.getUUID());
 		pending.addReply(newReply);
@@ -167,12 +178,20 @@ public class VmAllocator extends MessageProcessor {
 			AllocateVmReply originalReply = new AllocateVmReply(this.getId(), 
 					                                newReply.getRequest().getVmInstance(), originalRequest);
 			System.out.println("Sending AllocateVmReply to: "+originalReply.getAllocateVmRequest().getSourceId());
+			
+			VmInstance vmInstance = newReply.getRequest().getVmInstance();
+			String serverIp = vmInstance.hostServerConfig.managementIp;
+			String chainName = vmInstance.serviceChainConfig.name;
+			int stageIndex = vmInstance.stageIndex;
+			this.serverVmMap.get(serverIp).get(chainName)
+			                .get(stageIndex).put(vmInstance.managementIp, vmInstance);
+			
 			this.mh.sendTo(originalReply.getAllocateVmRequest().getSourceId(), originalReply);
 		}
 		this.pendingMap.remove(newRequest.getUUID());
 	}
 	
-	private void handleDestroyVmReply(DestroyVmReply newReply){
+	private synchronized void handleDestroyVmReply(DestroyVmReply newReply){
 		DestroyVmRequest newRequest = newReply.getRequest();
 		Pending pending = this.pendingMap.get(newRequest.getUUID());
 		pending.addReply(newReply);
@@ -182,9 +201,24 @@ public class VmAllocator extends MessageProcessor {
 					newRequest.getVmInstance().hostServer.deallocateVmInstance(newRequest.getVmInstance());
 			if(returnVal){
 				VmInstance vmInstance = newRequest.getVmInstance();
-				int stageIndex = vmInstance.stageIndex;
+				HostServer hostServer = vmInstance.hostServer;
 				int dcIndex = vmInstance.hostServerConfig.dcIndex;
+				TreeMap<TreeMapKey, HostServer> serverLoadTMap = 
+						this.serverLoadMap.get(new Integer(dcIndex));
+				TreeMapKey targetKey = null;
 				
+				for(TreeMapKey key : serverLoadTMap.keySet()){
+					if(serverLoadTMap.get(key).hostServerConfig.managementIp
+							.equals(hostServer.hostServerConfig.managementIp)){
+						targetKey = key;
+						break;
+					}
+				}
+				
+				hostServer = serverLoadTMap.remove(targetKey);
+				TreeMapKey newKey = new TreeMapKey(new Integer(targetKey.vmNum.intValue()-1), 
+						   hostServer.hostServerConfig.managementIp);
+				serverLoadTMap.put(newKey, hostServer);
 			}
 		}
 	}
@@ -240,18 +274,69 @@ public class VmAllocator extends MessageProcessor {
 			TreeMapKey key = new TreeMapKey(new Integer(0), hostServer.hostServerConfig.managementIp);
 			this.serverLoadMap.get(new Integer(dcIndex)).put(key,hostServer);
 		}
+		
+		HashMap<String, List<HashMap<String, VmInstance>>> vmMap = 
+				new HashMap<String, List<HashMap<String, VmInstance>>>();
+		for(String chainName : hostServer.serviceChainConfigMap.keySet()){
+			ServiceChainConfig chainConfig = hostServer.serviceChainConfigMap.get(chainName);
+			List<HashMap<String, VmInstance>> chainList = new ArrayList<HashMap<String, VmInstance>>();
+			for(int i=0; i<chainConfig.stages.size(); i++){
+				HashMap<String, VmInstance> stageMap = new HashMap<String, VmInstance>();
+				chainList.add(stageMap);
+			}
+			vmMap.put(chainName, chainList);
+		}
+		this.serverVmMap.put(hostServer.hostServerConfig.managementIp, vmMap);
 	}
 	
-	public synchronized String getVmMIp(String chainName, int dcIndex, int stageIndex){
+	public synchronized List<String> getHostServerList(int dcIndex){
 		TreeMap<TreeMapKey, HostServer> serverLoadTMap = this.serverLoadMap.get(new Integer(dcIndex));
+		List<String> returnList = new ArrayList<String>();
+		TreeMapKey key = serverLoadTMap.firstKey();
+		while(key!=null){
+			returnList.add(serverLoadTMap.get(key).hostServerConfig.managementIp);
+			key = serverLoadTMap.higherKey(key);
+		}
+		return returnList;
+	}
+	
+	/*public synchronized String getScaleDownNode(String chainName, int dcIndex, int stageIndex,
+			                            HashMap<String, Integer> errorMap){
+		TreeMap<TreeMapKey, HostServer> serverLoadTMap = this.serverLoadMap.get(new Integer(dcIndex));
+		
 		TreeMapKey currentKey = serverLoadTMap.firstKey();
 		HostServer hostServer = serverLoadTMap.get(currentKey);
-		String mIp = hostServer.containsNode(chainName, stageIndex);
+		String serverIp = hostServer.hostServerConfig.managementIp;
+		
+		String mIp = this.haveNode(serverIp, chainName, stageIndex, errorMap);
+		
 		while(mIp==null){
 			currentKey = serverLoadTMap.higherKey(currentKey);
 			hostServer = serverLoadTMap.get(currentKey);
-			mIp = hostServer.containsNode(chainName, stageIndex);
+			serverIp = hostServer.hostServerConfig.managementIp;
+			
+			mIp = this.haveNode(serverIp, chainName, stageIndex, errorMap);
+			
+			if(currentKey.compareTo(serverLoadTMap.lastKey())==0){
+				break;
+			}
 		}
 		return mIp;
 	}
+	
+	//on server serverIp, on service chain chainName, do we have a node on stage stageIndex
+	//that is not in errorMap. If so return the managementIp of that node, otherwise return 0
+	private String haveNode(String serverIp, String chainName, int stageIndex,
+							HashMap<String, Integer> errorMap){
+		HashMap<String, VmInstance> vmMap = this.serverVmMap.get(serverIp).get(chainName).get(stageIndex);
+		String[] vmIps = vmMap.keySet().toArray(new String[vmMap.size()]);
+		
+		for(int i=0; i<vmIps.length; i++){
+			if(!errorMap.containsKey(vmIps[i])){
+				return vmIps[i];
+			}
+		}
+		
+		return null;
+	}*/
 }
