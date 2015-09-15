@@ -293,10 +293,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			e.printStackTrace();
 		}
 		
-		this.serviceChain = new NFVServiceChain(this.serviceChainConfig, this.controllerConfig);
-		//InitServiceChainRequset m4 = new InitServiceChainRequset("hehe", this.serviceChain);
-		//mh.sendTo("chainHandler", m4);
-		
 		dpidHostServerMap = vmAllocator.dpidHostServerMap;
 		dpidStageIndexMap = vmAllocator.dpidStageIndexMap;
 		
@@ -311,6 +307,10 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		}
 		chainHandler.startSwitchStatPoller();
 		
+		this.serviceChain = new NFVServiceChain(this.serviceChainConfig, this.controllerConfig);
+		//InitServiceChainRequset m4 = new InitServiceChainRequset("hehe", this.serviceChain);
+		//mh.sendTo("chainHandler", m4);
+
 		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
 		mh.sendTo("chainHandler", m3);
 		try{

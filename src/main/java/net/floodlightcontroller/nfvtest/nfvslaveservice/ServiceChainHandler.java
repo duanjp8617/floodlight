@@ -205,12 +205,15 @@ public class ServiceChainHandler extends MessageProcessor {
 		if(vmInstance.serviceChainConfig.nVmInterface == 3){
 			String serviceChainName = vmInstance.serviceChainConfig.name;
 			NFVNode node = new NFVNode(vmInstance);
-			this.serviceChainMap.get(serviceChainName).addNodeToChain(node);
-		
+			
+			synchronized(this.serviceChainMap.get(serviceChainName)){
+				this.serviceChainMap.get(serviceChainName).addNodeToChain(node);
+				this.serviceChainMap.get(serviceChainName).scaleIndicators
+				.get(vmInstance.hostServerConfig.dcIndex)[vmInstance.stageIndex]=false;
+			}
+			
 			String managementIp = request.getManagementIp();
 			Socket subscriber1 = reply.getSubscriber1();
-			this.serviceChainMap.get(serviceChainName).scaleIndicators
-			    .get(vmInstance.hostServerConfig.dcIndex)[vmInstance.stageIndex]=false;
 			this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 			
 			String serverIp = vmInstance.hostServerConfig.managementIp;
@@ -242,13 +245,17 @@ public class ServiceChainHandler extends MessageProcessor {
 		
 		String serviceChainName = vmInstance.serviceChainConfig.name;
 		NFVNode node = new NFVNode(vmInstance);
-		this.serviceChainMap.get(serviceChainName).addNodeToChain(node);
+		
+		synchronized(this.serviceChainMap.get(serviceChainName)){
+			this.serviceChainMap.get(serviceChainName).addNodeToChain(node);
+			this.serviceChainMap.get(serviceChainName).scaleIndicators
+				.get(vmInstance.hostServerConfig.dcIndex)[vmInstance.stageIndex]=false;
+		}
 	
 		String managementIp = vmInstance.managementIp;
 		Socket subscriber1 = request.getSocket1();
 		Socket subscriber2 = request.getSocket2();
-		this.serviceChainMap.get(serviceChainName).scaleIndicators
-            .get(vmInstance.hostServerConfig.dcIndex)[vmInstance.stageIndex]=false;
+		
 		this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 		this.poller.register(new Pair<String, Socket>(managementIp+":2", subscriber2));
 		
@@ -321,19 +328,15 @@ public class ServiceChainHandler extends MessageProcessor {
 							}
 							
 							if(stageScaleDownMap.size() == 0){
-								chain.scaleDownCounter.get(dcIndex)[stageIndex] = -1;
+								chain.scaleDownCounter.get(dcIndex)[stageIndex] = System.currentTimeMillis();
 							}
 						}
 						else{
-							if(chain.scaleDownCounter.get(dcIndex)[stageIndex] == -1){
-								chain.scaleDownCounter.get(dcIndex)[stageIndex] = 
-										                      System.currentTimeMillis();
-							}
-							else{
-								if((System.currentTimeMillis()-
-										chain.scaleDownCounter.get(dcIndex)[stageIndex])>=15000){
-									//The stage has been relatively idle for 15000s, put some 
-									//nodes to the scaleDownList
+							if((System.currentTimeMillis()-
+								chain.scaleDownCounter.get(dcIndex)[stageIndex])>=15000){
+								//The stage has been relatively idle for 15000s, put some 
+								//nodes to the scaleDownList
+								if(stageMap.size()>1){
 									List<String> serverList = this.vmAllocator.getHostServerList(dcIndex);
 									String nodeToScaleDown = null;
 									
@@ -350,16 +353,15 @@ public class ServiceChainHandler extends MessageProcessor {
 									
 									/*if(nodeToScaleDown==null){
 										String[] ipList = stageMap.keySet()
-								                 .toArray(new String[stageMap.size()]);
+								                 	.toArray(new String[stageMap.size()]);
 										nodeToScaleDown = ipList[0];
 									}*/
 									
 									chain.scaleDownList.get(dcIndex).get(stageIndex).put(nodeToScaleDown, new Integer(0));
 									System.out.println("!!!Scale Down: Node "+nodeToScaleDown+" is put into the scaleDownList");
-		
-									chain.scaleDownCounter.get(dcIndex)[stageIndex] = -1;
-								}						
-							}
+								}
+								chain.scaleDownCounter.get(dcIndex)[stageIndex] = System.currentTimeMillis();
+							}						
 						}
 					}
 					
@@ -374,11 +376,11 @@ public class ServiceChainHandler extends MessageProcessor {
 						this.mh.sendTo("vmAllocator", newRequest);
 						
 						chain.scaleDownList.get(dcIndex).get(stageIndex).clear();
-						chain.scaleDownCounter.get(dcIndex)[stageIndex] = -1;
+						chain.scaleDownCounter.get(dcIndex)[stageIndex] = System.currentTimeMillis();
 					}
 					else if((nOverload > 0)&&(nOverload < stageMap.size())){
 						chain.scaleDownList.get(dcIndex).get(stageIndex).clear();
-						chain.scaleDownCounter.get(dcIndex)[stageIndex] = -1;
+						chain.scaleDownCounter.get(dcIndex)[stageIndex] = System.currentTimeMillis();
 					}
 					
 					break;
@@ -403,16 +405,44 @@ public class ServiceChainHandler extends MessageProcessor {
 							//Let's find out which stage needs scaling.
 							controlPlaneScaleUp(chain, dcIndex);
 						}
-						if(nOverload == 0){
-							controlPlaneScaleDown(chain, dcIndex, 0);
-							controlPlaneScaleDown(chain, dcIndex, 1);
-						}
-						if((nOverload>0)&&(nOverload<stageMap.size())){
-							chain.scaleDownList.get(dcIndex).get(0).clear();
-							chain.scaleDownCounter.get(dcIndex)[0] = -1;
+						else{
+							nOverload = 0;
+							for(String ip : stageMap.keySet()){
+								NFVNode n = stageMap.get(ip);
+								if(n.getState() == NFVNode.OVERLOAD){
+									nOverload += 1;
+								}
+							}
 							
-							chain.scaleDownList.get(dcIndex).get(1).clear();
-							chain.scaleDownCounter.get(dcIndex)[1] = -1;
+							if(nOverload == 0){
+								controlPlaneScaleDown(chain, dcIndex, 0);
+								controlPlaneScaleDown(chain, dcIndex, 1);
+							}
+							else{
+								Map<String, Integer> stageScaleDownMap = 
+										chain.scaleDownList.get(dcIndex).get(0);
+								for(String mIp : stageScaleDownMap.keySet()){
+									NFVNode n = chain.getNode(mIp);
+									DNSAddRequest addRequest = new DNSAddRequest(this.getId(),
+									                                              "bono.cw.t",
+									                                n.vmInstance.operationIp);
+									this.mh.sendTo("dnsUpdator", addRequest);
+								}
+								chain.scaleDownList.get(dcIndex).get(0).clear();
+								chain.scaleDownCounter.get(dcIndex)[0] = System.currentTimeMillis();
+								
+								stageScaleDownMap = 
+										chain.scaleDownList.get(dcIndex).get(1);
+								for(String mIp : stageScaleDownMap.keySet()){
+									NFVNode n = chain.getNode(mIp);
+									DNSAddRequest addRequest = new DNSAddRequest(this.getId(),
+									                                              "sprout.cw.t",
+									                                n.vmInstance.operationIp);
+									this.mh.sendTo("dnsUpdator", addRequest);
+								}
+								chain.scaleDownList.get(dcIndex).get(1).clear();
+								chain.scaleDownCounter.get(dcIndex)[1] = System.currentTimeMillis();
+							}
 						}
 					}
 					
@@ -500,20 +530,16 @@ public class ServiceChainHandler extends MessageProcessor {
 				}
 			
 				if(stageScaleDownMap.size() == 0){
-					chain.scaleDownCounter.get(dcIndex)[stageIndex] = -1;
+					chain.scaleDownCounter.get(dcIndex)[stageIndex] = System.currentTimeMillis();
 				}
 			}
 		}
 		else{
-			if(chain.scaleDownCounter.get(dcIndex)[stageIndex] == -1){
-				chain.scaleDownCounter.get(dcIndex)[stageIndex] = 
-						                      System.currentTimeMillis();
-			}
-			else{
-				if((System.currentTimeMillis()-
+			if((System.currentTimeMillis()-
 						chain.scaleDownCounter.get(dcIndex)[stageIndex])>=15000){
-					//The stage has been relatively idle for 15000s, put some 
-					//nodes to the scaleDownList
+				//The stage has been relatively idle for 15000s, put some 
+				//nodes to the scaleDownList
+				if(stageMap.size()>1){
 					List<String> serverList = this.vmAllocator.getHostServerList(dcIndex);
 					String nodeToScaleDown = null;
 					
@@ -521,7 +547,7 @@ public class ServiceChainHandler extends MessageProcessor {
 						for(String mIp : stageMap.keySet()){
 							NFVNode currentNode = stageMap.get(mIp);
 							if(currentNode.vmInstance.hostServerConfig.managementIp
-									.equals(serverList.get(i))){
+										.equals(serverList.get(i))){
 								nodeToScaleDown = mIp;
 								break;
 							}
@@ -530,21 +556,21 @@ public class ServiceChainHandler extends MessageProcessor {
 					
 					/*if(nodeToScaleDown==null){
 						String[] ipList = stageMap.keySet()
-				                 .toArray(new String[stageMap.size()]);
+				                 	.toArray(new String[stageMap.size()]);
 						nodeToScaleDown = ipList[0];
 					}*/
 					
 					chain.scaleDownList.get(dcIndex).get(stageIndex).put(nodeToScaleDown, new Integer(0));
 					
 					System.out.println("!!!Scale Down: Node "+nodeToScaleDown+" is put into the scaleDownList");
-					chain.scaleDownCounter.get(dcIndex)[stageIndex] = System.currentTimeMillis();
 					
 					DNSRemoveRequest request = new DNSRemoveRequest(this.getId(),
 							           (stageIndex==0)?"bono.cw.t":"sprout.cw.t",
 						   stageMap.get(nodeToScaleDown).vmInstance.operationIp);
 					this.mh.sendTo("dnsUpdator", request);
-				}						
-			}
+				}
+				chain.scaleDownCounter.get(dcIndex)[stageIndex] = System.currentTimeMillis();
+			}						
 		}
 	}
 	
@@ -651,16 +677,17 @@ public class ServiceChainHandler extends MessageProcessor {
 				for(int i=0; i<dataPlaneArray.length; i++){
 					if(!dataPlaneArray[i]){
 						NFVServiceChain chain = this.serviceChainMap.get(dataPlaneChainName);
-						chain.scaleIndicators.get(dcIndex)[i] = true;
+						synchronized(chain){
+							chain.scaleIndicators.get(dcIndex)[i] = true;
+							chain.scaleDownList.get(dcIndex).get(i).clear();
+							chain.scaleDownCounter.get(dcIndex)[i] = -1;
+						}
 						AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 																		dataPlaneChainName,
 								                              i, false, dcIndex, hostServer);
 						Pending pending = new Pending(1, null);
 						this.pendingMap.put(newRequest.getUUID(), pending);
 						this.mh.sendTo("vmAllocator", newRequest);
-						
-						chain.scaleDownList.get(dcIndex).get(i).clear();
-						chain.scaleDownCounter.get(dcIndex)[i] = -1;
 					}
 				}
 				
@@ -668,16 +695,17 @@ public class ServiceChainHandler extends MessageProcessor {
 				for(int i=0; i<controlPlaneArray.length; i++){
 					if(!controlPlaneArray[i]){
 						NFVServiceChain chain = this.serviceChainMap.get(controlPlaneChainName);
-						chain.scaleIndicators.get(dcIndex)[i] = true;
+						synchronized(chain){
+							chain.scaleIndicators.get(dcIndex)[i] = true;
+							chain.scaleDownList.get(dcIndex).get(i).clear();
+							chain.scaleDownCounter.get(dcIndex)[i] = -1;
+						}
 						AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 								                                    controlPlaneChainName,
 								                              i, false, dcIndex, hostServer);
 						Pending pending = new Pending(1, null);
 						this.pendingMap.put(newRequest.getUUID(), pending);
-						this.mh.sendTo("vmAllocator", newRequest);
-						
-						chain.scaleDownList.get(dcIndex).get(i).clear();
-						chain.scaleDownCounter.get(dcIndex)[i] = -1;
+						this.mh.sendTo("vmAllocator", newRequest);	
 					}
 				}
 				

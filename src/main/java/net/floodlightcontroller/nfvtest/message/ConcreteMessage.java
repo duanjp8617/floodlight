@@ -469,6 +469,30 @@ public class ConcreteMessage {
 		}
 	}
 	
+	static public class DNSAddRequest extends Message{
+		private final String sourceId;
+		private final String domainName;
+		private final String ipAddress;
+		
+		public DNSAddRequest(String sourceId, String domainName, String ipAddress){
+			this.sourceId = sourceId;
+			this.domainName = domainName;
+			this.ipAddress = ipAddress;
+		}
+		
+		public String getSourceId(){
+			return this.sourceId;
+		}
+		
+		public String getDomainName(){
+			return this.domainName;
+		}
+		
+		public String getIpAddress(){
+			return this.ipAddress;
+		}
+	}
+	
 	//The following messages are sent from SwitchStatPoller
 	static public class DcLinkStat extends Message{
 		private final String sourceId;

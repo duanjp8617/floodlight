@@ -129,24 +129,29 @@ public class VmAllocator extends MessageProcessor {
 			ignoredServer = serverLoadTMap.remove(ignoredServerKey);
 		}
 		
-		TreeMapKey currentKey = serverLoadTMap.lastKey();
-		HostServer hostServer = serverLoadTMap.get(currentKey);
+		VmInstance vmInstance = null;
+		TreeMapKey currentKey = null;
+		HostServer hostServer = null;
+		if(serverLoadTMap.size()>0){
+			currentKey = serverLoadTMap.lastKey();
+			hostServer = serverLoadTMap.get(currentKey);
 		
-		VmInstance vmInstance = 
+			vmInstance = 
 				hostServer.allocateVmInstance(originalRequest.getChainName(), originalRequest.getStageIndex(),
 						                      originalRequest.getIsBufferNode());
 		
-		while(vmInstance==null){
-			if(currentKey.compareTo(serverLoadTMap.firstKey()) == 0){
-				break;
-			}
+			while(vmInstance==null){
+				if(currentKey.compareTo(serverLoadTMap.firstKey()) == 0){
+					break;
+				}
 			
-			currentKey = serverLoadTMap.lowerKey(currentKey);
-			hostServer = serverLoadTMap.get(currentKey);
+				currentKey = serverLoadTMap.lowerKey(currentKey);
+				hostServer = serverLoadTMap.get(currentKey);
 			
-			vmInstance = 
-				hostServer.allocateVmInstance(originalRequest.getChainName(), originalRequest.getStageIndex(),
+				vmInstance = 
+						hostServer.allocateVmInstance(originalRequest.getChainName(), originalRequest.getStageIndex(),
 							                  originalRequest.getIsBufferNode());
+			}
 		}
 		
 		if(vmInstance!=null){
@@ -171,7 +176,7 @@ public class VmAllocator extends MessageProcessor {
 		}
 	}
 	
-	private void deallocateVm(DeallocateVmRequest originalRequest){
+	private synchronized void deallocateVm(DeallocateVmRequest originalRequest){
 		DestroyVmRequest newRequest = new DestroyVmRequest(this.getId(), originalRequest.getVmInstance());
 		Pending pending = new Pending(1, originalRequest);
 		this.pendingMap.put(newRequest.getUUID(), pending);
@@ -186,7 +191,7 @@ public class VmAllocator extends MessageProcessor {
 		this.mh.sendTo("vmWorker", newRequest);
 	}
 	
-	private void handleCreateVmReply(CreateVmReply newReply){
+	private synchronized void handleCreateVmReply(CreateVmReply newReply){
 		CreateVmRequest newRequest = newReply.getRequest();
 		Pending pending = this.pendingMap.get(newRequest.getUUID());
 		pending.addReply(newReply);
