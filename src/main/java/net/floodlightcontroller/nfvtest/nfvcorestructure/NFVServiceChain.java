@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.*;
 
 public class NFVServiceChain {
@@ -515,15 +514,15 @@ public class NFVServiceChain {
 		return this.dcNfvNodeMaps.get(dcIndex).get(stage);
 	}
 	
-	public synchronized void mask(NFVNode node){
-		if(this.managementIpNodeMap.containsKey(node.vmInstance.managementIp)){
-			this.managementIpNodeMap.get(node.vmInstance.managementIp).mask();
+	public synchronized void mask(String mIp){
+		if(this.managementIpNodeMap.containsKey(mIp)){
+			this.managementIpNodeMap.get(mIp).mask();
 		}
 	}
 	
-	public synchronized void unmask(NFVNode node){
-		if(this.managementIpNodeMap.containsKey(node.vmInstance.managementIp)){
-			this.managementIpNodeMap.get(node.vmInstance.managementIp).unmask();
+	public synchronized void unmask(String mIp){
+		if(this.managementIpNodeMap.containsKey(mIp)){
+			this.managementIpNodeMap.get(mIp).unmask();
 		}
 	}
 	

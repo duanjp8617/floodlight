@@ -41,7 +41,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private final DcLinkGraph dcLinkGraph;
 	
-	private final HashMap<String, HashMap<String, List<HashMap<String, NFVNode>>>> serverVmMap;
+	private final HashMap<String, HashMap<String, List<HashMap<String, VmInstance>>>> serverVmMap;
 
 	public ServiceChainHandler(String id, Context zmqContext, IOFSwitchService switchService,
 							   VmAllocator vmAllocator){
@@ -56,7 +56,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		this.vmAllocator = vmAllocator;
 		
 		this.dcLinkGraph = new DcLinkGraph(this.dcNum);
-		this.serverVmMap = new HashMap<String, HashMap<String, List<HashMap<String, NFVNode>>>>();
+		this.serverVmMap = new HashMap<String, HashMap<String, List<HashMap<String, VmInstance>>>>();
 	}
 	
 	public void startSwitchStatPoller(){
@@ -217,7 +217,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			String chainName = vmInstance.serviceChainConfig.name;
 			int stageIndex = vmInstance.stageIndex;
 			this.serverVmMap.get(serverIp).get(chainName)
-			                .get(stageIndex).put(vmInstance.managementIp, node);
+			                .get(stageIndex).put(vmInstance.managementIp, vmInstance);
 		}
 		else{
 			Socket subscriber1 = reply.getSubscriber1();
@@ -256,7 +256,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		String chainName = vmInstance.serviceChainConfig.name;
 		int stageIndex = vmInstance.stageIndex;
 		this.serverVmMap.get(serverIp).get(chainName)
-		                .get(stageIndex).put(vmInstance.managementIp, node);
+		                .get(stageIndex).put(vmInstance.managementIp, vmInstance);
 	}
 	
 	private void statUpdate(StatUpdateRequest request){
@@ -577,13 +577,13 @@ public class ServiceChainHandler extends MessageProcessor {
     		System.out.println("HostServer connection failure");
     	}
     	
-    	HashMap<String, List<HashMap<String, NFVNode>>> vmMap = 
-    			new HashMap<String, List<HashMap<String, NFVNode>>>();
+    	HashMap<String, List<HashMap<String, VmInstance>>> vmMap = 
+    			new HashMap<String, List<HashMap<String, VmInstance>>>();
 		for(String chainName : hostServer.serviceChainConfigMap.keySet()){
 			ServiceChainConfig chainConfig = hostServer.serviceChainConfigMap.get(chainName);
-			List<HashMap<String, NFVNode>> chainList = new ArrayList<HashMap<String, NFVNode>>();
+			List<HashMap<String, VmInstance>> chainList = new ArrayList<HashMap<String, VmInstance>>();
 			for(int i=0; i<chainConfig.stages.size(); i++){
-				HashMap<String, NFVNode> stageMap = new HashMap<String, NFVNode>();
+				HashMap<String, VmInstance> stageMap = new HashMap<String, VmInstance>();
 				chainList.add(stageMap);
 			}
 			vmMap.put(chainName, chainList);
@@ -637,7 +637,7 @@ public class ServiceChainHandler extends MessageProcessor {
 					HostServer server = this.hostServerMap.get(serverList.get(i));
 					String serverIp = server.hostServerConfig.managementIp;
 					for(String chainName : server.serviceChainConfigMap.keySet()){
-						List<HashMap<String, NFVNode>> list = 
+						List<HashMap<String, VmInstance>> list = 
 								this.serverVmMap.get(serverIp).get(chainName);
 						for(int j=0; j<list.size(); j++){
 							if(!list.get(j).isEmpty()){
@@ -682,12 +682,12 @@ public class ServiceChainHandler extends MessageProcessor {
 				}
 				
 				for(String chainName : hostServer.serviceChainConfigMap.keySet()){
-					List<HashMap<String, NFVNode>> list = 
+					List<HashMap<String, VmInstance>> list = 
 							this.serverVmMap.get(hostServer.hostServerConfig.managementIp).get(chainName);
 					for(int j=0; j<list.size(); j++){
-						HashMap<String, NFVNode> vmMap = list.get(j);
+						HashMap<String, VmInstance> vmMap = list.get(j);
 						for(String mIp : vmMap.keySet()){
-							this.serviceChainMap.get(chainName).mask(vmMap.get(mIp));
+							this.serviceChainMap.get(chainName).mask(mIp);
 						}
 					}
 				}
@@ -696,12 +696,12 @@ public class ServiceChainHandler extends MessageProcessor {
 		else{
 			HostServer hostServer = this.hostServerMap.get(managementIp);
 			for(String chainName : hostServer.serviceChainConfigMap.keySet()){
-				List<HashMap<String, NFVNode>> list = 
+				List<HashMap<String, VmInstance>> list = 
 						this.serverVmMap.get(hostServer.hostServerConfig.managementIp).get(chainName);
 				for(int j=0; j<list.size(); j++){
-					HashMap<String, NFVNode> vmMap = list.get(j);
+					HashMap<String, VmInstance> vmMap = list.get(j);
 					for(String mIp : vmMap.keySet()){
-						this.serviceChainMap.get(chainName).unmask(vmMap.get(mIp));
+						this.serviceChainMap.get(chainName).unmask(mIp);
 					}
 				}
 			}
