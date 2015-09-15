@@ -4,6 +4,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import net.floodlightcontroller.nfvtest.message.Message;
 import net.floodlightcontroller.nfvtest.message.MessageProcessor;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
+import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.HostAgent;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.*;
@@ -113,8 +114,21 @@ public class VmAllocator extends MessageProcessor {
 	}
 	
 	private synchronized void allocateVm(AllocateVmRequest originalRequest){
+		HostServer ignoredServer = null;
+		TreeMapKey ignoredServerKey = null;
+		
 		int dcIndex = originalRequest.getDcIndex();
 		TreeMap<TreeMapKey, HostServer> serverLoadTMap = this.serverLoadMap.get(new Integer(dcIndex));
+		if(originalRequest.getIgnoredServer()!=null){
+			for(TreeMapKey key : serverLoadTMap.keySet()){
+				if(serverLoadTMap.get(key).hostServerConfig.managementIp
+						.equals(originalRequest.getIgnoredServer().hostServerConfig.managementIp)){
+					ignoredServerKey = key;
+					break;
+				}
+			}
+			ignoredServer = serverLoadTMap.remove(ignoredServerKey);
+		}
 		
 		TreeMapKey currentKey = serverLoadTMap.lastKey();
 		HostServer hostServer = serverLoadTMap.get(currentKey);
@@ -151,6 +165,10 @@ public class VmAllocator extends MessageProcessor {
 			//do something to notify the sender of out of resource.
 			AllocateVmReply originalReply = new AllocateVmReply(this.getId(), null, originalRequest);
 			this.mh.sendTo(originalRequest.getSourceId(), originalReply);
+		}
+		
+		if(originalRequest.getIgnoredServer()!=null){
+			serverLoadTMap.put(ignoredServerKey, ignoredServer);
 		}
 	}
 	
@@ -301,6 +319,8 @@ public class VmAllocator extends MessageProcessor {
 		}
 		return returnList;
 	}
+	
+	//public synchronized int[] 
 	
 	/*public synchronized String getScaleDownNode(String chainName, int dcIndex, int stageIndex,
 			                            HashMap<String, Integer> errorMap){

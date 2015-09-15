@@ -515,6 +515,8 @@ public class NFVNode {
 	public static final int NORMAL = 2;
 	public static final int OVERLOAD = 3;
 	
+	private boolean maskOut;
+	
 	public NFVNode(VmInstance vmInstance){
 		this.vmInstance = vmInstance;
 		this.property = new NFVNodeProperty(4);
@@ -524,6 +526,7 @@ public class NFVNode {
 		logger = LoggerFactory.getLogger(NFVNode.class);
 		
 		this.bufferProperty = new NFVBufferNodeProperty(10);
+		this.maskOut = false;
 	}
 	
 	public String getChainName(){
@@ -647,5 +650,17 @@ public class NFVNode {
 	
 	public int getActiveFlows(){
 		return this.activeFlows;
+	}
+	
+	public void mask(){
+		this.maskOut = true;
+	}
+	
+	public void unmask(){
+		this.maskOut = false;
+	}
+	
+	public boolean isMaskOut(){
+		return this.maskOut;
 	}
 }

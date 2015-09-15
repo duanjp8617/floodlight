@@ -10,6 +10,7 @@ import net.floodlightcontroller.nfvtest.message.Pending;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVException;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVNode;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVServiceChain;
+import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
 import net.floodlightcontroller.nfvtest.nfvutils.Pair;
@@ -39,6 +40,8 @@ public class ServiceChainHandler extends MessageProcessor {
 	private int dcNum;
 	
 	private final DcLinkGraph dcLinkGraph;
+	
+	private final HashMap<String, HashMap<String, List<HashMap<String, NFVNode>>>> serverVmMap;
 
 	public ServiceChainHandler(String id, Context zmqContext, IOFSwitchService switchService,
 							   VmAllocator vmAllocator){
@@ -53,6 +56,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		this.vmAllocator = vmAllocator;
 		
 		this.dcLinkGraph = new DcLinkGraph(this.dcNum);
+		this.serverVmMap = new HashMap<String, HashMap<String, List<HashMap<String, NFVNode>>>>();
 	}
 	
 	public void startSwitchStatPoller(){
@@ -135,7 +139,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			for(int j=0; j<serviceChain.serviceChainConfig.stages.size(); j++){
 				AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 												serviceChain.serviceChainConfig.name,
-												j, false, i);
+												j, false, i, null);
 				this.pendingMap.put(newRequest.getUUID(), pending);
 				this.mh.sendTo("vmAllocator", newRequest);
 			}
@@ -144,7 +148,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private void allocateVm(AllocateVmRequest request){
 		AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(), request.getChainName(),
-											request.getStageIndex(), request.getIsBufferNode(), request.getDcIndex());
+											request.getStageIndex(), request.getIsBufferNode(), request.getDcIndex(), null);
 		Pending pending = new Pending(1, null);
 		this.pendingMap.put(newRequest.getUUID(), pending);
 		this.mh.sendTo("vmAllocator", newRequest);
@@ -200,13 +204,20 @@ public class ServiceChainHandler extends MessageProcessor {
 		
 		if(vmInstance.serviceChainConfig.nVmInterface == 3){
 			String serviceChainName = vmInstance.serviceChainConfig.name;
-			this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
+			NFVNode node = new NFVNode(vmInstance);
+			this.serviceChainMap.get(serviceChainName).addNodeToChain(node);
 		
 			String managementIp = request.getManagementIp();
 			Socket subscriber1 = reply.getSubscriber1();
 			this.serviceChainMap.get(serviceChainName).scaleIndicators
 			    .get(vmInstance.hostServerConfig.dcIndex)[vmInstance.stageIndex]=false;
 			this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
+			
+			String serverIp = vmInstance.hostServerConfig.managementIp;
+			String chainName = vmInstance.serviceChainConfig.name;
+			int stageIndex = vmInstance.stageIndex;
+			this.serverVmMap.get(serverIp).get(chainName)
+			                .get(stageIndex).put(vmInstance.managementIp, node);
 		}
 		else{
 			Socket subscriber1 = reply.getSubscriber1();
@@ -230,7 +241,8 @@ public class ServiceChainHandler extends MessageProcessor {
 		VmInstance vmInstance = request.getVmInstance();
 		
 		String serviceChainName = vmInstance.serviceChainConfig.name;
-		this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
+		NFVNode node = new NFVNode(vmInstance);
+		this.serviceChainMap.get(serviceChainName).addNodeToChain(node);
 	
 		String managementIp = vmInstance.managementIp;
 		Socket subscriber1 = request.getSocket1();
@@ -239,6 +251,12 @@ public class ServiceChainHandler extends MessageProcessor {
             .get(vmInstance.hostServerConfig.dcIndex)[vmInstance.stageIndex]=false;
 		this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 		this.poller.register(new Pair<String, Socket>(managementIp+":2", subscriber2));
+		
+		String serverIp = vmInstance.hostServerConfig.managementIp;
+		String chainName = vmInstance.serviceChainConfig.name;
+		int stageIndex = vmInstance.stageIndex;
+		this.serverVmMap.get(serverIp).get(chainName)
+		                .get(stageIndex).put(vmInstance.managementIp, node);
 	}
 	
 	private void statUpdate(StatUpdateRequest request){
@@ -279,6 +297,13 @@ public class ServiceChainHandler extends MessageProcessor {
 								NFVNode n = chain.getNode(ip);
 								
 								if(n.getActiveFlows() == 0){
+									VmInstance vmInstance = n.vmInstance;
+									String nodeServerIp = vmInstance.hostServerConfig.managementIp;
+									String nodeChainName = vmInstance.serviceChainConfig.name;
+									int nodeStageIndex = vmInstance.stageIndex;
+									this.serverVmMap.get(nodeServerIp).get(nodeChainName)
+									                .get(nodeStageIndex).remove(vmInstance.managementIp);
+									
 									System.out.println("!!! ScaleDown: Node "+ip+" is deleted from the chain");
 									chain.deleteNodeFromChain(n);
 									deletedNodeIndexList.add(ip);
@@ -343,7 +368,7 @@ public class ServiceChainHandler extends MessageProcessor {
 						chain.scaleIndicators.get(dcIndex)[node.vmInstance.stageIndex] = true;
 						AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 								                  node.vmInstance.serviceChainConfig.name,
-								                              stageIndex, false, dcIndex);
+								                              stageIndex, false, dcIndex, null);
 						Pending pending = new Pending(1, null);
 						this.pendingMap.put(newRequest.getUUID(), pending);
 						this.mh.sendTo("vmAllocator", newRequest);
@@ -421,7 +446,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			chain.scaleIndicators.get(dcIndex)[0]=true;;
 			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 	                  							chain.serviceChainConfig.name,
-	                  							0, false, dcIndex);
+	                  							0, false, dcIndex, null);
 			Pending pending = new Pending(1, null);
 			this.pendingMap.put(newRequest.getUUID(), pending);
 			this.mh.sendTo("vmAllocator", newRequest);
@@ -431,7 +456,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			chain.scaleIndicators.get(dcIndex)[1] = true;
 			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 												chain.serviceChainConfig.name,
-												1, false, dcIndex);
+												1, false, dcIndex, null);
 			Pending pending = new Pending(1, null);
 			this.pendingMap.put(newRequest.getUUID(), pending);
 			this.mh.sendTo("vmAllocator", newRequest);
@@ -449,6 +474,14 @@ public class ServiceChainHandler extends MessageProcessor {
 			
 				for(String ip : stageScaleDownMap.keySet()){
 					NFVNode n = chain.getNode(ip);
+					
+					VmInstance vmInstance = n.vmInstance;
+					String nodeServerIp = vmInstance.hostServerConfig.managementIp;
+					String nodeChainName = vmInstance.serviceChainConfig.name;
+					int nodeStageIndex = vmInstance.stageIndex;
+					this.serverVmMap.get(nodeServerIp).get(nodeChainName)
+					                .get(nodeStageIndex).remove(vmInstance.managementIp);
+					
 				
 					System.out.println("!!! ScaleDown: Node "+ip+" is deleted from the chain");
 					chain.deleteNodeFromChain(n);
@@ -543,9 +576,22 @@ public class ServiceChainHandler extends MessageProcessor {
     	else{
     		System.out.println("HostServer connection failure");
     	}
+    	
+    	HashMap<String, List<HashMap<String, NFVNode>>> vmMap = 
+    			new HashMap<String, List<HashMap<String, NFVNode>>>();
+		for(String chainName : hostServer.serviceChainConfigMap.keySet()){
+			ServiceChainConfig chainConfig = hostServer.serviceChainConfigMap.get(chainName);
+			List<HashMap<String, NFVNode>> chainList = new ArrayList<HashMap<String, NFVNode>>();
+			for(int i=0; i<chainConfig.stages.size(); i++){
+				HashMap<String, NFVNode> stageMap = new HashMap<String, NFVNode>();
+				chainList.add(stageMap);
+			}
+			vmMap.put(chainName, chainList);
+		}
+		this.serverVmMap.put(hostServer.hostServerConfig.managementIp, vmMap);
 	}
 	
-	private void handleServerStat(String managementIp, ArrayList<String >statList){
+	private void handleServerStat(String managementIp, ArrayList<String> statList){
 		String eth0 = statList.get(8);
 		String[] eth0StatArray = eth0.trim().split("\\s+");
 		long eth0RecvBytes = Long.parseLong(eth0StatArray[0]);
@@ -557,7 +603,107 @@ public class ServiceChainHandler extends MessageProcessor {
 			//Start checking whether there is bandwidth overload.
 			if(hostServer.getState()==NFVNode.OVERLOAD){
 				int dcIndex = hostServer.hostServerConfig.dcIndex;
+				List<String> serverList = this.vmAllocator.getHostServerList(dcIndex);
+				int position = 0;
+				for(int i=0; i<serverList.size(); i++){
+					if(serverList.get(i).equals(hostServer.hostServerConfig.managementIp)){
+						position = i;
+						break;
+					}
+				}
+				serverList.remove(position);
+				HashMap<String, boolean[]> recordMap = new HashMap<String, boolean[]>();
+				String dataPlaneChainName = null;
+				String controlPlaneChainName = null;
 				
+				for(String chainName : hostServer.serviceChainConfigMap.keySet()){
+					int size = hostServer.serviceChainConfigMap.get(chainName).stages.size();
+					boolean[] array = new boolean[size];
+					for(int i=0; i<size; i++){
+						array[i] = false;
+					}
+					
+					recordMap.put(chainName, array);
+					
+					if(hostServer.serviceChainConfigMap.get(chainName).nVmInterface==3){
+						dataPlaneChainName = chainName;
+					}
+					if(hostServer.serviceChainConfigMap.get(chainName).nVmInterface==2){
+						controlPlaneChainName = chainName;
+					}
+				}
+				
+				for(int i=0; i<serverList.size(); i++){
+					HostServer server = this.hostServerMap.get(serverList.get(i));
+					String serverIp = server.hostServerConfig.managementIp;
+					for(String chainName : server.serviceChainConfigMap.keySet()){
+						List<HashMap<String, NFVNode>> list = 
+								this.serverVmMap.get(serverIp).get(chainName);
+						for(int j=0; j<list.size(); j++){
+							if(!list.get(j).isEmpty()){
+								recordMap.get(chainName)[j]=true;
+							}
+						}
+					}
+				}
+				
+				boolean[] dataPlaneArray = recordMap.get(dataPlaneChainName);
+				for(int i=0; i<dataPlaneArray.length; i++){
+					if(!dataPlaneArray[i]){
+						NFVServiceChain chain = this.serviceChainMap.get(dataPlaneChainName);
+						chain.scaleIndicators.get(dcIndex)[i] = true;
+						AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
+																		dataPlaneChainName,
+								                              i, false, dcIndex, hostServer);
+						Pending pending = new Pending(1, null);
+						this.pendingMap.put(newRequest.getUUID(), pending);
+						this.mh.sendTo("vmAllocator", newRequest);
+						
+						chain.scaleDownList.get(dcIndex).get(i).clear();
+						chain.scaleDownCounter.get(dcIndex)[i] = -1;
+					}
+				}
+				
+				boolean[] controlPlaneArray = recordMap.get(controlPlaneChainName);
+				for(int i=0; i<controlPlaneArray.length; i++){
+					if(!controlPlaneArray[i]){
+						NFVServiceChain chain = this.serviceChainMap.get(controlPlaneChainName);
+						chain.scaleIndicators.get(dcIndex)[i] = true;
+						AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
+								                                    controlPlaneChainName,
+								                              i, false, dcIndex, hostServer);
+						Pending pending = new Pending(1, null);
+						this.pendingMap.put(newRequest.getUUID(), pending);
+						this.mh.sendTo("vmAllocator", newRequest);
+						
+						chain.scaleDownList.get(dcIndex).get(i).clear();
+						chain.scaleDownCounter.get(dcIndex)[i] = -1;
+					}
+				}
+				
+				for(String chainName : hostServer.serviceChainConfigMap.keySet()){
+					List<HashMap<String, NFVNode>> list = 
+							this.serverVmMap.get(hostServer.hostServerConfig.managementIp).get(chainName);
+					for(int j=0; j<list.size(); j++){
+						HashMap<String, NFVNode> vmMap = list.get(j);
+						for(String mIp : vmMap.keySet()){
+							this.serviceChainMap.get(chainName).mask(vmMap.get(mIp));
+						}
+					}
+				}
+			}
+		}
+		else{
+			HostServer hostServer = this.hostServerMap.get(managementIp);
+			for(String chainName : hostServer.serviceChainConfigMap.keySet()){
+				List<HashMap<String, NFVNode>> list = 
+						this.serverVmMap.get(hostServer.hostServerConfig.managementIp).get(chainName);
+				for(int j=0; j<list.size(); j++){
+					HashMap<String, NFVNode> vmMap = list.get(j);
+					for(String mIp : vmMap.keySet()){
+						this.serviceChainMap.get(chainName).unmask(vmMap.get(mIp));
+					}
+				}
 			}
 		}
 	}

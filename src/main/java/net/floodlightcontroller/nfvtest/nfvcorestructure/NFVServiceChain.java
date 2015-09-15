@@ -515,6 +515,18 @@ public class NFVServiceChain {
 		return this.dcNfvNodeMaps.get(dcIndex).get(stage);
 	}
 	
+	public synchronized void mask(NFVNode node){
+		if(this.managementIpNodeMap.containsKey(node.vmInstance.managementIp)){
+			this.managementIpNodeMap.get(node.vmInstance.managementIp).mask();
+		}
+	}
+	
+	public synchronized void unmask(NFVNode node){
+		if(this.managementIpNodeMap.containsKey(node.vmInstance.managementIp)){
+			this.managementIpNodeMap.get(node.vmInstance.managementIp).unmask();
+		}
+	}
+	
 	/*public synchronized void setBufferScaleIndicator(int stage, boolean val){
 		this.bufferScaleIndicators[stage] = val;
 	}*/

@@ -147,14 +147,16 @@ public class ConcreteMessage {
 		private final int stageIndex;
 		private final boolean isBufferNode;
 		private final int dcIndex;
+		private final HostServer ignoredServer;
 		
 		public AllocateVmRequest(String sourceId, String chainName, int stageIndex, 
-				                 boolean isBufferNode, int dcIndex){
+				                 boolean isBufferNode, int dcIndex, HostServer ignoredServer){
 			this.sourceId = sourceId;
 			this.chainName = chainName;
 			this.stageIndex = stageIndex;
 			this.isBufferNode = isBufferNode;
 			this.dcIndex = dcIndex;
+			this.ignoredServer = ignoredServer;
 		}
 		
 		public String getSourceId(){
@@ -175,6 +177,10 @@ public class ConcreteMessage {
 		
 		public int getDcIndex(){
 			return this.dcIndex;
+		}
+		
+		public HostServer getIgnoredServer(){
+			return this.ignoredServer;
 		}
 	}
 	
