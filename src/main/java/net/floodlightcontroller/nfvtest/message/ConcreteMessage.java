@@ -25,6 +25,7 @@ public class ConcreteMessage {
 		}
 	}
 	
+	//message first sent to vmworker, then allocator
 	/*
 	 * The following requests are sent to VmWorker processor to prepare the 
 	 * NFV environment and create VMs.
@@ -32,6 +33,7 @@ public class ConcreteMessage {
 	 * to the requests sent by other processors.
 	 */
 	
+	//create vm
 	static public class CreateVmRequest extends Message {
 		private final String sourceId;
 		private final VmInstance vmInstance;
@@ -78,6 +80,7 @@ public class ConcreteMessage {
 		}
 	}
 	
+	//initialize a host
 	static public class HostInitializationRequest extends Message {
 		private final String sourceId;
 		private final HostServer hostServer;
@@ -96,6 +99,7 @@ public class ConcreteMessage {
 		}
 	}
 	
+	//destroy vm
 	static public class DestroyVmRequest extends Message {
 		private final String sourceId;
 		private final VmInstance vmInstance;
@@ -141,22 +145,17 @@ public class ConcreteMessage {
 	/*
 	 * The following requests are sent to the VmAllocator processor.
 	 */
+	
+	//allocate a vm
 	static public class AllocateVmRequest extends Message {
 		private final String sourceId;
 		private final String chainName;
 		private final int stageIndex;
-		private final boolean isBufferNode;
-		private final int dcIndex;
-		private final HostServer ignoredServer;
 		
-		public AllocateVmRequest(String sourceId, String chainName, int stageIndex, 
-				                 boolean isBufferNode, int dcIndex, HostServer ignoredServer){
+		public AllocateVmRequest(String sourceId, String chainName, int stageIndex){
 			this.sourceId = sourceId;
 			this.chainName = chainName;
 			this.stageIndex = stageIndex;
-			this.isBufferNode = isBufferNode;
-			this.dcIndex = dcIndex;
-			this.ignoredServer = ignoredServer;
 		}
 		
 		public String getSourceId(){
@@ -170,20 +169,8 @@ public class ConcreteMessage {
 		public int getStageIndex(){
 			return this.stageIndex;
 		}
-		
-		public boolean getIsBufferNode(){
-			return this.isBufferNode;
-		}
-		
-		public int getDcIndex(){
-			return this.dcIndex;
-		}
-		
-		public HostServer getIgnoredServer(){
-			return this.ignoredServer;
-		}
 	}
-	
+
 	static public class AllocateVmReply extends Message {
 		private final String sourceId;
 		private final VmInstance vmInstance;
@@ -208,6 +195,7 @@ public class ConcreteMessage {
 		}
 	}
 	
+	//add another host server, an easy operation, no need for reply
 	static public class AddHostServerRequest extends Message {
 		private final String sourceId;
 		private final HostServer hostServer;
@@ -226,6 +214,7 @@ public class ConcreteMessage {
 		}
 	}
 	
+	//reclaim a vm, a reply?
 	static public class DeallocateVmRequest extends Message {
 		private final String sourceId;
 		private final VmInstance vmInstance;
@@ -287,24 +276,8 @@ public class ConcreteMessage {
 		}
 	}
 	
-	static public class ServerToChainHandlerRequest extends Message{
-		private final String sourceId;
-		private final HostServer hostServer;
-		
-		public ServerToChainHandlerRequest(String sourceId, HostServer hostServer){
-			this.sourceId = sourceId;
-			this.hostServer = hostServer;
-		}
-		
-		public String getSourceId(){
-			return this.sourceId;
-		}
-		
-		public HostServer getHostServer(){
-			return this.hostServer;
-		}
-	}
 	
+	//do not understand the following class
 	
 	//The following messages are sent to SubscriberConnector for processing.
 	static public class SubConnRequest extends Message{
@@ -383,7 +356,7 @@ public class ConcreteMessage {
 		private final String domainName;
 		private final String ipAddress;
 		private final String addOrDelete;
-		private final Socket socket1;
+		private final Socket socket1;  //why a socket
 		private final Socket socket2;
 		private final VmInstance vmInstance;
 		
@@ -427,6 +400,7 @@ public class ConcreteMessage {
 		}
 	}
 	
+	//no message showing success
 	static public class DNSUpdateReply extends Message{
 		private final DNSUpdateRequest request;
 		private final String sourceId;
@@ -445,82 +419,69 @@ public class ConcreteMessage {
 		}
 	}
 	
-	static public class DNSRemoveRequest extends Message{
+	
+	
+	
+	
+	//message sent by local controller interface: SCALE
+	static  public class GlobScaleRequest extends Message{
 		private final String sourceId;
-		private final String domainName;
-		private final String ipAddress;
+		private final int provision[][];
+		private final boolean isCtrlScaling;
 		
-		public DNSRemoveRequest(String sourceId, String domainName, String ipAddress){
+		public GlobScaleRequest(String sourceId, int provision[][], boolean isCtrlScaling)
+		{
 			this.sourceId = sourceId;
-			this.domainName = domainName;
-			this.ipAddress = ipAddress;
+			this.provision = provision;
+			this.isCtrlScaling = isCtrlScaling;
 		}
 		
 		public String getSourceId(){
 			return this.sourceId;
 		}
 		
-		public String getDomainName(){
-			return this.domainName;
+		public int[][] getProvision(){
+			return this.provision;
 		}
 		
-		public String getIpAddress(){
-			return this.ipAddress;
+		public boolean getIsCtrlScaling()
+		{
+			return this.isCtrlScaling;
 		}
+		
+		
 	}
 	
-	static public class DNSAddRequest extends Message{
+	
+	//message sent to local controller interface: SCALE reply
+	static  public class GlobScaleReply extends Message{
 		private final String sourceId;
-		private final String domainName;
-		private final String ipAddress;
+		private final GlobScaleRequest request;
+		private final boolean success;
 		
-		public DNSAddRequest(String sourceId, String domainName, String ipAddress){
+		public GlobScaleReply(String sourceId, GlobScaleRequest request, boolean success)
+		{
 			this.sourceId = sourceId;
-			this.domainName = domainName;
-			this.ipAddress = ipAddress;
+			this.request = request;
+			this.success = success;
 		}
 		
 		public String getSourceId(){
 			return this.sourceId;
 		}
 		
-		public String getDomainName(){
-			return this.domainName;
+		public GlobScaleRequest getGlobScaleRequest(){
+			return this.request;
 		}
 		
-		public String getIpAddress(){
-			return this.ipAddress;
+		public boolean getSuccess()
+		{
+			return this.success;
 		}
+		
+		
 	}
 	
-	//The following messages are sent from SwitchStatPoller
-	static public class DcLinkStat extends Message{
-		private final String sourceId;
-		private final int size;
-		private final float[][] dcSendSpeed;
-		private final float[][] dcRecvSpeed;
-		
-		public DcLinkStat(String sourceId, int size, float[][] dcSendSpeed, float[][] dcRecvSpeed){
-			this.sourceId = sourceId;
-			this.size = size;
-			this.dcSendSpeed = dcSendSpeed;
-			this.dcRecvSpeed = dcRecvSpeed;
-		}
-		
-		public String getSourceId(){
-			return this.sourceId;
-		}
-		
-		public int getSize(){
-			return this.size;
-		}
-		
-		public float[][] getDcSendSpeed(){
-			return this.dcSendSpeed;
-		}
-		
-		public float[][] getDcRecvSpeed(){
-			return this.dcRecvSpeed;
-		}
-	}
+	
+	
 }
