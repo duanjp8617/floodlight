@@ -80,21 +80,31 @@ public class VmWorker extends MessageProcessor{
 		HostServer hostServer = request.getHostServer();
 		HostAgent agent = new HostAgent(hostServer.hostServerConfig);
 		try{
+			//agent will connect to the host server
+			//then create dirs on host server if 
+			//dirs do not exist. If dirs exist, 
+			//we remove previous uploaded xml files
 			agent.connect();
 			agent.createDir(hostServer.hostServerConfig.homeDir);
 			agent.createDir(hostServer.hostServerConfig.xmlDir);
 			agent.createDir(hostServer.hostServerConfig.imgDir);
 			agent.removeFilesFromDir(hostServer.hostServerConfig.xmlDir);
 			
+			//The following loop initialize the runtime environment in host server.
+			//All used service chains will be initialized in turns.
 			ArrayList<String> baseImgList = new ArrayList<String>();
 			for(String chainName : hostServer.serviceChainConfigMap.keySet()){
 				ServiceChainConfig chainConfig = hostServer.serviceChainConfigMap.get(chainName);
+				
+				//create ovs bridges on host server, set bridge's dpid and it's controller
 				for(int i=0; i<chainConfig.bridges.size(); i++){
 					agent.createBridge(chainConfig.bridges.get(i));
 					agent.setBridgeDpid(chainConfig.bridges.get(i), 
 							            hostServer.serviceChainDpidMap.get(chainName).get(i));
 					agent.setController(chainConfig.bridges.get(i), hostServer.controllerConfig.managementIp);
 				}
+				
+				//upload base vm image files
 				for(int i=0; i<chainConfig.stages.size(); i++){
 					baseImgList.add(chainConfig.getImgNameForStage(i));
 					if(!agent.fileExistInDir(hostServer.hostServerConfig.imgDir, chainConfig.getImgNameForStage(i))){
@@ -104,6 +114,7 @@ public class VmWorker extends MessageProcessor{
 					}
 				}
 				
+				//create management network
 				if(agent.networkExist(chainConfig.getManagementNetwork())){
 					agent.deleteNetwork(chainConfig.getManagementNetwork());
 				}
@@ -115,6 +126,7 @@ public class VmWorker extends MessageProcessor{
 				agent.uploadFile(localMNetXMLFile, remoteMNetXMLFile);
 				agent.createNetworkFromXml(remoteMNetXMLFile);
 				
+				//create operational network if it's control plane
 				if(chainConfig.getOperationNetwork()!="nil"){
 					if(agent.networkExist(chainConfig.getOperationNetwork())){
 						agent.deleteNetwork(chainConfig.getOperationNetwork());
@@ -129,6 +141,7 @@ public class VmWorker extends MessageProcessor{
 				}
 			}
 			
+			//remove previous generated vm images
 			String[] unusedImgArray = agent.createSelectedRemoveList(hostServer.hostServerConfig.imgDir, baseImgList);
 			for(int i=0; i<unusedImgArray.length; i++){
 				agent.removeFile(hostServer.hostServerConfig.imgDir+"/"+unusedImgArray[i]);
@@ -141,7 +154,12 @@ public class VmWorker extends MessageProcessor{
 		}
 	}
 	
+	//create new vm on a given host server according to 
+	//the CreateVmRequest
 	private void createVm(CreateVmRequest request){
+		
+		//acquire VmInstance, create xml file describing the new vm,
+		//set remove file names
 		VmInstance vmInstance = request.getVmInstance();
 		String localXmlFile = constructLocalXmlFile(vmInstance);
 		String remoteXmlFile = vmInstance.hostServerConfig.xmlDir+"/"+vmInstance.vmName;
@@ -149,8 +167,17 @@ public class VmWorker extends MessageProcessor{
 		String remoteBaseImgFile = vmInstance.hostServerConfig.imgDir+"/"+
 		                   vmInstance.serviceChainConfig.getImgNameForStage(vmInstance.stageIndex);
 		
+		//this is the actual procedure to create vm on remote host server
 		HostAgent agent = new HostAgent(vmInstance.hostServerConfig);
 		try{
+			
+			//agent connects to host server through ssh
+			//upload vm xml file to host server
+			//create vm image by copying base image
+			//create vm from the new xml file
+			//finally query the ovs ports for the vm and 
+			//set ovs ports in VmInstance
+			//reply to the actor that sends the CreateVmRequest
 			agent.connect();
 			agent.uploadFile(localXmlFile, remoteXmlFile);
 			agent.copyFile(remoteBaseImgFile, remoteImgFile);
@@ -173,6 +200,7 @@ public class VmWorker extends MessageProcessor{
 		}
 	}
 	
+	//create a network xml file for host server to use
 	private String constructNetworkXmlFile(ControllerConfig controllerConfig, String chainName,
 			String networkName, FakeDhcpAllocator dhcpAllocator){
 		Document doc;
@@ -253,6 +281,7 @@ public class VmWorker extends MessageProcessor{
 		return localXmlFile;
 	}
 	
+	//create vm xml file for vm to use
 	private String constructLocalXmlFile(VmInstance vmInstance){
 		Document doc;
 		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -374,6 +403,8 @@ public class VmWorker extends MessageProcessor{
 		return localXmlFile;
 	}
 	
+	//when receiving DestroyVmRequest, destroy the vm,
+	//delete its xml file and image file, reply to the sender
 	private void destroyVm(DestroyVmRequest request){
 		VmInstance vmInstance = request.getVmInstance();
 		String remoteXmlPath = vmInstance.hostServerConfig.xmlDir+"/"+vmInstance.vmName;

@@ -95,47 +95,11 @@ import net.floodlightcontroller.nfvtest.nfvslaveservice.NFVZmqPoller;
 
  
 public class NFVTest implements IOFMessageListener, IFloodlightModule {
-	
-	public class IpsServer {
-		public class Interface {
-			public int ipAddress;
-			public MacAddress macAddress;
-			public DatapathId attachedSwitch;
-			public int port;
-			
-			public Interface(String ipAddress, String macAddress, String dpid, int port){
-				this.ipAddress = IPv4.toIPv4Address(ipAddress);
-				this.macAddress = MacAddress.of(macAddress);
-				this.attachedSwitch = DatapathId.of(dpid);
-				this.port = port;
-			}
-		}
-		
-		public Interface ingressIf;
-		public Interface egressIf;
-		
-		public IpsServer(){
-		}
-		
-		public void attachIngressIf(String ipAddress, String macAddress, String dpid, int port){
-			this.ingressIf = new Interface(ipAddress, macAddress, dpid, port);
-		}
-		
-		public void attachEgressIf(String ipAddress, String macAddress, String dpid, int port){
-			this.egressIf = new Interface(ipAddress, macAddress, dpid, port);
-		}
-	}
  
 	protected IFloodlightProviderService floodlightProvider;
 	protected Set<Long> macAddresses;
 	protected static Logger logger;
     protected IOFSwitchService switchService;
-    
-    protected IpsServer IpsServer1;
-    protected IpsServer IpsServer2;
-    protected IpsServer IpsServer3;
-    
-    protected ArrayList<IpsServer> ipsServerList;
     
 	private ControllerConfig controllerConfig;
 	private HostServerConfig hostServerConfig;
@@ -195,7 +159,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         switchService = context.getServiceImpl(IOFSwitchService.class);
         macAddresses = new ConcurrentSkipListSet<Long>();
         logger = LoggerFactory.getLogger(NFVTest.class);
-        ipsServerList = new ArrayList<IpsServer>();
         
         logger.info("start testing network xml");
         //TestHostServer testHostServer = new TestHostServer();

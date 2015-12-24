@@ -78,6 +78,9 @@ public class VmAllocator extends MessageProcessor {
 		}
 	}
 	
+	//allocate a vm on a host server that has enough capacity.
+	//then create a CreateVmRequest to create the vm on that host
+	//server
 	private void allocateVm(AllocateVmRequest originalRequest){
 		for(HostServer hostServer : this.hostServerList){
 			VmInstance vmInstance = 
@@ -95,6 +98,9 @@ public class VmAllocator extends MessageProcessor {
 		}
 	}
 	
+	//When VmWorker finishes creating the new vm, VmWorker will
+	//return a CreateVmReply. Handle it by replying to the 
+	//sender of the AllocateVmRequest a AllocateVmReply message
 	private void handleCreateVmReply(CreateVmReply newReply){
 		CreateVmRequest newRequest = newReply.getRequest();
 		Pending pending = this.pendingMap.get(newRequest.getUUID());
@@ -111,6 +117,10 @@ public class VmAllocator extends MessageProcessor {
 		this.pendingMap.remove(newRequest.getUUID());
 	}
 	
+	//This is not that good. When the controller is initialized
+	//VmAllocator will receive AddHostServerRequest. After receiving
+	//This request, we will create bi-direction tunnels from the new host server
+	//to all existing host servers.
 	private void addHostServer(AddHostServerRequest request){
 		if(this.hostServerList.size()==0){
 			this.hostServerList.add(request.getHostServer());
@@ -149,6 +159,8 @@ public class VmAllocator extends MessageProcessor {
 		}
 	}
 	
+	//Deallocate an existing vm. Note that we first destroy the vm.
+	//Then we deallocate the vm when the destroying process finishes.
 	private void deallocateVm(DeallocateVmRequest originalRequest){
 		DestroyVmRequest newRequest = new DestroyVmRequest(this.getId(), originalRequest.getVmInstance());
 		Pending pending = new Pending(1, originalRequest);
