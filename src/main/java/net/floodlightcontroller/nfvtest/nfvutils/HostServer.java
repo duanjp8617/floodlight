@@ -160,13 +160,21 @@ public class HostServer {
 	private HostServerAllocation allocation;
 	
 	public final Map<String, Integer> tunnelPortMap;
+	public final Map<Integer, String> portTunnelMap;
 	public int tunnelPort;
+	public int entryExitPort;
+	public String entryMac;
+	public String entryIp;
+	public String exitMac;
+	public String exitIp;
 	
 	public HostServer(ControllerConfig controllerConfig,
 			   		  HostServerConfig hostServerConfig,
 			   		  Map<String, ServiceChainConfig> serviceChainConfigMap,
 			   		  MacAddressAllocator macAllocator,
-			   		  IpAddressAllocator ipAllocator){
+			   		  IpAddressAllocator ipAllocator,
+			   		  String entryIp,
+			   		  String exitIp){
 		this.controllerConfig = controllerConfig;
 		this.hostServerConfig = hostServerConfig;
 		this.serviceChainConfigMap = serviceChainConfigMap;
@@ -204,7 +212,13 @@ public class HostServer {
 		}
 		
 		this.tunnelPortMap = new HashMap<String, Integer>();
+		this.portTunnelMap = new HashMap<Integer, String>();
 		this.tunnelPort = 10;
+		this.entryExitPort=9;
+		this.entryMac = "nil";
+		this.exitMac = "nil";
+		this.entryIp = entryIp;
+		this.exitIp = exitIp;
 	}
 	
 	public VmInstance allocateVmInstance(String chainName, int stageIndex){

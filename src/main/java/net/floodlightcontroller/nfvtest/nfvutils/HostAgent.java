@@ -370,6 +370,7 @@ public class HostAgent{
 		
 		String dstIp = dst.hostServerConfig.managementIp;
 		src.tunnelPortMap.put(dstIp, new Integer(src.tunnelPort));
+		src.portTunnelMap.put(new Integer(src.tunnelPort), dstIp);
 		
 		for(int i=0; i<srcBridgeList.size(); i++){
 			this.createTunnelPort(srcBridgeList.get(i), dstIp, src.tunnelPort, vniIndex);
@@ -392,7 +393,7 @@ public class HostAgent{
 		final Session session = sshClient.startSession();
 		final Session.Command command = session.exec(strCmd);
 		command.join(10, TimeUnit.SECONDS);
-
+	
 		if(command.getExitStatus().intValue()==0){
 			session.close();
 			return true;
@@ -401,6 +402,99 @@ public class HostAgent{
 			session.close();
 			return false;
 	
+		}
+	}
+	
+	public boolean createRouteTo(HostServer src, HostServer dst)throws
+		IOException, UserAuthException, TransportException{
+		String dstOperationNetwork = null;
+		for(String chainName : src.serviceChainConfigMap.keySet()){
+			ServiceChainConfig chainConfig = src.serviceChainConfigMap.get(chainName);
+			if(!chainConfig.getOperationNetwork().equals("nil")){
+				dstOperationNetwork = chainConfig.getOperationNetwork();
+			}
+		}
+		if(dstOperationNetwork!=null){
+			String prefix = dstOperationNetwork.substring(0, dstOperationNetwork.lastIndexOf("."));
+			String strCmd = "sudo route add -net "+prefix+".0"+" netmask 255.255.255.0 gw "+
+							src.hostServerConfig.managementIp+" dev eth2";
+			final Session session = sshClient.startSession();
+			final Session.Command command = session.exec(strCmd);
+			command.join(10, TimeUnit.SECONDS);
+	
+			if(command.getExitStatus().intValue()==0){
+				session.close();
+				return true;
+			}
+			else{
+				session.close();
+				return false;
+		
+			}
+		}
+		return false;
+	}
+	
+	public boolean addPort(String bridgeName, String port, int ofPort)throws
+		IOException, UserAuthException, TransportException{
+	
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo ovs-vsctl add-port "+bridgeName+" "
+												 +port+" -- set interface "+port
+												 +" type=internal ofport_request="
+												 +new Integer(ofPort).toString());
+		command.join(60, TimeUnit.SECONDS);
+	
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+	
+		}
+	}
+	
+	public boolean upPort(String port, String ip)throws
+		IOException, UserAuthException, TransportException{
+	
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo ifconfig "+port+" "+ip+" netmask 255.255.255.0 up");
+		command.join(60, TimeUnit.SECONDS);
+	
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+	
+		}
+	}
+	
+	public String getMac(String bridgeName, String port) throws
+	   	IOException, UserAuthException, TransportException{
+	
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo ovs-ofctl show "+ bridgeName +
+							" | grep "+port);
+	
+		command.join(2, TimeUnit.SECONDS);
+	
+		if(command.getExitStatus().intValue()==0){
+			String result = IOUtils.readFully(command.getInputStream()).toString();
+	
+			int start = result.indexOf("addr:");
+			start += 5;
+			String returnVal = result.substring(start, start+17);
+			System.out.println(returnVal);
+			return returnVal;
+		}
+		else{
+			session.close();
+			return "nil";
 		}
 	}
 	

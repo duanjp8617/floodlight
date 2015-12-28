@@ -79,23 +79,12 @@ public class DNSUpdator extends MessageProcessor{
 	}
 	
 	private void updateDNS(DNSUpdateRequest request){
-		if(request.getDomainName().equals("sprout.cw.t")){
-			this.requester.send(request.getAddOrDelete(), ZMQ.SNDMORE);
-			this.requester.send(request.getDomainName(), ZMQ.SNDMORE);
-			this.requester.send(request.getIpAddress(), 0);
-			String recvResult = requester.recvStr();
-		}
-		else{
-			if(!request.getIpAddress().equals("192.168.65.33")){
-				Socket bonoRequester = this.zmqContext.socket(ZMQ.REQ);
-				bonoRequester.connect("tcp://192.168.124.72:7773");
-				bonoRequester.send(request.getAddOrDelete(),  ZMQ.SNDMORE);
-				bonoRequester.send(request.getIpAddress(), 0);
-				String recvResult = bonoRequester.recvStr();
-				bonoRequester.close();
-			}
-		}
 		
+		this.requester.send(request.getAddOrDelete(), ZMQ.SNDMORE);
+		this.requester.send(request.getDomainName(), ZMQ.SNDMORE);
+		this.requester.send(request.getIpAddress(), 0);
+		String recvResult = requester.recvStr();
+
 		DNSUpdateReply reply = new DNSUpdateReply(this.getId(), request);
 		this.mh.sendTo(request.getSourceId(), reply);
 	}

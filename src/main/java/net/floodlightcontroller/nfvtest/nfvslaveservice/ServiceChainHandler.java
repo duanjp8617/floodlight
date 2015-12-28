@@ -86,6 +86,10 @@ public class ServiceChainHandler extends MessageProcessor {
 		}
 	}
 	
+	//initialize a nfv serivce chain.
+	//create one vm for each stage of the service chain.
+	//wait for all vm creation jobs to be completed before 
+	//responding
 	private void initServiceChain(InitServiceChainRequset originalRequest){
 		NFVServiceChain serviceChain = originalRequest.getServiceChain();
 		Pending pending = new Pending(serviceChain.serviceChainConfig.stages.size(), 
@@ -107,6 +111,12 @@ public class ServiceChainHandler extends MessageProcessor {
 		this.mh.sendTo("vmAllocator", newRequest);
 	}
 	
+	//This handles the AllocateVmReply sent from VmAllocator.
+	//We might probably want to change this function for 
+	//global control.
+	//When new vm is created, we need to connect to the 
+	//stat reporter on that vm. This is done by creating a 
+	//SubConnRequest.
 	private void handleAllocateVmReply(AllocateVmReply newReply){
 		AllocateVmRequest newRequest = newReply.getAllocateVmRequest();
 		Pending pending = this.pendingMap.get(newRequest.getUUID());
@@ -143,6 +153,11 @@ public class ServiceChainHandler extends MessageProcessor {
 		}
 	}
 	
+	//For data plane, once we have successfully finish connecting to the stat report
+	//module on each vm, we will create a new NFVNode. And register
+	//the poller with the new subscriber to poll the vm stat.
+	//For control plane, when we finish connecting to the stat report module, 
+	//we need to update the DNS.
 	private void handleSubConnReply(SubConnReply reply){
 		SubConnRequest request = reply.getSubConnRequest();
 		VmInstance vmInstance = request.getVmInstance();
@@ -188,6 +203,10 @@ public class ServiceChainHandler extends MessageProcessor {
 		this.poller.register(new Pair<String, Socket>(managementIp+":2", subscriber2));
 	}
 	
+	//This is the driving function for reactive scaling.
+	//Whenever the the stat poller polls a new stat 
+	//, it will report the stat to ServiceChainHandler.
+	//This function is where the stat is processed.
 	private void statUpdate(StatUpdateRequest request){
 		ArrayList<String> statList = request.getStatList();
 		String managementIp = request.getManagementIp();
@@ -195,7 +214,9 @@ public class ServiceChainHandler extends MessageProcessor {
 		for(String chainName : this.serviceChainMap.keySet()){
 			NFVServiceChain chain = this.serviceChainMap.get(chainName);
 			synchronized(chain){
-				if(chain.hasNode(managementIp)&&(chain.serviceChainConfig.nVmInterface==3)){
+				if(chain.hasNode(managementIp)){
+					//The stat comes from a NFV node on this service chain.
+					//update the stat on this node.
 					chain.updateDataNodeStat(managementIp, statList);
 					
 					NFVNode node = chain.getNode(managementIp);
@@ -210,72 +231,10 @@ public class ServiceChainHandler extends MessageProcessor {
 						}
 					}
 					
-					if(nOverload == 0){
-						if(chain.scaleDownList.get(stageIndex).size()!=0){
-							Map<String, Integer> stageScaleDownMap = 
-									                chain.scaleDownList.get(stageIndex);
-							List<String> deletedNodeIndexList = new ArrayList<String>();
-							
-							for(String ip : stageScaleDownMap.keySet()){
-								NFVNode n = chain.getNode(ip);
-								
-								if(n.getActiveFlows() == 0){
-									System.out.println("!!! ScaleDown: Node "+ip+" is deleted from the chain");
-									chain.deleteNodeFromChain(n);
-									deletedNodeIndexList.add(ip);
-									
-									//Do some other thing.
-									this.poller.unregister(n.getManagementIp());
-									DeallocateVmRequest deallocationRequest = 
-											new DeallocateVmRequest(this.getId(), n.vmInstance);
-									this.mh.sendTo("vmAllocator", deallocationRequest);
-								}
-							}
-							
-							for(int i=0; i<deletedNodeIndexList.size(); i++){
-								stageScaleDownMap.remove(deletedNodeIndexList.get(i));
-							}
-							
-							if(stageScaleDownMap.size() == 0){
-								chain.scaleDownCounter[stageIndex] = -1;
-							}
-						}
-						else{
-							if(chain.scaleDownCounter[stageIndex] == -1){
-								chain.scaleDownCounter[stageIndex] = System.currentTimeMillis();
-							}
-							else{
-								if((System.currentTimeMillis()-chain.scaleDownCounter[stageIndex])>=
-									                                        15000){
-									//The stage has been relatively idle for 15000s, put some 
-									//nodes to the scaleDownList
-									ArrayList<Pair<String, Integer>> flowNumList = 
-											             chain.getFlowNumArray(stageIndex);
-									
-									int numToAdd = flowNumList.size()/2;
-									for(int i=0; i<numToAdd; i++){
-										int index = chain.getNodeWithLeastFlows(stageIndex, 
-												             flowNumList);
-										if(index < 0){
-											continue;
-										}
-										else{
-											String ip = flowNumList.get(index).first;
-											chain.scaleDownList.get(stageIndex).put(ip, 
-													                 new Integer(0));
-											flowNumList.remove(index);
-											System.out.println("!!!Scale Down: Node "+ip+" is put into the scaleDownList");
-										}
-									}
-									
-									chain.scaleDownCounter[stageIndex] = -1;
-								}						
-							}
-						}
-					}
-					
 					if( (nOverload == stageMap.size())&&
 					    (!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
+						//Here we trigger a reactive scaling condition.
+						//Create a new vm.
 						chain.setScaleIndicator(node.vmInstance.stageIndex, true);
 						AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 								                  node.vmInstance.serviceChainConfig.name,
@@ -288,100 +247,15 @@ public class ServiceChainHandler extends MessageProcessor {
 						chain.scaleDownCounter[stageIndex] = -1;
 					}
 					else if((nOverload > 0)&&(nOverload < stageMap.size())){
+						//TODO:
+						//Something needs to be done here....
 						chain.scaleDownList.get(stageIndex).clear();
 						chain.scaleDownCounter[stageIndex] = -1;
 					}
 					
 					break;
 				}
-				if(chain.hasNode(managementIp)&&(chain.serviceChainConfig.nVmInterface==2)){
-					chain.updateControlNodeStat(managementIp, statList);
-					NFVNode node = chain.getNode(managementIp);
-					
-					if(node.vmInstance.stageIndex == 0){
-						Map<String, NFVNode> stageMap = chain.getStageMap(0);
-						
-						int nOverload = 0;
-						for(String ip : stageMap.keySet()){
-							NFVNode n = stageMap.get(ip);
-							if(n.getTranState() == NFVNode.OVERLOAD){
-								nOverload += 1;
-							}
-						}
-						
-						if(nOverload == stageMap.size()){
-							//Let's find out which stage needs scaling.
-							controlPlaneScaleUp(chain);
-						}
-					}
-					
-					break;
-					
-					/*Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
-					
-					int nOverload = 0;
-					for(String ip : stageMap.keySet()){
-						NFVNode n = stageMap.get(ip);
-						if(n.getState() == NFVNode.OVERLOAD){
-							nOverload += 1;
-						}
-					}
-					
-					if( (nOverload == stageMap.size())&&
-						    (!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
-							chain.setScaleIndicator(node.vmInstance.stageIndex, true);
-							AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
-									                  node.vmInstance.serviceChainConfig.name,
-									                              node.vmInstance.stageIndex);
-							Pending pending = new Pending(1, null);
-							this.pendingMap.put(newRequest.getUUID(), pending);
-							this.mh.sendTo("vmAllocator", newRequest);
-					}
-					
-					break;*/
-				}
 			}
-		}
-	}
-	
-	private void controlPlaneScaleUp(NFVServiceChain chain){
-		
-		int nBonoOverload = 0;
-		Map<String, NFVNode> bonoMap = chain.getStageMap(0);
-		for(String ip : bonoMap.keySet()){
-			NFVNode n = bonoMap.get(ip);
-			if(n.getState() == NFVNode.OVERLOAD){
-				nBonoOverload += 1;
-			}
-		}
-		
-		int nSproutOverload = 0;
-		Map<String, NFVNode> sproutMap = chain.getStageMap(1);
-		for(String ip : sproutMap.keySet()){
-			NFVNode n = sproutMap.get(ip);
-			if(n.getState() == NFVNode.OVERLOAD){
-				nSproutOverload += 1;
-			}
-		}
-		
-		if((nBonoOverload==bonoMap.size())&&(!chain.getScaleIndicator(0))){
-			chain.setScaleIndicator(0, true);
-			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
-	                  							chain.serviceChainConfig.name,
-	                  							0);
-			Pending pending = new Pending(1, null);
-			this.pendingMap.put(newRequest.getUUID(), pending);
-			this.mh.sendTo("vmAllocator", newRequest);
-		}
-		
-		if((nSproutOverload==sproutMap.size())&&(!chain.getScaleIndicator(1))){
-			chain.setScaleIndicator(1, true);
-			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
-												chain.serviceChainConfig.name,
-												1);
-			Pending pending = new Pending(1, null);
-			this.pendingMap.put(newRequest.getUUID(), pending);
-			this.mh.sendTo("vmAllocator", newRequest);
 		}
 	}
 }

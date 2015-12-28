@@ -97,11 +97,25 @@ public class VmWorker extends MessageProcessor{
 				ServiceChainConfig chainConfig = hostServer.serviceChainConfigMap.get(chainName);
 				
 				//create ovs bridges on host server, set bridge's dpid and it's controller
+				//then create entryIp and exitIp
 				for(int i=0; i<chainConfig.bridges.size(); i++){
 					agent.createBridge(chainConfig.bridges.get(i));
 					agent.setBridgeDpid(chainConfig.bridges.get(i), 
 							            hostServer.serviceChainDpidMap.get(chainName).get(i));
 					agent.setController(chainConfig.bridges.get(i), hostServer.controllerConfig.managementIp);
+					
+					if(i==0){
+						//create an entry ip for the first bridge.
+						agent.addPort(chainConfig.bridges.get(i), "entry", hostServer.entryExitPort);
+						agent.upPort("entry", hostServer.entryIp);
+						hostServer.entryMac = agent.getMac(chainConfig.bridges.get(i), "entry");
+					}
+					if(i==chainConfig.bridges.size()-1){
+						//create an exit ip for the last bridge
+						agent.addPort(chainConfig.bridges.get(i), "exit", hostServer.entryExitPort);
+						agent.upPort("exit", hostServer.exitIp);
+						hostServer.exitMac = agent.getMac(chainConfig.bridges.get(i), "exit");
+					}
 				}
 				
 				//upload base vm image files
