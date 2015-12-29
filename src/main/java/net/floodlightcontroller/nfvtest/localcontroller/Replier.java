@@ -5,7 +5,6 @@ import org.zeromq.ZMQ;
 public class Replier implements Runnable
 {
 	private ZMQ.Socket replier;
-	private ZMQ.Socket requester;
 	private ZMQ.Context zmqContext;
 	private boolean bool = true;
 	
