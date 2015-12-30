@@ -24,7 +24,6 @@ public class MesureDelay implements Runnable
 	
 	private boolean bool;
 	
-	private Object lock;
 	
 	MesureDelay(int id, int interval, Map<Integer, String> map)
 	{
@@ -91,10 +90,8 @@ public class MesureDelay implements Runnable
 	
 	public Map<Integer, Integer> getDelay()
 	{
-		synchronized(lock)
-		{
-			return this.delay;
-		}
+
+		return this.delay;
 		
 	}
 	
@@ -104,7 +101,7 @@ public class MesureDelay implements Runnable
 		// TODO Auto-generated method stub
 		while (bool)
 		{
-			synchronized(lock)
+			synchronized(this)
 			{
 				measure();
 			}
