@@ -1,325 +1,295 @@
 package localcontroller;
 
-import java.util.concurrent.LinkedBlockingQueue;
+import org.zeromq.ZMQ.Socket;
+import org.zeromq.ZMQ.Context;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Random;
+
 import org.zeromq.ZMQ;
-import net.floodlightcontroller.nfvtest.message.Message;
-import net.floodlightcontroller.nfvtest.message.MessageProcessor;
-import net.floodlightcontroller.nfvtest.message.ConcreteMessage.GlobScaleRequest;
-import net.floodlightcontroller.nfvtest.message.ConcreteMessage.GlobScaleReply;
 
-
-public class LocalController extends MessageProcessor
-{
+public class LocalController {
 	
-	private final int DC_NUM;
-	private final int CTRL_CHAIN_LEN;
-	private final int DATA_CHAIN_LEN;
+	private String globalIp; //global controller IP
+	private int publishPort; //global controller publish port
+	private int syncPort;    //global controller replier port
+	private int pullPort;    //global controller poll port
 	
-	//send to global controller
-	private int delay[];
-	private int networkDeployment[];
+	private String localIp;  //local controller IP
 	
-	//receive from global controller
-	private int ctrlProvision[][];
-	private int dataProvision[][];
-	private int networkTopo[][][];
+	private Context context;
+	private Socket subscriber;
+	private Socket requester;
+	private Socket pusher;
 	
-	private ZMQ.Socket sock;
-	private ZMQ.Context zmqContext;
+	private boolean hasScscf;
+	private HashMap<String, Integer> localcIndexMap;
 	
-//	private final int id;  //each local controller (data center) has a unique identifier, which equals to port-5555;
+	private int delayPollInterval;
+	private int statPollInterval;
 	
-	LocalController(int dcNum, int ctrlChainLen, int dataChainLen, int id)
-	{
-		this.DC_NUM = dcNum;
-		this.CTRL_CHAIN_LEN = ctrlChainLen;
-		this.DATA_CHAIN_LEN = dataChainLen;
-//		this.id = id;
+	private String curState;
+	
+	private int dpCapacity[];
+	private MeasureDelay measDelay;
+	
+	public LocalController(String globalIp, int publishPort, int syncPort, int pullPort,
+			String localIp, int subPort, int reqPort, int pushPort, boolean hasScscf,
+			int delayPollInterval, int statPollInterval, int dpCapacity[]){
+		this.globalIp = globalIp;
+		this.publishPort = publishPort;
+		this.syncPort = syncPort;
+		this.pullPort = pullPort;
 		
-		this.ctrlProvision = new int[dcNum][ctrlChainLen];
-		this.dataProvision = new int[dcNum][dataChainLen];
-		this.networkTopo = new int[dcNum][dcNum][dataChainLen];
+		this.localIp = localIp;
 		
-		this.init();
+		this.context = null;
+		this.subscriber = null;
+		this.requester = null;
+		this.pusher = null;
+		
+		this.hasScscf = hasScscf;
+		this.localcIndexMap = new HashMap<String, Integer>();
+		
+		this.delayPollInterval = delayPollInterval;
+		this.statPollInterval = statPollInterval;
+		
+		this.curState = "initial";
+		this.dpCapacity = dpCapacity;
+		
 		
 	}
 	
-	public int[][] getCtrlProvision()
-	{
-		return this.ctrlProvision;
-	}
-	
-	public int[][] getDataProvision()
-	{
-		return this.dataProvision;
-	}
-	
-	public int[][][] getNetworkTopo()
-	{
-		return this.networkTopo;
-	}
-	
-	private void setDelay()
-	{
-		//this.delay = {{0}};
-		this.delay = new int[DC_NUM];
-		for (int i=0; i<DC_NUM; i++)
-		{
-			delay[i] = 0;
+	public void start(){
+		System.out.println("start local controller on IP: "+localIp+"\n");
+		System.out.println("connecting to globalc ontroller on IP: "+globalIp+"\n");
+		
+		context = ZMQ.context(1);
+		subscriber = context.socket(ZMQ.SUB);
+		subscriber.connect("tcp://"+globalIp+":"+Integer.toString(publishPort));
+		subscriber.subscribe("".getBytes());
+		
+		pusher = context.socket(ZMQ.PUSH);
+		pusher.connect("tcp://"+globalIp+":"+Integer.toString(pullPort));
+		
+		requester = context.socket(ZMQ.REQ);
+		requester.connect("tcp://"+globalIp+":"+Integer.toString(syncPort));
+		
+		//send to global controller necessary information for sync
+		//JOIN -> IP of local controller -> whether has SCSCF servers 
+		requester.send("JOIN", ZMQ.SNDMORE);
+		requester.send(localIp, ZMQ.SNDMORE);
+		if(hasScscf==true){
+			requester.send("HASSCSCF", 0);
 		}
-	}
-	
-	private void setNetworkDeployment()
-	{
-		//this.networkDeployment = networkDeployment;
-		this.networkDeployment = new int[DATA_CHAIN_LEN];
-		for (int i=0; i<DATA_CHAIN_LEN; i++)
-		{
-			networkDeployment[i] = 3;
+		else{
+			requester.send("NOSCSCF", 0);
 		}
-	}
-	
-	
-	//create socket to connect to global controller
-	private void init()
-	{
-		//create socket to connect to global controller
-		zmqContext = ZMQ.context(1);
-		sock = zmqContext.socket(ZMQ.REP);
-		sock.connect("tcp://localhost:5555");
-	}
-	
-	
-	public void exit()
-	{
-		sock.close();
-		zmqContext.term();
-	}
-	
-	
-	//run method
-	public void connToLocalController()
-	{
+		requester.recv(0);
 		
-		while (true)
-		{
-			byte[] recvArr = sock.recv(0);
-			String recvStr = new String(recvArr);
-			System.out.println("recvStr " + recvStr);
+		System.out.println("local controller connects to global controller, waiting for final configuration"+"\n");
+		
+		//wait for the final sync message from global controller
+		//global controller will broadcast all the local controller IPs and their corresponding indexes.
+		//save this information in a map
+		String initMsg = subscriber.recvStr();
+		assert initMsg.equals("SYNC");
+		boolean hasMore = true;
+		while(hasMore){
+			String ip = subscriber.recvStr();
+			String index = subscriber.recvStr();
+			localcIndexMap.put(ip, new Integer(Integer.parseInt(index)));
+			System.out.println("learns a local controller at IP: "+ip+" with index "+index+"\n");
+			hasMore = subscriber.hasReceiveMore();
+		}
+		
+		//initialize measure here
+		//The measure class will measure delay, control plane stat
+		//if the local controller owns scscf, measure will also measure control plane stat
+		//The measurement result are acquired through regular polling the measure class
+		this.measDelay = new MeasureDelay(localIp, delayPollInterval/2, localcIndexMap);
+		Thread th = new Thread(this.measDelay);
+		th.start();
+		
+		localLoop();
+	}
+	
+	private void localLoop(){
+		ZMQ.Poller items = new ZMQ.Poller (1);
+		items.register(subscriber, ZMQ.Poller.POLLIN);
+		
+		long delayPollTime = System.currentTimeMillis();
+		long statPollTime = System.currentTimeMillis();
+		
+		
+		while (!Thread.currentThread ().isInterrupted ()) {
+			items.poll(100);
 			
-//			if (recvStr.equals("HELLO"))
-//			{
-//				this.sendID();
-//			}
-			if (recvStr.equals("START"))
-			{
-				//send delay and networkDeployment to global controller
-				this.sendInfoToGlob();
+			//process broadcast messages from global controller
+			//we maintain a state to check whether we behave correctly
+			if (items.pollin(0)) {
+				processSubscriber();
 			}
-			else if (recvStr.equals("RESULT"))
-			{
-				sock.send("OKAY".getBytes(), 0);
-				
-				//receive control plane provision, data plane provision and path
-				this.recvResult();
+			
+			//It's time to check for delay and report delay.
+			if((System.currentTimeMillis()-delayPollTime)>delayPollInterval){
+				processDelayPoll();
+				delayPollTime = System.currentTimeMillis();
 			}
-			else if (recvStr.equals("SCALE"))
-			{
-				//start to scale according to provisioning
-				this.handleScale();
+			
+			//It's time to check traffic stats and report traffic stats
+			if((System.currentTimeMillis()-statPollTime)>statPollInterval){
+				processStatPoll();
+				statPollTime = System.currentTimeMillis();
 			}
-			else if (recvStr.equals("PATH"))
-			{
-				//adjust path of each service chain if necessary
-				sock.send("OKAY".getBytes(), 0);
-			}
-//			else if (recvStr.equals("BYE"))
-//			{
-//				//exit
-//				sock.send("BYE");   
-//			}
 		}
-
 	}
 	
-	
-	//reply HELLO
-//	private void sendID()
-//	{
-//		byte sendArrByte[] = new byte[4];
-//		sendArrByte[0] = (byte)(this.id>>24 & 0xff);
-//		sendArrByte[1] = (byte)(this.id>>16 & 0xff);
-//		sendArrByte[2] = (byte)(this.id>>8 & 0xff);
-//		sendArrByte[3] = (byte)(this.id& 0xff);
-//		
-//		sock.send(sendArrByte);   //reply "HELLO"
-//		
-//	}
-//	
-	
-	
-	private void sendInfoToGlob()
-	{
-		/*need to first get delay and traffic first from other classes by method call
-		*local controller need to provide such functions
-		*setDelay and setTraffic should be called by this class self, not by external class
-		*/
-
-		this.setDelay();
-		this.setNetworkDeployment();
+	private void processSubscriber(){
+		String initMsg = subscriber.recvStr();
+		Random rn = new Random();
 		
-		//data is ready
-		int sendArr[] = new int[DC_NUM+DATA_CHAIN_LEN];
-		int length = 0;
-		
-		for (int i=0; i<DATA_CHAIN_LEN; i++)
-		{
-			sendArr[length] = networkDeployment[i];
-			length++;
-		}
-		
-		for (int i=0; i<DC_NUM; i++)
-		{
-			sendArr[length] = delay[i];
-			length++;
-		}
-		
-		//int array to byte array
-		byte sendArrByte[] = new byte[length*4];
-		for (int i=0; i<length; i++)
-		{
-			sendArrByte[4*i] = (byte)(sendArr[i]>>24 & 0xff);
-			sendArrByte[4*i+1] = (byte)(sendArr[i]>>16 & 0xff);
-			sendArrByte[4*i+2] = (byte)(sendArr[i]>>8 & 0xff);
-			sendArrByte[4*i+3] = (byte)(sendArr[i] & 0xff);
-		}
-		
-		sock.send(sendArrByte);
-	}
-	
-	
-	private void recvResult()
-	{
-		byte recvArrByte[] = sock.recv(0);
-		
-		//byte to int
-		int recvArr[] = new int[recvArrByte.length/4];
-		for (int j=0; j<recvArr.length; j++)
-		{
-			recvArr[j] = recvArrByte[4*j+3] & 0xFF |   (recvArrByte[4*j+2] & 0xFF) << 8 | (recvArrByte[4*j+1] & 0xFF) << 16 |  (recvArrByte[4*j] & 0xFF) << 24;
-		}
-		
-		int length = 0;
-		//recvArr to ctrlProvision, dataProvision, networkTopo
-		for (int i=0; i<DC_NUM; i++)
-		{
-			for (int j=0; j<CTRL_CHAIN_LEN; j++)
-			{
-				this.ctrlProvision[i][j] = recvArr[length];
-				length++;
-			}
-		}
-		
-		for (int i=0; i<DC_NUM; i++)
-		{
-			for (int j=0; j<DATA_CHAIN_LEN; j++)
-			{
-				this.dataProvision[i][j] = recvArr[length];
-				length++;
-			}
-		}
-		
-		
-		for (int i=0; i<DC_NUM; i++)
-		{
-			for (int j=0; j<DC_NUM; j++)
-			{
-				for (int k=0; k<DATA_CHAIN_LEN; k++)
-				{
-					this.networkTopo[i][j][k] = recvArr[length];
-					length++;
+		if(curState.equals("initial")){
+			//This is the starting point of a proactive scaling interval
+			//local controller receives SCALINGSTART message broadcasted from
+			//global controller. local controller will then report its 
+			//local service chain configuration back to the global controller.
+			//Then transform its state into 
+			
+			assert initMsg.equals("SCALINGSTART");
+			boolean hasMore = subscriber.hasReceiveMore();
+			assert hasMore == false;
+			
+			//send data plane service chain configuration
+			pusher.send("LOCCONFIG", ZMQ.SNDMORE);
+			pusher.send("DATA", ZMQ.SNDMORE);
+			pusher.send(localcIndexMap.get(localIp).toString(), ZMQ.SNDMORE);
+			
+			for(int i=0; i<dpCapacity.length;i++){
+				if(i==dpCapacity.length-1){
+					pusher.send(Integer.toString(rn.nextInt(10)+5), 0);
+				}
+				else{
+					pusher.send(Integer.toString(rn.nextInt(10)+5), ZMQ.SNDMORE);
 				}
 			}
+			
+			//send control plane service chain configuration
+			pusher.send("LOCCONFIG", ZMQ.SNDMORE);
+			pusher.send("CONTROL", ZMQ.SNDMORE);
+			pusher.send(localcIndexMap.get(localIp).toString(), ZMQ.SNDMORE);
+			
+			pusher.send(Integer.toString(rn.nextInt(10)+5), ZMQ.SNDMORE);
+			pusher.send(Integer.toString(rn.nextInt(10)+5), 0);
+			
+			curState = "waitNewConfigPath";
 		}
-		
-		
-		
-		sock.send("OKAY".getBytes(), 0);
-	}
-
-	
-	//send scaling request to chainHandler and wait for reply
-	private void handleScale()
-	{
-		//send scale control plane request
-		GlobScaleRequest ctrlRequest = new GlobScaleRequest("local controller interface", this.ctrlProvision, true);
-		this.mh.sendTo("chainHandler", ctrlRequest);   //? is it sent to chainHandler?
-		LinkedBlockingQueue<Message> q = (LinkedBlockingQueue<Message>)this.queue;
-		while (true)
-		{
-			try
-			{
-				Message m = q.take();
-				if(m instanceof GlobScaleReply)
-				{
-					GlobScaleReply reply = (GlobScaleReply)m;
-					if (reply.getSuccess() == true)
-					{
-						break;
+		else if(curState.equals("waitNewConfigPath")){
+			ArrayList<String> list = new ArrayList<String>();
+			boolean hasMore = true;
+			while(hasMore){
+				String result = subscriber.recvStr();
+				list.add(result);
+				hasMore = subscriber.hasReceiveMore();
+			}
+			
+			//Here we decode the received array
+			int cpStart = 0;
+			int cpEnd = localcIndexMap.size()*2-1;
+			int dpStart = cpEnd+1;
+			int dpEnd = dpStart+localcIndexMap.size()*dpCapacity.length-1;
+			int dpPathStart = dpEnd+1;
+			//int dpPathEnd = dpPathStart+localcIndexMap.size()*localcIndexMap.size()*dpCapacity.length-1;
+			
+			//print and see if we are correct
+			int dcNum = localcIndexMap.size();
+			
+			System.out.println("control plane provision:\n");
+			if(localcIndexMap.get(localIp).intValue() == 0){
+				for(int i=0; i<dcNum; i++){
+					for(int j=0; j<2; j++){
+						System.out.println(list.get(cpStart+dcNum*i+j)+" ");
 					}
+					System.out.print("*******************\n");
 				}
 			}
-			catch (Exception e)
-			{
-				e.printStackTrace();
-			}	
-
-		}
-		
-		//send scale data plane request
-		GlobScaleRequest dataRequest = new GlobScaleRequest("local controller interface", this.dataProvision, false);
-		this.mh.sendTo("chainHandler", dataRequest);   //? is it sent to chainHandler?
-		while (true)
-		{
-			try
-			{
-				Message m = q.take();
-				if(m instanceof GlobScaleReply)
-				{
-					GlobScaleReply reply = (GlobScaleReply)m;
-					if (reply.getSuccess() == true)
-					{
-						break;
+			
+			System.out.println("data plane provision: \n");
+			if(localcIndexMap.get(localIp).intValue() == 0){
+				for(int i=0; i<dcNum; i++){
+					for(int j=0; j<dpCapacity.length; j++){
+						System.out.println(list.get(dpStart+dcNum*i+j)+" ");
 					}
+					System.out.print("*******************\n");
 				}
 			}
-			catch (Exception e)
+			
+			System.out.println("data plane paths: \n");
+			if(localcIndexMap.get(localIp).intValue() == 0){
+				for(int i=0; i<dcNum; i++){
+					for(int j=0; j<dcNum; j++){
+						for(int k=0; k<dpCapacity.length; k++){
+							System.out.println(list.get(dpPathStart+dcNum*i+j)+" ");
+						}
+						System.out.println(" | ");
+					}
+					System.out.print("*******************\n");
+				}
+			}
+			
+			//Do a quick reply to the global controller
+			pusher.send("PROACTIVEFINISH", 0);
+			curState = "waitNewInterval";
+		}
+		else if(curState.equals("waitNewInterval")){
+			System.out.println("local controller at local IP: "+localIp+" with index: "+
+		localcIndexMap.get(localIp)+"finish proactive scaling");
+			curState = "initial";
+		}
+	}
+	
+	private void processDelayPoll(){
+		int srcIndex = localcIndexMap.get(localIp).intValue();
+		
+		int delay[] = measDelay.getDelay();
+		if (delay == null || delay.length == 0)
+		{
+			return;
+		}
+		
+		pusher.send("DELAY", ZMQ.SNDMORE);
+		pusher.send(Integer.toString(srcIndex), ZMQ.SNDMORE);
+		
+		for(int i=0; i<delay.length; i++)
+		{
+			if (i == delay.length -1)
 			{
-				e.printStackTrace();
-			}	
-
+				pusher.send(Integer.toString(delay[i]), 0);
+			}
+			else
+			{
+				pusher.send(Integer.toString(delay[i]), ZMQ.SNDMORE);
+			}
 		}
 
-		//scaling successfully
-		sock.send("OKAY".getBytes(), 0);
 	}
 	
-	
-	
-	protected void onReceive(Message m)
-	{
+	private void processStatPoll(){
+		int srcIndex = localcIndexMap.get(localIp).intValue();
+		Random rn = new Random();
 		
-	}
-	
-	
-	
-	public void run()
-	{
+		pusher.send("STATREPORT", ZMQ.SNDMORE);
+		pusher.send(Integer.toString(srcIndex), ZMQ.SNDMORE);
+		pusher.send(Integer.toString(10), ZMQ.SNDMORE);
 		
+		for(int i=0; i<localcIndexMap.size(); i++){
+			if(i==localcIndexMap.size()-1){
+				pusher.send(Integer.toString(rn.nextInt(10)+5), 0);
+			}
+			else{
+				pusher.send(Integer.toString(rn.nextInt(10)+5), ZMQ.SNDMORE);
+			}
+		}
 	}
-
-
 }
-
-
-

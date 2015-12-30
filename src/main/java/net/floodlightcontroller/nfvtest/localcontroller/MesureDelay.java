@@ -1,9 +1,13 @@
 package localcontroller;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -11,12 +15,13 @@ import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Socket;
 import org.zeromq.ZStar.Set;
 
-public class MesureDelay implements Runnable
+public class MeasureDelay implements Runnable
 {
 	private final int id;
+	private final String ip;
 	private final int interval;
-	private final Map<Integer, String> map;
-	private Map<Integer, Integer> delay;
+	private final Map<String, Integer> map;
+	private static Map<Integer, Integer> delay;
 	
 	private ZMQ.Socket requester;
 	private ZMQ.Context zmqContext;
@@ -24,17 +29,17 @@ public class MesureDelay implements Runnable
 	private Replier replier;
 	
 	private boolean bool;
+	private static List<Map.Entry<Integer,Integer>> list;
 	
-	
-	MesureDelay(int id, int interval, Map<Integer, String> map)
+	MeasureDelay(String ip, int interval, Map<String, Integer> map)
 	{
-		this.id = id;
+		this.ip = ip;
+		this.id = map.get(ip).intValue();
 		this.interval = interval;
 		this.map = map;
-		this.delay = new HashMap<Integer, Integer>();
+		delay = new HashMap<Integer, Integer>();
 		this.bool = true;
-		this.lock = new Object();
-		
+
 		init();
 	}
 	
@@ -60,17 +65,19 @@ public class MesureDelay implements Runnable
 	
 	private void measure()
 	{
-		this.delay.clear();
+		delay.clear();
 		Set set = (Set) map.keySet();
 		Iterator it = ((ArrayList) set).iterator();
 		while(it.hasNext())
 		{
-			int key = (int) it.next();
-			if (key <= this.id)
+			String remoteIp = (String) it.next();
+			int index = map.get(remoteIp).intValue();
+
+			if (index <= this.id)
 			{
 				continue;
 			}
-			String remoteIp = (String) map.get(key);
+			
 			
 			requester = zmqContext.socket(ZMQ.REQ);
 			requester.monitor("inproc://monitorServerConnection", ZMQ.EVENT_CONNECTED);
@@ -83,8 +90,8 @@ public class MesureDelay implements Runnable
 			
 			while(ZMQ.Event.recv(monitor) == null || ZMQ.Event.recv(monitor).getEvent() != ZMQ.EVENT_CONNECTED)
 			{
-				requester.close();
 				requester.connect("tcp://"+ remoteIp + ":6000");
+				requester.close();
 			}
 			monitor.close();
 			
@@ -94,18 +101,41 @@ public class MesureDelay implements Runnable
 			requester.recv();
 			int consumingTime = (int) ((System.nanoTime() - startTime)/1000);
 			
-			this.delay.put(key, consumingTime);
+			delay.put(index, consumingTime);
 			
 			requester.close();
 		}
 		
+		sortDelay();
+		
 	}
 
-	
-	public Map<Integer, Integer> getDelay()
+	private static void sortDelay()
 	{
-		return this.delay;
+		//delay: first integer is index, second integer is delay
+		list = new ArrayList<Map.Entry<Integer,Integer>>(delay.entrySet());
+        Collections.sort(list,new Comparator<Map.Entry<Integer,Integer>>() 
+        {
+            public int compare(Entry<Integer, Integer> o1, Entry<Integer, Integer> o2) 
+            {
+                return o1.getKey().compareTo(o2.getKey());
+            }
+        });
+		
 	}
+	public synchronized int[] getDelay()
+	{
+		int array[] = new int[delay.size()];
+		
+        int i = 0;
+        for(Map.Entry<Integer,Integer> mapping:list)
+        { 
+            array[i++] = mapping.getValue(); 
+       } 
+        
+		return array;	
+	}
+	
 	
 	@Override
 	public void run()
