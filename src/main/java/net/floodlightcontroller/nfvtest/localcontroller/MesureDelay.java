@@ -8,6 +8,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.zeromq.ZMQ;
+import org.zeromq.ZMQ.Socket;
 import org.zeromq.ZStar.Set;
 
 public class MesureDelay implements Runnable
@@ -72,7 +73,19 @@ public class MesureDelay implements Runnable
 			String remoteIp = (String) map.get(key);
 			
 			requester = zmqContext.socket(ZMQ.REQ);
+			requester.monitor("inproc://monitorServerConnection", ZMQ.EVENT_CONNECTED);
+			
+			Socket monitor = zmqContext.socket(ZMQ.PAIR);
+			monitor.setReceiveTimeOut(5000);
+			monitor.connect("inproc://monitorServerConnection");
+			
 			requester.connect("tcp://"+ remoteIp + ":6000");
+			
+			while(ZMQ.Event.recv(monitor) == null || ZMQ.Event.recv(monitor).getEvent() != ZMQ.EVENT_CONNECTED)
+			{
+				requester.connect("tcp://"+ remoteIp + ":6000");
+			}
+			monitor.close();
 			
 			//start to measure
 			long startTime = System.nanoTime();
@@ -90,9 +103,7 @@ public class MesureDelay implements Runnable
 	
 	public Map<Integer, Integer> getDelay()
 	{
-
 		return this.delay;
-		
 	}
 	
 	@Override
