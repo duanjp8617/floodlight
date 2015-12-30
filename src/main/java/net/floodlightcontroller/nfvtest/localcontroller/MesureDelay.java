@@ -83,6 +83,7 @@ public class MesureDelay implements Runnable
 			
 			while(ZMQ.Event.recv(monitor) == null || ZMQ.Event.recv(monitor).getEvent() != ZMQ.EVENT_CONNECTED)
 			{
+				requester.close();
 				requester.connect("tcp://"+ remoteIp + ":6000");
 			}
 			monitor.close();
