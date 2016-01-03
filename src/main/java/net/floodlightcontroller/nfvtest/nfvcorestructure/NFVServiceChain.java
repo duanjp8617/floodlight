@@ -4,34 +4,30 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashSet;
-
-import net.floodlightcontroller.nfvtest.nfvutils.Pair;
+import java.util.LinkedList;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.*;
 
 public class NFVServiceChain {
 	
 	public final ServiceChainConfig serviceChainConfig;
-	private final List<Map<String, NFVNode>> nfvNodeMaps;
-	private final List<String> baseNodeIpList;
-	private final int[] rrStore;
+	
 	private final Map<String, NFVNode> entryMacNodeMap;
 	private final Map<String, NFVNode> exitMacNodeMap;
 	private final Map<String, NFVNode> managementIpNodeMap;
+
+	private final boolean[] scaleIndicators;
 	
-	private final boolean[] scaleIndicators; 
+	private final List<Map<String, NFVNode>> workingNodeMaps;
+	private final Deque<NFVNode> bufferNodeQueue;
+	private final Map<String, NFVNode> destroyNodeMap;
 	
-	public final long[] scaleDownCounter;
-	public final List<Map<String, Integer>> scaleDownList;
+	private int scalingInterval;
+	private int maximumBufferingInterval = 5;
 	
 	NFVServiceChain(ServiceChainConfig serviceChainConfig){
 		this.serviceChainConfig = serviceChainConfig;
-		this.nfvNodeMaps = new ArrayList<Map<String, NFVNode>>();
-		this.rrStore = new int[this.serviceChainConfig.stages.size()];
-		this.baseNodeIpList = new ArrayList<String>(this.serviceChainConfig.stages.size());
-		for(int i=0; i<this.serviceChainConfig.stages.size(); i++){
-			this.baseNodeIpList.add("fakeIp");
-		}
 		this.managementIpNodeMap = new HashMap<String, NFVNode>();
 		
 		if(serviceChainConfig.nVmInterface == 3){
@@ -43,102 +39,160 @@ public class NFVServiceChain {
 			this.exitMacNodeMap = null;
 		}
 		
+		this.workingNodeMaps = new ArrayList<Map<String, NFVNode>>();
 		for(int i=0; i<this.serviceChainConfig.stages.size(); i++){
 			Map<String, NFVNode> nodeMap = new HashMap<String, NFVNode>();
-			this.nfvNodeMaps.add(nodeMap);
-			this.rrStore[i] = 0;
+			this.workingNodeMaps.add(nodeMap);
 		}
+		bufferNodeQueue = new LinkedList<NFVNode>();
+		destroyNodeMap = new HashMap<String, NFVNode>();
 		
 		scaleIndicators = new boolean[this.serviceChainConfig.stages.size()];
 		for(int i=0; i<scaleIndicators.length; i++){
 			scaleIndicators[i] = false;
 		}
-		
-		scaleDownList = new ArrayList<Map<String, Integer>>();
-		scaleDownCounter = new long[serviceChainConfig.stages.size()];
-		for(int i=0; i<this.serviceChainConfig.stages.size(); i++){
-			Map<String, Integer> nodeMap = new HashMap<String, Integer>();
-			this.scaleDownList.add(nodeMap);
-			scaleDownCounter[i] = -1;
-		}
+	
+		this.scalingInterval = 0;
 	}
 	
-
-	public synchronized void addNodeToChain(NFVNode node){
-		if(node.vmInstance.serviceChainConfig.name == serviceChainConfig.name){
-			Map<String, NFVNode> stageMap = this.nfvNodeMaps.get(node.vmInstance.stageIndex);
-			if(stageMap.size() == 0){
-				stageMap.put(node.getManagementIp(), node);
-				this.managementIpNodeMap.put(node.getManagementIp(), node);
-				
-				this.baseNodeIpList.set(node.vmInstance.stageIndex, node.getManagementIp());
-				
-				if(this.serviceChainConfig.nVmInterface == 3){
-					this.entryMacNodeMap.put(node.vmInstance.macList.get(0), node);
-					this.exitMacNodeMap.put(node.vmInstance.macList.get(1), node);
-				}
+	public synchronized void addScalingInterval(){
+		this.scalingInterval += 1;
+	}
+	
+	public synchronized int[] getProvision(){
+		int provision[] = new int[this.serviceChainConfig.stages.size()];
+		for(int i=0; i<provision.length; i++){
+			provision[i] = this.workingNodeMaps.get(i).size();
+		}
+		return provision;
+	}
+	
+	//The following functions are public interfaces for manipulating the buffer queue
+	//the buffer queue is a double linked list. When a new node is added to the queue,
+	//it will be tagged with the current scaling interval. When the node is removed from
+	//the queue, the tag is removed.
+	public synchronized int bqSize(){
+		return bufferNodeQueue.size();
+	}
+	
+	public synchronized void addToBqRear(NFVNode node){
+		node.setScalingInterval(this.scalingInterval);
+		bufferNodeQueue.addLast(node);
+	}
+	
+	public synchronized NFVNode removeFromBqRear(){
+		NFVNode node = bufferNodeQueue.pollLast();
+		if(node!=null)
+			node.setScalingInterval(-1);
+		return node;
+	}
+	
+	public synchronized NFVNode removeFromBqHead(){
+		NFVNode head = bufferNodeQueue.peek();
+		if(head != null){
+			if((scalingInterval-head.getScalingInterval())>maximumBufferingInterval){
+				head = bufferNodeQueue.poll();
+				head.setScalingInterval(-1);
+				return head;
 			}
 			else{
-				if(!stageMap.containsKey(node.getManagementIp())){
-					stageMap.put(node.getManagementIp(), node);
-					this.managementIpNodeMap.put(node.getManagementIp(), node);
-					
-					if(this.serviceChainConfig.nVmInterface == 3){
-						this.entryMacNodeMap.put(node.vmInstance.macList.get(0), node);
-						this.exitMacNodeMap.put(node.vmInstance.macList.get(1), node);
-					}
-				}
+				return null;
+			}
+		}
+		else{
+			return null;
+		}
+	}
+
+	//The following 2 functions are public interfaces for manipulating the 
+	//working node map
+	public synchronized void addWorkingNode(NFVNode node){
+		if(node.vmInstance.serviceChainConfig.name.equals(serviceChainConfig.name)){
+			Map<String, NFVNode> stageMap = this.workingNodeMaps.get(node.vmInstance.stageIndex);
+			if(!stageMap.containsKey(node.getManagementIp())){
+				stageMap.put(node.getManagementIp(), node);
 			}
 		}
 	}
 	
-	public synchronized void deleteNodeFromChain(NFVNode node){
-		if(node.vmInstance.serviceChainConfig.name == serviceChainConfig.name){
-			Map<String, NFVNode> stageMap = this.nfvNodeMaps.get(node.vmInstance.stageIndex);
-			if( (stageMap.containsKey(node.getManagementIp())) && 
-			    (node.getManagementIp()!=this.baseNodeIpList.get(node.vmInstance.stageIndex)) ){
+	public synchronized void removeWorkingNode(NFVNode node){
+		if(node.vmInstance.serviceChainConfig.name.equals(serviceChainConfig.name)){
+			Map<String, NFVNode> stageMap = this.workingNodeMaps.get(node.vmInstance.stageIndex);
+			if( (stageMap.containsKey(node.getManagementIp())) ){
 				stageMap.remove(node.getManagementIp());
-				
-				this.managementIpNodeMap.remove(node.getManagementIp());
-				
-				if(this.serviceChainConfig.nVmInterface == 3){
-					this.entryMacNodeMap.remove(node.vmInstance.macList.get(0));
-					this.exitMacNodeMap.remove(node.vmInstance.macList.get(1));
-				}
 			}
 		}
+	}
+	
+	//The following 2 functions are public interfaces for manipulating the destroy
+	//node map
+	public synchronized void addDestroyNode(NFVNode node){
+		if(!destroyNodeMap.containsKey(node.getManagementIp())){
+			destroyNodeMap.put(node.getManagementIp(), node);
+		}
+	}
+	
+	public synchronized void removeDestroyNode(NFVNode node){
+		if(destroyNodeMap.containsKey(node.getManagementIp())){
+			destroyNodeMap.remove(node.getManagementIp());
+		}
+	}
+	
+	//The following 2 function are used to to add the node to the service chain.
+	//once the nodes are added to the service chain, we will record the node in
+	//possibly 3 maps.
+	public synchronized void addToServiceChain(NFVNode node){
+		if(!this.managementIpNodeMap.containsKey(node.getManagementIp())){
+			this.managementIpNodeMap.put(node.getManagementIp(), node);
+			if(this.serviceChainConfig.nVmInterface == 3){
+				this.entryMacNodeMap.put(node.vmInstance.macList.get(0), node);
+				this.exitMacNodeMap.put(node.vmInstance.macList.get(1), node);
+			}
+		}
+	}
+	
+	public synchronized void removeFromServiceChain(NFVNode node){
+		
+		if(!this.managementIpNodeMap.containsKey(node.getManagementIp())){
+			this.managementIpNodeMap.remove(node.getManagementIp());
+			if(this.serviceChainConfig.nVmInterface == 3){
+				this.entryMacNodeMap.remove(node.vmInstance.macList.get(0));
+				this.exitMacNodeMap.remove(node.vmInstance.macList.get(1));
+			}
+		}
+	}
+	
+	//this function returns an NFVNode whose state is not overload
+	public synchronized NFVNode getNormalWorkingNode(int stage){
+		Map<String, NFVNode> stageMap = workingNodeMaps.get(stage);
+		
+		for(String key : stageMap.keySet()){
+			NFVNode node = stageMap.get(key);
+			if(node.getState() != NFVNode.OVERLOAD){
+				return node;
+			}
+		}
+		
+		return null;
 	}
 	
 	public synchronized List<NFVNode> forwardRoute(){
 		//a simple round rubin.
 		List<NFVNode> routeList = new ArrayList<NFVNode>();
-		for(int i=0; i<this.nfvNodeMaps.size(); i++){
-			Map<String, Integer> stageScaleDownMap = this.scaleDownList.get(i);
-			Map<String, NFVNode> stageMap = this.nfvNodeMaps.get(i);
+		for(int i=0; i<this.workingNodeMaps.size(); i++){
+			Map<String, NFVNode> stageMap = this.workingNodeMaps.get(i);
+			if(stageMap.size()>0){
 			
-			HashSet<String> nonScaleDownSet = new HashSet<String>(stageMap.keySet());
-			nonScaleDownSet.removeAll(stageScaleDownMap.keySet());
-			
-			String[] nonScaleDownArray = nonScaleDownSet.toArray(new String[nonScaleDownSet.size()]);
-			
-			String managementIp = null;
-			
-			for(int j=0; j<nonScaleDownArray.length; j++){
-				String tmp = nonScaleDownArray[j];
-				if(stageMap.get(tmp).getState() != NFVNode.OVERLOAD){
-					managementIp = tmp;
-					break;
-				}
-			}
-			
-			if(managementIp!=null){
+				HashSet<String> nonScaleDownSet = new HashSet<String>(stageMap.keySet());
+				String[] nonScaleDownArray = nonScaleDownSet.toArray(new String[nonScaleDownSet.size()]);
+				String managementIp = nonScaleDownArray[0];
+				
 				int smallestFlowNum = stageMap.get(managementIp).getActiveFlows();
 				
 				for(int j=0; j<nonScaleDownArray.length; j++){
 					String tmp = nonScaleDownArray[j];
 					int flowNum = stageMap.get(tmp).getActiveFlows();
-					int state = stageMap.get(tmp).getState();
-					if( (flowNum<smallestFlowNum) && (state!=NFVNode.OVERLOAD) ){
+					if( (flowNum<smallestFlowNum) ){
 						smallestFlowNum = flowNum;
 						managementIp = tmp;
 					}
@@ -146,53 +200,12 @@ public class NFVServiceChain {
 				
 				routeList.add(stageMap.get(managementIp));
 			}
-			else{
-				if(stageScaleDownMap.size()>0){
-					String[] scaleDownArray = stageScaleDownMap.keySet()
-						                     .toArray(new String[stageScaleDownMap.size()]);
-					
-					managementIp = scaleDownArray[0];
-					int smallestFlowNum = stageMap.get(managementIp).getActiveFlows();
-					
-					for(int j=0; j<scaleDownArray.length; j++){
-						String tmp = scaleDownArray[j];
-						int flowNum = stageMap.get(tmp).getActiveFlows();
-						if(flowNum<smallestFlowNum){
-							smallestFlowNum = flowNum;
-							managementIp = tmp;
-						}
-					}
-					
-					routeList.add(stageMap.get(managementIp));
-				}
-				else{
-					String[] nodeArray = stageMap.keySet()
-										 .toArray(new String[stageScaleDownMap.size()]);
-					
-					managementIp = nodeArray[0];
-					int smallestFlowNum = stageMap.get(managementIp).getActiveFlows();
-					
-					for(int j=0; j<nodeArray.length; j++){
-						String tmp = nodeArray[j];
-						int flowNum = stageMap.get(tmp).getActiveFlows();
-						if(flowNum<smallestFlowNum){
-							smallestFlowNum = flowNum;
-							managementIp = tmp;
-						}
-					}
-					
-					routeList.add(stageMap.get(managementIp));
-				}
-				
-			}
 		}
 		return routeList;
 	}
 	
 	public synchronized String getEntryDpid(){
-		Map<String, NFVNode> nodeMap = this.nfvNodeMaps.get(0);
-		NFVNode baseNode = nodeMap.get(this.baseNodeIpList.get(0));
-		return baseNode.vmInstance.bridgeDpidList.get(0);
+		return this.serviceChainConfig.bridges.get(0);
 	}
 	
 	public synchronized String getDpidForMac(String mac){
@@ -340,64 +353,11 @@ public class NFVServiceChain {
 	}
 	
 	public synchronized Map<String, NFVNode> getStageMap(int stage){
-		return this.nfvNodeMaps.get(stage);
+		return this.workingNodeMaps.get(stage);
 	}
 	
 	public synchronized void setScaleIndicator(int stage, boolean val){
 		this.scaleIndicators[stage] = val;
-	}
-	
-	public synchronized int getNodeWithLeastFlows(int stageIndex, 
-			             ArrayList<Pair<String, Integer>> flowNumArray){
-		
-		String baseNodeIp = this.baseNodeIpList.get(stageIndex);
-		
-		if(flowNumArray.size() == 0){
-			return -1;
-		}
-		if((flowNumArray.size() == 1)&&(flowNumArray.get(0).first.equals(baseNodeIp))){
-			return -1;
-		}
-		
-		int smallestFlowNum = 0;
-		int smallestIndex = 0;
-		
-		for(int i=0; i<flowNumArray.size(); i++){
-			String managementIp = flowNumArray.get(i).first;
-			int flowNum = flowNumArray.get(i).second.intValue();
-			
-			if(!managementIp.equals(baseNodeIp)){
-				smallestFlowNum = flowNum;
-				smallestIndex = i;
-				break;
-			}
-		}
-		
-		for(int i=0; i<flowNumArray.size(); i++){
-			String managementIp = flowNumArray.get(i).first;
-			int flowNum = flowNumArray.get(i).second.intValue();
-			
-			if( (flowNum<smallestFlowNum) &&
-			    (!managementIp.equals(baseNodeIp)) ){
-				smallestFlowNum = flowNum;
-				smallestIndex = i;
-			}
-		}
-		
-		return smallestIndex;
-	}
-	
-	public synchronized ArrayList<Pair<String, Integer>> getFlowNumArray(int stageIndex){
-		Map<String,NFVNode> nodeMap = this.nfvNodeMaps.get(stageIndex);
-		ArrayList<Pair<String, Integer>> flowNumArray = new ArrayList<Pair<String, Integer>>();
-		
-		for(String ip : nodeMap.keySet()){
-			NFVNode node = nodeMap.get(ip);
-			flowNumArray.add(new Pair<String, Integer>(node.getManagementIp(), 
-					         new Integer(node.getActiveFlows())));
-		}
-		
-		return flowNumArray;
 	}
 	
 	public synchronized boolean getScaleIndicator(int stage){

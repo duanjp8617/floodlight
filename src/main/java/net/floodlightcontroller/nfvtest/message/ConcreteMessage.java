@@ -275,14 +275,16 @@ public class ConcreteMessage {
 		private final String port1;
 		private final String port2;
 		private final VmInstance vmInstance;
+		private final AllocateVmRequest originalRequest;
 		
 		public SubConnRequest(String sourceId, String managementIp, String port1, String port2,
-							  VmInstance vmInstance){
+							  VmInstance vmInstance, AllocateVmRequest originalRequest){
 			this.sourceId = sourceId;
 			this.managementIp = managementIp;
 			this.port1 = port1;
 			this.port2 = port2;
 			this.vmInstance = vmInstance;
+			this.originalRequest = originalRequest;
 		}
 		
 		public String getSourceId(){
@@ -303,6 +305,10 @@ public class ConcreteMessage {
 		
 		public VmInstance getVmInstance(){
 			return this.vmInstance;
+		}
+		
+		public AllocateVmRequest getOriginalRequest(){
+			return this.originalRequest;
 		}
 	}
 	
@@ -348,9 +354,10 @@ public class ConcreteMessage {
 		private final Socket socket1;
 		private final Socket socket2;
 		private final VmInstance vmInstance;
+		private final AllocateVmRequest originalRequest;
 		
 		public DNSUpdateRequest(String sourceId, String domainName, String ipAddress, String addOrDelete,
-				                Socket socket1, Socket socket2, VmInstance vmInstance){
+				                Socket socket1, Socket socket2, VmInstance vmInstance, AllocateVmRequest originalRequest){
 			this.sourceId = sourceId;
 			this.domainName = domainName;
 			this.ipAddress = ipAddress;
@@ -358,6 +365,7 @@ public class ConcreteMessage {
 			this.socket1 = socket1;
 			this.socket2 = socket2;
 			this.vmInstance = vmInstance;
+			this.originalRequest = originalRequest;
 		}
 		
 		public String getSourceId(){
@@ -387,6 +395,10 @@ public class ConcreteMessage {
 		public VmInstance getVmInstance(){
 			return this.vmInstance;
 		}
+		
+		public AllocateVmRequest getOriginalRequest(){
+			return this.originalRequest;
+		}
 	}
 	
 	static public class DNSUpdateReply extends Message{
@@ -407,5 +419,51 @@ public class ConcreteMessage {
 		}
 	}
 	
+	static public class ProactiveScalingRequest extends Message{
+		public final int localCpProvision[];
+		public final int localDpProvision[];
+		public final String sourceId;
+		
+		public ProactiveScalingRequest(String sourceId, int[] localCpProvision, int[] localDpProvision){
+			this.localCpProvision = localCpProvision;
+			this.localDpProvision = localDpProvision;
+			this.sourceId = sourceId;
+		}
+		
+		public String getSourceId(){
+			return sourceId;
+		}
+		
+		public int[] getLocalCpProvision(){
+			return localCpProvision;
+		}
+		
+		public int[] getLocalDpProvision(){
+			return localDpProvision;
+		}
+	}
 	
+	static public class NewProactiveIntervalRequest extends Message {
+		private final String sourceId;
+		
+		public NewProactiveIntervalRequest(String sourceId){
+			this.sourceId = sourceId;
+		}
+		
+		public String getSourceId(){
+			return this.sourceId;
+		}
+	}
+	
+	static public class ProactiveScalingStartRequest extends Message {
+		private final String sourceId;
+		
+		public ProactiveScalingStartRequest(String sourceId){
+			this.sourceId = sourceId;
+		}
+		
+		public String getSourceId(){
+			return this.sourceId;
+		}
+	}
 }

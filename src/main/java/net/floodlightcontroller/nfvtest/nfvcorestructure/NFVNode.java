@@ -366,6 +366,7 @@ public class NFVNode {
 	private int tranState;
 	private int activeFlows;
 	private static Logger logger;
+	private int scalingInterval;
 	
 	//node state: idel, normal, overload
 	public static final int IDLE = 1;
@@ -379,6 +380,17 @@ public class NFVNode {
 		this.tranState = NFVNode.NORMAL;
 		this.activeFlows = 0;
 		logger = LoggerFactory.getLogger(NFVNode.class);
+		this.scalingInterval = -1;
+	}
+	
+	//scalingInterval is used to record at which interval 
+	//the NFVNode is put into the scaleDownList
+	public void setScalingInterval(int newScalingInterval){
+		this.scalingInterval = newScalingInterval;
+	}
+	
+	public int getScalingInterval(){
+		return this.scalingInterval;
 	}
 	
 	public String getChainName(){

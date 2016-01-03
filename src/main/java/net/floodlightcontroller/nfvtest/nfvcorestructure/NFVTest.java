@@ -1,8 +1,4 @@
 package net.floodlightcontroller.nfvtest.nfvcorestructure;
-
-import java.io.IOException;
-import java.io.StringWriter;
-import java.io.Writer;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -66,6 +62,7 @@ import java.util.Collection;
 import net.floodlightcontroller.learningswitch.LearningSwitch;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.InitServiceChainRequset;
 import net.floodlightcontroller.nfvtest.message.MessageHub;
+import net.floodlightcontroller.nfvtest.localcontroller.LocalController;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.AddHostServerRequest;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.AllocateVmRequest;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.HostInitializationRequest;
@@ -104,13 +101,18 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	private ControllerConfig controllerConfig;
 	private HostServerConfig hostServerConfig;
 	private HostServerConfig hostServerConfig1;
-	private ServiceChainConfig serviceChainConfig;
 	private MacAddressAllocator macAllocator;
 	private HostServer hostServer;
 	private HostServer hostServer1;
 	private IpAddressAllocator ipAllocator;
-	private NFVServiceChain serviceChain;
 	private HashMap<DatapathId, HostServer> dpidHostServerMap;
+	
+	private ServiceChainConfig dpServiceChainConfig;
+	private ServiceChainConfig cpServiceChainConfig;
+	private NFVServiceChain dpServiceChain;
+	private NFVServiceChain cpServiceChain;
+	
+	private LocalController localController;
 	
 	private HashMap<FlowTuple, Integer> flowMap;
 	private HashMap<RouteTuple, String> routeMap;
@@ -174,13 +176,24 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 				new HostServerConfig("202.45.128.151", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
 						             "xx", "xx", "/home/net/nfvenv");
 		
-		StageVmInfo vmInfo1 = new StageVmInfo(1,2*1024,2*1024,"img1.img");
-		StageVmInfo vmInfo2 = new StageVmInfo(1,2*1024,2*1024,"img2.img");
-		ArrayList<StageVmInfo> list = new ArrayList<StageVmInfo>();
-		list.add(vmInfo1);
-		list.add(vmInfo2);
-			
-		this.serviceChainConfig = new ServiceChainConfig("test-chain", 3, list);
+		//create service chain configuration for control plane
+		StageVmInfo bonoInfo = new StageVmInfo(1,2*1024,2*1024,"bono.img");
+		StageVmInfo sproutInfo = new StageVmInfo(1,2*1024,2*1024,"sprout.img");
+		ArrayList<StageVmInfo> cpList = new ArrayList<StageVmInfo>();
+		cpList.add(bonoInfo);
+		cpList.add(sproutInfo);
+		this.cpServiceChainConfig = new ServiceChainConfig("CONTROL", 2, cpList);
+		
+		//create data plane service chain configuration
+		StageVmInfo firewallInfo = new StageVmInfo(1, 2*1024, 2*1024, "firewall.img");
+		StageVmInfo ipsInfo = new StageVmInfo(1, 2*1024, 2*1024, "ips.img");
+		StageVmInfo transcoderInfo = new StageVmInfo(1, 2*1024, 2*1024, "transcoder.img");
+		ArrayList<StageVmInfo> dpList = new ArrayList<StageVmInfo>();
+		dpList.add(firewallInfo);
+		dpList.add(ipsInfo);
+		dpList.add(transcoderInfo);
+		this.dpServiceChainConfig = new ServiceChainConfig("DATA", 2, dpList);
+		
 		byte[] prefix = new byte[3];
 		prefix[0] = 0x52;
 		prefix[1] = 0x54;
@@ -189,14 +202,19 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		ipAllocator = new IpAddressAllocator(192,168,64);
 			
 		HashMap<String, ServiceChainConfig> map = new HashMap<String, ServiceChainConfig>();
-		map.put(this.serviceChainConfig.name, this.serviceChainConfig);
+		map.put(this.cpServiceChainConfig.name, this.cpServiceChainConfig);
+		map.put(this.dpServiceChainConfig.name, this.dpServiceChainConfig);
+		
 		hostServer = new HostServer(this.controllerConfig, this.hostServerConfig, map, this.macAllocator,
-										this.ipAllocator);
+										this.ipAllocator, "192.168.1.1", "192.168.1.2");
 		hostServer1 = new HostServer(this.controllerConfig, this.hostServerConfig1, map, this.macAllocator,
-										this.ipAllocator);
+										this.ipAllocator, "192.168.1.1", "192.168.1.2");
 		
 		this.flowMap = new HashMap<FlowTuple, Integer>();
 		this.routeMap = new HashMap<RouteTuple, String>();
+		
+		this.cpServiceChain = new NFVServiceChain(this.cpServiceChainConfig);
+		this.dpServiceChain = new NFVServiceChain(this.dpServiceChainConfig);
 		
 		MessageHub mh = new MessageHub();
 		
@@ -218,6 +236,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler");
 		chainHandler.registerWithMessageHub(mh);
 		chainHandler.startPollerThread();
+		chainHandler.addServiceChain(this.cpServiceChain);
+		chainHandler.addServiceChain(this.dpServiceChain);
 		
 		mh.startProcessors();
 		
@@ -257,58 +277,13 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			e.printStackTrace();
 		}
 		
-		this.serviceChain = new NFVServiceChain(this.serviceChainConfig);
-		InitServiceChainRequset m4 = new InitServiceChainRequset("hehe", this.serviceChain);
-		mh.sendTo("chainHandler", m4);
-		
 		dpidHostServerMap = vmAllocator.dpidHostServerMap;
 		
-		/*AllocateVmRequest m3 = new AllocateVmRequest("hehe", "test-chain", 0);
-		mh.sendTo("chainHandler", m3);
-		try{
-			synchronized(this.serviceChain){
-				this.serviceChain.wait();
-			}
-		}
-		catch (Exception e){
-			e.printStackTrace();
-		}
-		
-		AllocateVmRequest m4 = new AllocateVmRequest("hehe", "test-chain", 1);
-		mh.sendTo("chainHandler", m4);
-		try{
-			synchronized(this.serviceChain){
-				this.serviceChain.wait();
-			}
-		}
-		catch (Exception e){
-			e.printStackTrace();
-		}
-		
-        //logger.info("stop testing network xml");
-        
-    	Context zmqContext = ZMQ.context(1);  
-    	Socket subscriber = zmqContext.socket(ZMQ.SUB);
-    	subscriber.connect("tcp://192.168.124.72:7773");
-		String finalResult = "";
-    	
-    	for(int i=0; i<10; i++){
-    		boolean hasMore = true;
-    		while(hasMore){
-    			String result = subscriber.recvStr();
-    			finalResult+=result;
-    			hasMore = subscriber.hasReceiveMore();
-    		}
-    		System.out.println(finalResult);
-    	}
-    	
-        Socket requester = zmqContext.socket(ZMQ.REQ);
-        requester.connect("tcp://192.168.124.72:7773");
-        
-        requester.send("add", ZMQ.SNDMORE);
-        requester.send("192.168.65.31", 0);
-        String recvResult = requester.recvStr();
-        logger.info("Receive result : {}", recvResult);*/
+		int c[] = {100, 30, 80};
+		localController = new LocalController("127.0.0.1", 5555, 5556, 5557, 5558, "127.0.0.1", true, 2000, c, 
+				this.dpServiceChain, this.cpServiceChain, mh, zmqContext);
+		Thread lcThread = new Thread(localController);
+		lcThread.start();
        
     }
  
@@ -328,10 +303,10 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         if (eth.isBroadcast() || eth.isMulticast()) {
             if (pkt instanceof ARP) {   
             	MacAddress srcMac = eth.getSourceMACAddress();
-            	String switchDpid = this.serviceChain.getDpidForMac(srcMac.toString());
+            	String switchDpid = this.dpServiceChain.getDpidForMac(srcMac.toString());
             	
             	if(switchDpid != null){
-            		if(!this.serviceChain.macOnRearSwitch(srcMac.toString())){
+            		if(!this.dpServiceChain.macOnRearSwitch(srcMac.toString())){
             			handleArp(eth, sw, pi);
             			return Command.STOP;
             		}
@@ -349,7 +324,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         	IPv4 ip_pkt = (IPv4)pkt;
        	 	int destIpAddress = ip_pkt.getDestinationAddress().getInt();
        	 	if(destIpAddress == IPv4Address.of("192.168.57.51").getInt()){
-       	 		if(sw.getId().getLong() == DatapathId.of(this.serviceChain.getEntryDpid()).getLong()){
+       	 		if(sw.getId().getLong() == DatapathId.of(this.dpServiceChain.getEntryDpid()).getLong()){
        	 			serviceChainLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT));
        	 			return Command.STOP;
        	 		}
@@ -363,7 +338,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     	ARP arpRequest = (ARP) eth.getPayload();
         MacAddress srcMac = eth.getSourceMACAddress();
 
-        String switchDpid = this.serviceChain.getDpidForMac(srcMac.toString());
+        String switchDpid = this.dpServiceChain.getDpidForMac(srcMac.toString());
         if(switchDpid != null){
         	IPacket arpReply = new Ethernet()
             .setSourceMACAddress(MacAddress.of(switchDpid))
@@ -397,7 +372,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     }
     
     private void serviceChainLoadBalancing(IOFSwitch sw, FloodlightContext cntx, OFPort initialInPort){
-    	synchronized(this.serviceChain){
+    	synchronized(this.dpServiceChain){
         	Ethernet eth =
                     IFloodlightProviderService.bcStore.get(cntx,
                                                 IFloodlightProviderService.CONTEXT_PI_PAYLOAD);
@@ -434,7 +409,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
  
         	OFPort inPort = initialInPort;
         	
-    		List<NFVNode> routeList = this.serviceChain.forwardRoute();
+    		List<NFVNode> routeList = this.dpServiceChain.forwardRoute();
     		IOFSwitch hitSwitch = sw;
     		//here I need to know the the HostServer class that hitSwitch is on.
     		HostServer localHostServer = this.dpidHostServerMap.get(hitSwitch.getId());
@@ -576,7 +551,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     	
     	if(this.routeMap.containsKey(tuple)){
     		String managementIp = this.routeMap.get(tuple);
-    		this.serviceChain.getNode(managementIp).deleteActiveFlow();
+    		this.dpServiceChain.getNode(managementIp).deleteActiveFlow();
     		
     		//System.out.println("Flow on node "+managementIp+" is removed");
     	}

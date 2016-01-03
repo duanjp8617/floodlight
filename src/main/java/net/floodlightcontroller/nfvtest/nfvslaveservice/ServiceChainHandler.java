@@ -18,23 +18,36 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.zeromq.ZMQ.Socket;
+import org.zeromq.ZMQ;
+import org.zeromq.ZMQ.Context;
 
 public class ServiceChainHandler extends MessageProcessor {
+	
 	private final HashMap<String, NFVServiceChain> serviceChainMap;
-	private final HashMap<UUID, Pending> pendingMap;
 	private NFVZmqPoller poller;
+	private final HashMap<UUID, Message> pendingMap;
+	private Context context;
+	
+	private boolean reactiveStart;
 
-	public ServiceChainHandler(String id){
+	public ServiceChainHandler(String id, Context context){
 		this.id = id;
+		this.context = context;
 		this.queue = new LinkedBlockingQueue<Message>();
-		serviceChainMap = new HashMap<String, NFVServiceChain>();
-		pendingMap = new HashMap<UUID, Pending>();
+		this.serviceChainMap = new HashMap<String, NFVServiceChain>();
+		this.pendingMap = new HashMap<UUID, Message>();
+		
+		this.reactiveStart = false;
 	}
 	
 	public void startPollerThread(){
 		poller = new NFVZmqPoller(this.mh);
 		Thread pollerThread = new Thread(this.poller);
 		pollerThread.start();
+	}
+	
+	public void addServiceChain(NFVServiceChain serviceChain){
+		this.serviceChainMap.put(serviceChain.serviceChainConfig.name, serviceChain);
 	}
 	
 	@Override
@@ -60,13 +73,9 @@ public class ServiceChainHandler extends MessageProcessor {
 	@Override
 	protected void onReceive(Message m) {
 		// TODO Auto-generated method stub
-		if(m instanceof InitServiceChainRequset){
-			InitServiceChainRequset request = (InitServiceChainRequset)m;
-			initServiceChain(request);
-		}
-		if(m instanceof AllocateVmRequest){
-			AllocateVmRequest request = (AllocateVmRequest)m;
-			allocateVm(request);
+		if(m instanceof ProactiveScalingRequest){
+			ProactiveScalingRequest request = (ProactiveScalingRequest)m;
+			handleProactiveScalingRequest(request);
 		}
 		if(m instanceof AllocateVmReply){
 			AllocateVmReply reply = (AllocateVmReply)m;
@@ -84,31 +93,80 @@ public class ServiceChainHandler extends MessageProcessor {
 			DNSUpdateReply reply = (DNSUpdateReply)m;
 			handleDNSUpdateReply(reply);
 		}
-	}
-	
-	//initialize a nfv serivce chain.
-	//create one vm for each stage of the service chain.
-	//wait for all vm creation jobs to be completed before 
-	//responding
-	private void initServiceChain(InitServiceChainRequset originalRequest){
-		NFVServiceChain serviceChain = originalRequest.getServiceChain();
-		Pending pending = new Pending(serviceChain.serviceChainConfig.stages.size(), 
-									  originalRequest);
-		for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
-			AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
-												serviceChain.serviceChainConfig.name,
-												i);
-			this.pendingMap.put(newRequest.getUUID(), pending);
-			this.mh.sendTo("vmAllocator", newRequest);
+		if(m instanceof NewProactiveIntervalRequest){
+			newProactiveScalingInterval();
+		}
+		if(m instanceof ProactiveScalingStartRequest){
+			proactiveScalingStart();
 		}
 	}
 	
-	private void allocateVm(AllocateVmRequest request){
-		AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(), request.getChainName(),
-											request.getStageIndex());
-		Pending pending = new Pending(1, null);
-		this.pendingMap.put(newRequest.getUUID(), pending);
-		this.mh.sendTo("vmAllocator", newRequest);
+	private void handleProactiveProvision(NFVServiceChain serviceChain, int newProvision[]){
+		synchronized(serviceChain){
+			int oldProvision[] = serviceChain.getProvision();
+			
+			for(int i=0; i<oldProvision.length; i++){
+				if(newProvision[i] > oldProvision[i]){
+					//scale up
+					int scaleUpNum = newProvision[i] - oldProvision[i];
+					
+					int j = 0;
+					for(j=0; j<scaleUpNum; j++){
+						NFVNode bufferNode = serviceChain.removeFromBqRear();
+						if(bufferNode != null){
+							serviceChain.addWorkingNode(bufferNode);
+						}
+						else{
+							break;
+						}
+					}
+					scaleUpNum = scaleUpNum - j;
+					for(j=0; j<scaleUpNum; j++){
+						AllocateVmRequest newReq = new AllocateVmRequest(this.getId(),
+								serviceChain.serviceChainConfig.name, i);
+						this.pendingMap.put(newReq.getUUID(), newReq);
+						this.mh.sendTo("vmAllocator", newReq);
+					}
+				}
+				else if(newProvision[i] < oldProvision[i]){
+					//scaleDown
+					int scaleDownNum = oldProvision[i]-newProvision[i];
+					for(int j=0; j<scaleDownNum; j++){
+						NFVNode workingNode = serviceChain.getNormalWorkingNode(i);
+						if(workingNode == null){
+							break;
+						}
+						else{
+							serviceChain.addToBqRear(workingNode);
+						}
+					}
+				}
+				else{
+					//do nothing
+				}
+			}
+		}
+	}
+	
+	private void handleProactiveScalingRequest(ProactiveScalingRequest req){
+		pendingMap.clear();
+		
+		int newDpProvision[] = req.getLocalDpProvision();
+		NFVServiceChain dpServiceChain = serviceChainMap.get("DATA");
+		handleProactiveProvision(dpServiceChain, newDpProvision);
+		
+		int newCpProvision[] = req.getLocalCpProvision();
+		NFVServiceChain cpServiceChain = serviceChainMap.get("CONTROL");
+		handleProactiveProvision(cpServiceChain, newCpProvision);
+		
+		if(pendingMap.size() == 0){
+			Socket requester = context.socket(ZMQ.REQ);
+			requester.connect("inproc://schSync");
+			requester.send("COMPLETE", 0);
+			requester.recv(0);
+			requester.close();
+			this.reactiveStart = true;
+		}
 	}
 	
 	//This handles the AllocateVmReply sent from VmAllocator.
@@ -117,38 +175,46 @@ public class ServiceChainHandler extends MessageProcessor {
 	//When new vm is created, we need to connect to the 
 	//stat reporter on that vm. This is done by creating a 
 	//SubConnRequest.
-	private void handleAllocateVmReply(AllocateVmReply newReply){
-		AllocateVmRequest newRequest = newReply.getAllocateVmRequest();
-		Pending pending = this.pendingMap.get(newRequest.getUUID());
-		this.pendingMap.remove(newRequest.getUUID());
+	private void handleAllocateVmReply(AllocateVmReply reply){
+		AllocateVmRequest originalRequest = reply.getAllocateVmRequest();
+		VmInstance vmInstance = reply.getVmInstance();
 		
-		if(pending.getCachedMessage()!=null){
-			if(pending.addReply(newReply)){
-				InitServiceChainRequset originalRequest = 
-						(InitServiceChainRequset)pending.getCachedMessage();
-				NFVServiceChain serviceChain = originalRequest.getServiceChain();
-				this.serviceChainMap.put(serviceChain.serviceChainConfig.name, serviceChain);
-			
-				ArrayList<Message> newReplyList = pending.getReplyList();
-				for(int i=0; i<newReplyList.size(); i++){
-					AllocateVmReply newReplz = (AllocateVmReply)newReplyList.get(i);
-					VmInstance vmInstance = newReplz.getVmInstance();
-					//serviceChain.addNodeToChain(new NFVNode(vmInstance));
-					SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
-																"7776", "7775", vmInstance);
-					this.mh.sendTo("subscriberConnector", request);
+		String serviceChainName = vmInstance.serviceChainConfig.name;
+		if(this.serviceChainMap.containsKey(serviceChainName)){
+			SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
+					"7776", "7775", vmInstance, originalRequest);
+			this.mh.sendTo("subscriberConnector", request);
+		}
+	}
+	
+	private void addToServiceChain(NFVServiceChain serviceChain, NFVNode node, UUID uuid){
+		synchronized(serviceChain){
+			if(pendingMap.containsKey(uuid)){
+				//one of the proactive scaling requests is finished.
+				serviceChain.addToServiceChain(node);
+				serviceChain.addWorkingNode(node);
+				pendingMap.remove(uuid);
+				if(pendingMap.size() == 0){
+					Socket requester = context.socket(ZMQ.REQ);
+					requester.connect("inproc://schSync");
+					requester.send("COMPLETE", 0);
+					requester.recv(0);
+					requester.close();
+					this.reactiveStart = true;
 				}
 			}
-		}
-		else{
-			pending.addReply(newReply);
-			VmInstance vmInstance = newReply.getVmInstance();
-			String serviceChainName = vmInstance.serviceChainConfig.name;
-			if(this.serviceChainMap.containsKey(serviceChainName)){
-				//this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
-				SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
-						"7776", "7775", vmInstance);
-				this.mh.sendTo("subscriberConnector", request);
+			else{
+				//a reactive scaling request is finished
+				if(this.reactiveStart == true){
+					//reactive scaling is enabled, we add the node to working node
+					serviceChain.addToServiceChain(node);
+					serviceChain.addWorkingNode(node);
+				}
+				else{
+					serviceChain.addToServiceChain(node);
+					serviceChain.addToBqRear(node);
+				}
+				serviceChain.setScaleIndicator(node.vmInstance.stageIndex, false);
 			}
 		}
 	}
@@ -161,14 +227,15 @@ public class ServiceChainHandler extends MessageProcessor {
 	private void handleSubConnReply(SubConnReply reply){
 		SubConnRequest request = reply.getSubConnRequest();
 		VmInstance vmInstance = request.getVmInstance();
+		AllocateVmRequest originalRequest = reply.getSubConnRequest().getOriginalRequest();
 		
 		if(vmInstance.serviceChainConfig.nVmInterface == 3){
-			String serviceChainName = vmInstance.serviceChainConfig.name;
-			this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
+			NFVServiceChain serviceChain = this.serviceChainMap.get(vmInstance.serviceChainConfig.name);
+			NFVNode node = new NFVNode(vmInstance);
+			addToServiceChain(serviceChain, node, originalRequest.getUUID());
 		
-			String managementIp = request.getManagementIp();
+			String managementIp = vmInstance.managementIp;
 			Socket subscriber1 = reply.getSubscriber1();
-			this.serviceChainMap.get(serviceChainName).setScaleIndicator(vmInstance.stageIndex, false);
 			this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 		}
 		else{
@@ -182,8 +249,7 @@ public class ServiceChainHandler extends MessageProcessor {
 				domainName = "sprout.cw.t";
 			}
 			DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-																 vmInstance.operationIp, "add",
-																 subscriber1, subscriber2, vmInstance);
+					vmInstance.operationIp, "add",subscriber1, subscriber2, vmInstance, originalRequest);
 			this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 		}
 	}
@@ -191,16 +257,54 @@ public class ServiceChainHandler extends MessageProcessor {
 	private void handleDNSUpdateReply(DNSUpdateReply reply){
 		DNSUpdateRequest request = reply.getDNSUpdateReq();
 		VmInstance vmInstance = request.getVmInstance();
+		AllocateVmRequest originalRequest = request.getOriginalRequest();
 		
-		String serviceChainName = vmInstance.serviceChainConfig.name;
-		this.serviceChainMap.get(serviceChainName).addNodeToChain(new NFVNode(vmInstance));
+		NFVServiceChain serviceChain = this.serviceChainMap.get(vmInstance.serviceChainConfig.name);
+		NFVNode node = new NFVNode(vmInstance);
+		addToServiceChain(serviceChain, node, originalRequest.getUUID());
 	
 		String managementIp = vmInstance.managementIp;
 		Socket subscriber1 = request.getSocket1();
 		Socket subscriber2 = request.getSocket2();
-		this.serviceChainMap.get(serviceChainName).setScaleIndicator(vmInstance.stageIndex, false);
 		this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 		this.poller.register(new Pair<String, Socket>(managementIp+":2", subscriber2));
+	}
+	
+	private void newProactiveScalingInterval(){
+		NFVServiceChain dpServiceChain = serviceChainMap.get("DATA");
+		dpServiceChain.addScalingInterval();
+		
+		NFVServiceChain cpServiceChain = serviceChainMap.get("CONTROL");
+		cpServiceChain.addScalingInterval();
+	}
+	
+	private void proactiveScalingStart(){
+		this.reactiveStart = false;
+		
+		NFVServiceChain dpServiceChain = serviceChainMap.get("DATA");
+		int dpProvision[] = dpServiceChain.getProvision();
+		
+		NFVServiceChain cpServiceChain = serviceChainMap.get("CONTROL");
+		int cpProvision[] = cpServiceChain.getProvision();
+		
+		Socket requester = context.socket(ZMQ.REQ);
+		requester.connect("inproc://schSync");
+		requester.send("PROVISION", ZMQ.SNDMORE);
+		
+		String dpProvisionStr = "";
+		for(int i=0; i<dpProvision.length; i++){
+			dpProvisionStr  = dpProvisionStr + Integer.toString(dpProvision[i]) + " ";
+		}
+		requester.send(dpProvisionStr, ZMQ.SNDMORE);
+		
+		String cpProvisionStr = "";
+		for(int i=0; i<cpProvision.length; i++){
+			cpProvisionStr  = cpProvisionStr + Integer.toString(cpProvision[i]) + " ";
+		}
+		requester.send(cpProvisionStr, 0);
+		
+		requester.recv(0);
+		requester.close();
 	}
 	
 	//This is the driving function for reactive scaling.
