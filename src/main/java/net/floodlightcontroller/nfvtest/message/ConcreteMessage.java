@@ -7,6 +7,7 @@ import net.floodlightcontroller.nfvtest.message.Message;
 
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
+import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVNode;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVServiceChain;
 
 public class ConcreteMessage {
@@ -275,16 +276,16 @@ public class ConcreteMessage {
 		private final String port1;
 		private final String port2;
 		private final VmInstance vmInstance;
-		private final AllocateVmRequest originalRequest;
+		private final Message originalMessage;
 		
 		public SubConnRequest(String sourceId, String managementIp, String port1, String port2,
-							  VmInstance vmInstance, AllocateVmRequest originalRequest){
+							  VmInstance vmInstance, Message originalMessage){
 			this.sourceId = sourceId;
 			this.managementIp = managementIp;
 			this.port1 = port1;
 			this.port2 = port2;
 			this.vmInstance = vmInstance;
-			this.originalRequest = originalRequest;
+			this.originalMessage = originalMessage;
 		}
 		
 		public String getSourceId(){
@@ -307,8 +308,8 @@ public class ConcreteMessage {
 			return this.vmInstance;
 		}
 		
-		public AllocateVmRequest getOriginalRequest(){
-			return this.originalRequest;
+		public Message getOriginalMessage(){
+			return this.originalMessage;
 		}
 	}
 	
@@ -351,21 +352,23 @@ public class ConcreteMessage {
 		private final String domainName;
 		private final String ipAddress;
 		private final String addOrDelete;
-		private final Socket socket1;
-		private final Socket socket2;
-		private final VmInstance vmInstance;
-		private final AllocateVmRequest originalRequest;
+		private final NFVNode node;
+		private final Message originalMessage;
 		
-		public DNSUpdateRequest(String sourceId, String domainName, String ipAddress, String addOrDelete,
-				                Socket socket1, Socket socket2, VmInstance vmInstance, AllocateVmRequest originalRequest){
+		public DNSUpdateRequest(String sourceId, String domainName, String ipAddress, String addOrDelete, 
+				NFVNode node, Message originalMessage){
 			this.sourceId = sourceId;
 			this.domainName = domainName;
 			this.ipAddress = ipAddress;
 			this.addOrDelete = addOrDelete;
-			this.socket1 = socket1;
-			this.socket2 = socket2;
-			this.vmInstance = vmInstance;
-			this.originalRequest = originalRequest;
+			this.node = node;
+			
+			if(originalMessage == null){
+				this.originalMessage = this;
+			}
+			else{
+				this.originalMessage = originalMessage;
+			}
 		}
 		
 		public String getSourceId(){
@@ -384,20 +387,12 @@ public class ConcreteMessage {
 			return this.addOrDelete;
 		}
 		
-		public Socket getSocket1(){
-			return this.socket1;
+		public NFVNode getNode(){
+			return this.node;
 		}
 		
-		public Socket getSocket2(){
-			return this.socket2;
-		}
-		
-		public VmInstance getVmInstance(){
-			return this.vmInstance;
-		}
-		
-		public AllocateVmRequest getOriginalRequest(){
-			return this.originalRequest;
+		public Message getOriginalMessage(){
+			return this.originalMessage;
 		}
 	}
 	
@@ -420,14 +415,17 @@ public class ConcreteMessage {
 	}
 	
 	static public class ProactiveScalingRequest extends Message{
-		public final int localCpProvision[];
-		public final int localDpProvision[];
-		public final String sourceId;
+		private final int localCpProvision[];
+		private final int localDpProvision[];
+		private final int dpPaths[][][];
+		private final String sourceId;
 		
-		public ProactiveScalingRequest(String sourceId, int[] localCpProvision, int[] localDpProvision){
+		public ProactiveScalingRequest(String sourceId, int[] localCpProvision, int[] localDpProvision, 
+				int[][][] dpPaths){
 			this.localCpProvision = localCpProvision;
 			this.localDpProvision = localDpProvision;
 			this.sourceId = sourceId;
+			this.dpPaths = dpPaths;
 		}
 		
 		public String getSourceId(){
@@ -441,6 +439,11 @@ public class ConcreteMessage {
 		public int[] getLocalDpProvision(){
 			return localDpProvision;
 		}
+		
+		public int[][][] getDpPaths(){
+			return this.dpPaths;
+		}
+		
 	}
 	
 	static public class NewProactiveIntervalRequest extends Message {

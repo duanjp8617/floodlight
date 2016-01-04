@@ -307,7 +307,7 @@ public class LocalController implements Runnable{
 				localDpProvision[i] = dpProvision[srcIndex][i];
 			}
 			
-			ProactiveScalingRequest m = new ProactiveScalingRequest("lc", localCpProvision, localDpProvision);
+			ProactiveScalingRequest m = new ProactiveScalingRequest("lc", localCpProvision, localDpProvision, dpPaths);
 			this.mh.sendTo("chainHandler", m);
 		}
 		else if(curState.equals("waitNewInterval")){

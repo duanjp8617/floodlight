@@ -101,6 +101,35 @@ public class ServiceChainHandler extends MessageProcessor {
 		}
 	}
 	
+	private void proactiveScalingStart(){
+		this.reactiveStart = false;
+		
+		NFVServiceChain dpServiceChain = serviceChainMap.get("DATA");
+		int dpProvision[] = dpServiceChain.getProvision();
+		
+		NFVServiceChain cpServiceChain = serviceChainMap.get("CONTROL");
+		int cpProvision[] = cpServiceChain.getProvision();
+		
+		Socket requester = context.socket(ZMQ.REQ);
+		requester.connect("inproc://schSync");
+		requester.send("PROVISION", ZMQ.SNDMORE);
+		
+		String dpProvisionStr = "";
+		for(int i=0; i<dpProvision.length; i++){
+			dpProvisionStr  = dpProvisionStr + Integer.toString(dpProvision[i]) + " ";
+		}
+		requester.send(dpProvisionStr, ZMQ.SNDMORE);
+		
+		String cpProvisionStr = "";
+		for(int i=0; i<cpProvision.length; i++){
+			cpProvisionStr  = cpProvisionStr + Integer.toString(cpProvision[i]) + " ";
+		}
+		requester.send(cpProvisionStr, 0);
+		
+		requester.recv(0);
+		requester.close();
+	}
+	
 	private void handleProactiveProvision(NFVServiceChain serviceChain, int newProvision[]){
 		synchronized(serviceChain){
 			int oldProvision[] = serviceChain.getProvision();
@@ -114,7 +143,25 @@ public class ServiceChainHandler extends MessageProcessor {
 					for(j=0; j<scaleUpNum; j++){
 						NFVNode bufferNode = serviceChain.removeFromBqRear();
 						if(bufferNode != null){
-							serviceChain.addWorkingNode(bufferNode);
+							if(serviceChain.serviceChainConfig.nVmInterface == 2){
+								//in this case, we need to add the IP address of the control plane
+								//middlebox to the DNS.
+								String domainName = "";
+								if(bufferNode.vmInstance.stageIndex == 0){
+									domainName = "bono.cw.t";
+								}
+								else {
+									domainName = "sprout.cw.t";
+								}
+								
+								DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+										bufferNode.vmInstance.operationIp, "add", bufferNode, null);
+								this.pendingMap.put(dnsUpdateReq.getUUID(), dnsUpdateReq);
+								this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+							}
+							else{
+								serviceChain.addWorkingNode(bufferNode);
+							}
 						}
 						else{
 							break;
@@ -137,7 +184,22 @@ public class ServiceChainHandler extends MessageProcessor {
 							break;
 						}
 						else{
+							serviceChain.removeWorkingNode(workingNode);
 							serviceChain.addToBqRear(workingNode);
+							if(serviceChain.serviceChainConfig.nVmInterface == 2){
+								String domainName = "";
+								if(workingNode.vmInstance.stageIndex == 0){
+									domainName = "bono.cw.t";
+								}
+								else {
+									domainName = "sprout.cw.t";
+								}
+								
+								DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+										workingNode.vmInstance.operationIp, "delete", workingNode, null);
+								this.pendingMap.put(dnsUpdateReq.getUUID(), dnsUpdateReq);
+								this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+							}
 						}
 					}
 				}
@@ -152,7 +214,9 @@ public class ServiceChainHandler extends MessageProcessor {
 		pendingMap.clear();
 		
 		int newDpProvision[] = req.getLocalDpProvision();
+		int newDpPaths[][][] = req.getDpPaths();
 		NFVServiceChain dpServiceChain = serviceChainMap.get("DATA");
+		dpServiceChain.addNextDpPaths(newDpPaths);
 		handleProactiveProvision(dpServiceChain, newDpProvision);
 		
 		int newCpProvision[] = req.getLocalCpProvision();
@@ -169,12 +233,6 @@ public class ServiceChainHandler extends MessageProcessor {
 		}
 	}
 	
-	//This handles the AllocateVmReply sent from VmAllocator.
-	//We might probably want to change this function for 
-	//global control.
-	//When new vm is created, we need to connect to the 
-	//stat reporter on that vm. This is done by creating a 
-	//SubConnRequest.
 	private void handleAllocateVmReply(AllocateVmReply reply){
 		AllocateVmRequest originalRequest = reply.getAllocateVmRequest();
 		VmInstance vmInstance = reply.getVmInstance();
@@ -205,42 +263,53 @@ public class ServiceChainHandler extends MessageProcessor {
 			}
 			else{
 				//a reactive scaling request is finished
+				serviceChain.addToServiceChain(node);
 				if(this.reactiveStart == true){
 					//reactive scaling is enabled, we add the node to working node
-					serviceChain.addToServiceChain(node);
 					serviceChain.addWorkingNode(node);
 				}
 				else{
-					serviceChain.addToServiceChain(node);
 					serviceChain.addToBqRear(node);
+					if(serviceChain.serviceChainConfig.nVmInterface == 2){
+						String domainName = "";
+						if(node.vmInstance.stageIndex == 0){
+							domainName = "bono.cw.t";
+						}
+						else {
+							domainName = "sprout.cw.t";
+						}
+						
+						DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+								node.vmInstance.operationIp, "delete", node, null);
+						this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+					}
 				}
 				serviceChain.setScaleIndicator(node.vmInstance.stageIndex, false);
 			}
 		}
 	}
 	
-	//For data plane, once we have successfully finish connecting to the stat report
-	//module on each vm, we will create a new NFVNode. And register
-	//the poller with the new subscriber to poll the vm stat.
-	//For control plane, when we finish connecting to the stat report module, 
-	//we need to update the DNS.
 	private void handleSubConnReply(SubConnReply reply){
 		SubConnRequest request = reply.getSubConnRequest();
 		VmInstance vmInstance = request.getVmInstance();
-		AllocateVmRequest originalRequest = reply.getSubConnRequest().getOriginalRequest();
+		Message originalMessage = reply.getSubConnRequest().getOriginalMessage();
 		
 		if(vmInstance.serviceChainConfig.nVmInterface == 3){
 			NFVServiceChain serviceChain = this.serviceChainMap.get(vmInstance.serviceChainConfig.name);
 			NFVNode node = new NFVNode(vmInstance);
-			addToServiceChain(serviceChain, node, originalRequest.getUUID());
+			addToServiceChain(serviceChain, node, originalMessage.getUUID());
 		
 			String managementIp = vmInstance.managementIp;
 			Socket subscriber1 = reply.getSubscriber1();
 			this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 		}
 		else{
+			String managementIp = vmInstance.managementIp;
 			Socket subscriber1 = reply.getSubscriber1();
 			Socket subscriber2 = reply.getSubscriber2();
+			this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
+			this.poller.register(new Pair<String, Socket>(managementIp+":2", subscriber2));
+			
 			String domainName = "";
 			if(vmInstance.stageIndex == 0){
 				domainName = "bono.cw.t";
@@ -248,26 +317,35 @@ public class ServiceChainHandler extends MessageProcessor {
 			else {
 				domainName = "sprout.cw.t";
 			}
+			NFVNode node = new NFVNode(vmInstance);
 			DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-					vmInstance.operationIp, "add",subscriber1, subscriber2, vmInstance, originalRequest);
+					vmInstance.operationIp, "add", node, originalMessage);
 			this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 		}
 	}
 	
 	private void handleDNSUpdateReply(DNSUpdateReply reply){
 		DNSUpdateRequest request = reply.getDNSUpdateReq();
-		VmInstance vmInstance = request.getVmInstance();
-		AllocateVmRequest originalRequest = request.getOriginalRequest();
+		NFVNode node = request.getNode();
+		Message originalMessage = request.getOriginalMessage();
 		
-		NFVServiceChain serviceChain = this.serviceChainMap.get(vmInstance.serviceChainConfig.name);
-		NFVNode node = new NFVNode(vmInstance);
-		addToServiceChain(serviceChain, node, originalRequest.getUUID());
-	
-		String managementIp = vmInstance.managementIp;
-		Socket subscriber1 = request.getSocket1();
-		Socket subscriber2 = request.getSocket2();
-		this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
-		this.poller.register(new Pair<String, Socket>(managementIp+":2", subscriber2));
+		NFVServiceChain serviceChain = this.serviceChainMap.get(node.vmInstance.serviceChainConfig.name);
+		if(request.getAddOrDelete().equals("add")){
+			addToServiceChain(serviceChain, node, originalMessage.getUUID());
+		}
+		else{
+			if(pendingMap.containsKey(originalMessage.getUUID())){
+				pendingMap.remove(originalMessage.getUUID());
+				if(pendingMap.size() == 0){
+					Socket requester = context.socket(ZMQ.REQ);
+					requester.connect("inproc://schSync");
+					requester.send("COMPLETE", 0);
+					requester.recv(0);
+					requester.close();
+					this.reactiveStart = true;
+				}
+			}
+		}
 	}
 	
 	private void newProactiveScalingInterval(){
@@ -276,41 +354,23 @@ public class ServiceChainHandler extends MessageProcessor {
 		
 		NFVServiceChain cpServiceChain = serviceChainMap.get("CONTROL");
 		cpServiceChain.addScalingInterval();
+		
+		NFVNode destroyNode = null;
+		synchronized(dpServiceChain){
+			destroyNode = dpServiceChain.removeFromBqHead();
+			while(destroyNode != null){
+				dpServiceChain.addDestroyNode(destroyNode);
+			}
+		}
+		
+		synchronized(cpServiceChain){
+			destroyNode = cpServiceChain.removeFromBqHead();
+			while(destroyNode != null){
+				cpServiceChain.addDestroyNode(destroyNode);
+			}
+		}
 	}
 	
-	private void proactiveScalingStart(){
-		this.reactiveStart = false;
-		
-		NFVServiceChain dpServiceChain = serviceChainMap.get("DATA");
-		int dpProvision[] = dpServiceChain.getProvision();
-		
-		NFVServiceChain cpServiceChain = serviceChainMap.get("CONTROL");
-		int cpProvision[] = cpServiceChain.getProvision();
-		
-		Socket requester = context.socket(ZMQ.REQ);
-		requester.connect("inproc://schSync");
-		requester.send("PROVISION", ZMQ.SNDMORE);
-		
-		String dpProvisionStr = "";
-		for(int i=0; i<dpProvision.length; i++){
-			dpProvisionStr  = dpProvisionStr + Integer.toString(dpProvision[i]) + " ";
-		}
-		requester.send(dpProvisionStr, ZMQ.SNDMORE);
-		
-		String cpProvisionStr = "";
-		for(int i=0; i<cpProvision.length; i++){
-			cpProvisionStr  = cpProvisionStr + Integer.toString(cpProvision[i]) + " ";
-		}
-		requester.send(cpProvisionStr, 0);
-		
-		requester.recv(0);
-		requester.close();
-	}
-	
-	//This is the driving function for reactive scaling.
-	//Whenever the the stat poller polls a new stat 
-	//, it will report the stat to ServiceChainHandler.
-	//This function is where the stat is processed.
 	private void statUpdate(StatUpdateRequest request){
 		ArrayList<String> statList = request.getStatList();
 		String managementIp = request.getManagementIp();
@@ -323,38 +383,70 @@ public class ServiceChainHandler extends MessageProcessor {
 					//update the stat on this node.
 					chain.updateDataNodeStat(managementIp, statList);
 					
-					NFVNode node = chain.getNode(managementIp);
-					Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
-					int stageIndex = node.vmInstance.stageIndex;
-					
-					int nOverload = 0;
-					for(String ip : stageMap.keySet()){
-						NFVNode n = stageMap.get(ip);
-						if(n.getState() == NFVNode.OVERLOAD){
-							nOverload += 1;
+					if(reactiveStart == true){
+						NFVNode node = chain.getNode(managementIp);
+						Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
+						int stageIndex = node.vmInstance.stageIndex;
+						
+						int nOverload = 0;
+						for(String ip : stageMap.keySet()){
+							NFVNode n = stageMap.get(ip);
+							if(n.getState() == NFVNode.OVERLOAD){
+								nOverload += 1;
+							}
+						}
+						
+						if( (nOverload == stageMap.size())&&
+						    (!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
+							//Here we trigger a reactive scaling condition.
+							//Create a new vm.
+							NFVNode bufferNode = chain.removeFromBqRear();
+							if(bufferNode != null){
+								if(chain.serviceChainConfig.nVmInterface == 2){
+									String domainName = "";
+									if(bufferNode.vmInstance.stageIndex == 0){
+										domainName = "bono.cw.t";
+									}
+									else {
+										domainName = "sprout.cw.t";
+									}
+									
+									DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+											bufferNode.vmInstance.operationIp, "add", bufferNode, null);
+									this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+								}
+								else{
+									chain.addWorkingNode(bufferNode);
+								}
+							}
+							else{
+								chain.setScaleIndicator(node.vmInstance.stageIndex, true);
+								AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
+										                  node.vmInstance.serviceChainConfig.name,
+										                              node.vmInstance.stageIndex);
+								this.mh.sendTo("vmAllocator", newRequest);
+							}
 						}
 					}
 					
-					if( (nOverload == stageMap.size())&&
-					    (!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
-						//Here we trigger a reactive scaling condition.
-						//Create a new vm.
-						chain.setScaleIndicator(node.vmInstance.stageIndex, true);
-						AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
-								                  node.vmInstance.serviceChainConfig.name,
-								                              node.vmInstance.stageIndex);
-						Pending pending = new Pending(1, null);
-						this.pendingMap.put(newRequest.getUUID(), pending);
-						this.mh.sendTo("vmAllocator", newRequest);
-						
-						chain.scaleDownList.get(stageIndex).clear();
-						chain.scaleDownCounter[stageIndex] = -1;
+					ArrayList<String> list = new ArrayList<String>();
+					for(String key : chain.destroyNodeMap.keySet()){
+						NFVNode destroyNode = chain.destroyNodeMap.get(key);
+						chain.removeFromServiceChain(destroyNode);
+						if(chain.serviceChainConfig.nVmInterface == 3){
+							this.poller.unregister(destroyNode.getManagementIp());
+						}
+						else{
+							this.poller.unregister(destroyNode.getManagementIp()+":1");
+							this.poller.unregister(destroyNode.getManagementIp()+":2");
+						}
+						DeallocateVmRequest deallocationRequest = 
+								new DeallocateVmRequest(this.getId(), destroyNode.vmInstance);
+						this.mh.sendTo("vmAllocator", deallocationRequest);
+						list.add(key);
 					}
-					else if((nOverload > 0)&&(nOverload < stageMap.size())){
-						//TODO:
-						//Something needs to be done here....
-						chain.scaleDownList.get(stageIndex).clear();
-						chain.scaleDownCounter[stageIndex] = -1;
+					for(int i=0; i<list.size(); i++){
+						chain.destroyNodeMap.remove(list.get(i));
 					}
 					
 					break;
