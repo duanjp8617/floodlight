@@ -84,9 +84,6 @@ public class DNSUpdator extends MessageProcessor{
 		this.requester.send(request.getDomainName(), ZMQ.SNDMORE);
 		this.requester.send(request.getIpAddress(), 0);
 		String recvResult = requester.recvStr();
-
-		DNSUpdateReply reply = new DNSUpdateReply(this.getId(), request);
-		this.mh.sendTo(request.getSourceId(), reply);
 	}
 	
 }

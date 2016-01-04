@@ -5,7 +5,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import net.floodlightcontroller.nfvtest.message.Message;
 import net.floodlightcontroller.nfvtest.message.MessageProcessor;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
-import net.floodlightcontroller.nfvtest.message.Pending;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVNode;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVServiceChain;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
@@ -13,7 +12,6 @@ import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -89,10 +87,6 @@ public class ServiceChainHandler extends MessageProcessor {
 			StatUpdateRequest request = (StatUpdateRequest)m;
 			statUpdate(request);
 		}
-		if(m instanceof DNSUpdateReply){
-			DNSUpdateReply reply = (DNSUpdateReply)m;
-			handleDNSUpdateReply(reply);
-		}
 		if(m instanceof NewProactiveIntervalRequest){
 			newProactiveScalingInterval();
 		}
@@ -143,6 +137,7 @@ public class ServiceChainHandler extends MessageProcessor {
 					for(j=0; j<scaleUpNum; j++){
 						NFVNode bufferNode = serviceChain.removeFromBqRear();
 						if(bufferNode != null){
+							serviceChain.addWorkingNode(bufferNode);
 							if(serviceChain.serviceChainConfig.nVmInterface == 2){
 								//in this case, we need to add the IP address of the control plane
 								//middlebox to the DNS.
@@ -155,12 +150,8 @@ public class ServiceChainHandler extends MessageProcessor {
 								}
 								
 								DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-										bufferNode.vmInstance.operationIp, "add", bufferNode, null);
-								this.pendingMap.put(dnsUpdateReq.getUUID(), dnsUpdateReq);
+										bufferNode.vmInstance.operationIp, "add");
 								this.mh.sendTo("dnsUpdator", dnsUpdateReq);
-							}
-							else{
-								serviceChain.addWorkingNode(bufferNode);
 							}
 						}
 						else{
@@ -196,8 +187,7 @@ public class ServiceChainHandler extends MessageProcessor {
 								}
 								
 								DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-										workingNode.vmInstance.operationIp, "delete", workingNode, null);
-								this.pendingMap.put(dnsUpdateReq.getUUID(), dnsUpdateReq);
+										workingNode.vmInstance.operationIp, "delete");
 								this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 							}
 						}
@@ -251,6 +241,20 @@ public class ServiceChainHandler extends MessageProcessor {
 				//one of the proactive scaling requests is finished.
 				serviceChain.addToServiceChain(node);
 				serviceChain.addWorkingNode(node);
+				
+				if(serviceChain.serviceChainConfig.nVmInterface == 2){
+					String domainName = "";
+					if(node.vmInstance.stageIndex == 0){
+						domainName = "bono.cw.t";
+					}
+					else {
+						domainName = "sprout.cw.t";
+					}
+					DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+							node.vmInstance.operationIp, "add");
+					this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+				}
+				
 				pendingMap.remove(uuid);
 				if(pendingMap.size() == 0){
 					Socket requester = context.socket(ZMQ.REQ);
@@ -267,9 +271,7 @@ public class ServiceChainHandler extends MessageProcessor {
 				if(this.reactiveStart == true){
 					//reactive scaling is enabled, we add the node to working node
 					serviceChain.addWorkingNode(node);
-				}
-				else{
-					serviceChain.addToBqRear(node);
+					
 					if(serviceChain.serviceChainConfig.nVmInterface == 2){
 						String domainName = "";
 						if(node.vmInstance.stageIndex == 0){
@@ -278,11 +280,13 @@ public class ServiceChainHandler extends MessageProcessor {
 						else {
 							domainName = "sprout.cw.t";
 						}
-						
 						DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-								node.vmInstance.operationIp, "delete", node, null);
+								node.vmInstance.operationIp, "add");
 						this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 					}
+				}
+				else{
+					serviceChain.addToBqRear(node);
 				}
 				serviceChain.setScaleIndicator(node.vmInstance.stageIndex, false);
 			}
@@ -294,11 +298,10 @@ public class ServiceChainHandler extends MessageProcessor {
 		VmInstance vmInstance = request.getVmInstance();
 		Message originalMessage = reply.getSubConnRequest().getOriginalMessage();
 		
-		if(vmInstance.serviceChainConfig.nVmInterface == 3){
-			NFVServiceChain serviceChain = this.serviceChainMap.get(vmInstance.serviceChainConfig.name);
-			NFVNode node = new NFVNode(vmInstance);
-			addToServiceChain(serviceChain, node, originalMessage.getUUID());
+		NFVServiceChain serviceChain = this.serviceChainMap.get(vmInstance.serviceChainConfig.name);
+		NFVNode node = new NFVNode(vmInstance);
 		
+		if(vmInstance.serviceChainConfig.nVmInterface == 3){
 			String managementIp = vmInstance.managementIp;
 			Socket subscriber1 = reply.getSubscriber1();
 			this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
@@ -309,43 +312,9 @@ public class ServiceChainHandler extends MessageProcessor {
 			Socket subscriber2 = reply.getSubscriber2();
 			this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 			this.poller.register(new Pair<String, Socket>(managementIp+":2", subscriber2));
-			
-			String domainName = "";
-			if(vmInstance.stageIndex == 0){
-				domainName = "bono.cw.t";
-			}
-			else {
-				domainName = "sprout.cw.t";
-			}
-			NFVNode node = new NFVNode(vmInstance);
-			DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-					vmInstance.operationIp, "add", node, originalMessage);
-			this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 		}
-	}
-	
-	private void handleDNSUpdateReply(DNSUpdateReply reply){
-		DNSUpdateRequest request = reply.getDNSUpdateReq();
-		NFVNode node = request.getNode();
-		Message originalMessage = request.getOriginalMessage();
 		
-		NFVServiceChain serviceChain = this.serviceChainMap.get(node.vmInstance.serviceChainConfig.name);
-		if(request.getAddOrDelete().equals("add")){
-			addToServiceChain(serviceChain, node, originalMessage.getUUID());
-		}
-		else{
-			if(pendingMap.containsKey(originalMessage.getUUID())){
-				pendingMap.remove(originalMessage.getUUID());
-				if(pendingMap.size() == 0){
-					Socket requester = context.socket(ZMQ.REQ);
-					requester.connect("inproc://schSync");
-					requester.send("COMPLETE", 0);
-					requester.recv(0);
-					requester.close();
-					this.reactiveStart = true;
-				}
-			}
-		}
+		addToServiceChain(serviceChain, node, originalMessage.getUUID());
 	}
 	
 	private void newProactiveScalingInterval(){
@@ -386,7 +355,6 @@ public class ServiceChainHandler extends MessageProcessor {
 					if(reactiveStart == true){
 						NFVNode node = chain.getNode(managementIp);
 						Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
-						int stageIndex = node.vmInstance.stageIndex;
 						
 						int nOverload = 0;
 						for(String ip : stageMap.keySet()){
@@ -402,6 +370,8 @@ public class ServiceChainHandler extends MessageProcessor {
 							//Create a new vm.
 							NFVNode bufferNode = chain.removeFromBqRear();
 							if(bufferNode != null){
+								chain.addWorkingNode(bufferNode);
+								
 								if(chain.serviceChainConfig.nVmInterface == 2){
 									String domainName = "";
 									if(bufferNode.vmInstance.stageIndex == 0){
@@ -412,11 +382,8 @@ public class ServiceChainHandler extends MessageProcessor {
 									}
 									
 									DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-											bufferNode.vmInstance.operationIp, "add", bufferNode, null);
+											bufferNode.vmInstance.operationIp, "add");
 									this.mh.sendTo("dnsUpdator", dnsUpdateReq);
-								}
-								else{
-									chain.addWorkingNode(bufferNode);
 								}
 							}
 							else{
@@ -434,7 +401,7 @@ public class ServiceChainHandler extends MessageProcessor {
 						NFVNode destroyNode = chain.destroyNodeMap.get(key);
 						chain.removeFromServiceChain(destroyNode);
 						if(chain.serviceChainConfig.nVmInterface == 3){
-							this.poller.unregister(destroyNode.getManagementIp());
+							this.poller.unregister(destroyNode.getManagementIp()+":1");
 						}
 						else{
 							this.poller.unregister(destroyNode.getManagementIp()+":1");

@@ -352,23 +352,12 @@ public class ConcreteMessage {
 		private final String domainName;
 		private final String ipAddress;
 		private final String addOrDelete;
-		private final NFVNode node;
-		private final Message originalMessage;
 		
-		public DNSUpdateRequest(String sourceId, String domainName, String ipAddress, String addOrDelete, 
-				NFVNode node, Message originalMessage){
+		public DNSUpdateRequest(String sourceId, String domainName, String ipAddress, String addOrDelete){
 			this.sourceId = sourceId;
 			this.domainName = domainName;
 			this.ipAddress = ipAddress;
 			this.addOrDelete = addOrDelete;
-			this.node = node;
-			
-			if(originalMessage == null){
-				this.originalMessage = this;
-			}
-			else{
-				this.originalMessage = originalMessage;
-			}
 		}
 		
 		public String getSourceId(){
@@ -385,32 +374,6 @@ public class ConcreteMessage {
 		
 		public String getAddOrDelete(){
 			return this.addOrDelete;
-		}
-		
-		public NFVNode getNode(){
-			return this.node;
-		}
-		
-		public Message getOriginalMessage(){
-			return this.originalMessage;
-		}
-	}
-	
-	static public class DNSUpdateReply extends Message{
-		private final DNSUpdateRequest request;
-		private final String sourceId;
-		
-		public DNSUpdateReply(String sourceId, DNSUpdateRequest request){
-			this.request = request;
-			this.sourceId = sourceId;
-		}
-		
-		public String getSourceId(){
-			return this.sourceId;
-		}
-		
-		public DNSUpdateRequest getDNSUpdateReq(){
-			return this.request;
 		}
 	}
 	
