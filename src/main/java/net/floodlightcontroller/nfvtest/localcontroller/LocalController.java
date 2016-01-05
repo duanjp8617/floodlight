@@ -4,7 +4,6 @@ import org.zeromq.ZMQ.Socket;
 
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
 import net.floodlightcontroller.nfvtest.message.MessageHub;
-import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVServiceChain;
 
 import org.zeromq.ZMQ.Context;
 
@@ -44,18 +43,16 @@ public class LocalController implements Runnable{
 	private MeasureDelay measureDelay;
 	private StatCollector statCollector;
 	
-	private NFVServiceChain dpServiceChain;
-	private NFVServiceChain cpServiceChain;
 	private MessageHub mh;
 	
 	private int cpProvision[][];
 	private int dpProvision[][];
 	private int dpPaths[][][];
 	
+	private HashMap<String, String> srcAddrDstAddrMap;
 	
 	public LocalController(String globalIp, int publishPort, int syncPort, int pullPort, int repPort,
-			String localIp, boolean hasScscf, int delayPollInterval, int dpCapacity[], 
-			NFVServiceChain dpServiceChain, NFVServiceChain cpServiceChain, MessageHub mh, Context context){
+			String localIp, boolean hasScscf, int delayPollInterval, int dpCapacity[], MessageHub mh, Context context){
 		this.globalIp = globalIp;
 		this.publishPort = publishPort;
 		this.syncPort = syncPort;
@@ -80,10 +77,14 @@ public class LocalController implements Runnable{
 		this.measureDelay = null;
 		this.statCollector = null;
 		
-		this.dpServiceChain = dpServiceChain;
-		this.cpServiceChain = cpServiceChain;
 		this.mh = mh;
 		this.context = context;
+		
+		this.srcAddrDstAddrMap = new HashMap<String, String>();
+	}
+	
+	public int getSrcDcIndex(){
+		return localcIndexMap.get(localIp).intValue();
 	}
 	
 	@Override
@@ -154,6 +155,14 @@ public class LocalController implements Runnable{
 		statCollector = new StatCollector(context, localIp, 5000, 5001, 2000, 5000);
 		Thread scThread = new Thread(statCollector);
 		scThread.start();
+		
+		int srcIndex = localcIndexMap.get(localIp).intValue();
+		int dcNum = localcIndexMap.size();
+		mh.sendTo("chainHandler", new LocalControllerNotification("lc", srcIndex, dcNum));
+		
+		mh.sendTo("chainHandler", new CreateInterDcTunnelMash("chainHandler", localIp, 400, localcIndexMap));
+		schSync.recvStr();
+		schSync.send("", 0);
 		
 		localLoop();
 	}
@@ -431,4 +440,23 @@ public class LocalController implements Runnable{
 			}
 		}
 	}
+	
+	public void addSrcAddrDstAddr(String srcAddr, String dstAddr){
+		synchronized(this.srcAddrDstAddrMap){
+			this.srcAddrDstAddrMap.put(srcAddr, dstAddr);
+		}
+	}
+	
+	public int[] getSrcDcDstDc(String srcAddr){
+		int srcDst[] = new int[2];
+		synchronized(this.srcAddrDstAddrMap){
+			int srcDcIndex = localcIndexMap.get(localIp).intValue();
+			int dstDcIndex = 1; //we do some query here;
+			srcDst[0] = srcDcIndex;
+			srcDst[1] = dstDcIndex;
+		}
+		
+		return srcDst;
+	}
+	
 }

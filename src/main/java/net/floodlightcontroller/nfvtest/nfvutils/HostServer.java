@@ -168,6 +168,10 @@ public class HostServer {
 	public String exitMac;
 	public String exitIp;
 	
+	//For inter-datacenter tunnels
+	public final Map<Integer, Integer> dcIndexPortMap;
+	public final Map<Integer, Integer> portDcIndexMap;
+	
 	public HostServer(ControllerConfig controllerConfig,
 			   		  HostServerConfig hostServerConfig,
 			   		  Map<String, ServiceChainConfig> serviceChainConfigMap,
@@ -185,6 +189,9 @@ public class HostServer {
 		
 		this.serviceChainMNetworkMap = new HashMap<String, FakeDhcpAllocator>();
 		this.serviceChainONetworkMap = new HashMap<String, FakeDhcpAllocator>();
+		
+		this.dcIndexPortMap = new HashMap<Integer, Integer>();
+		this.portDcIndexMap = new HashMap<Integer, Integer>();
 		
 		for(String chainName : this.serviceChainConfigMap.keySet()){
 			

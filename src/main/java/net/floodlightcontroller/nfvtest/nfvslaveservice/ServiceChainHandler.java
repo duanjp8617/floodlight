@@ -2,33 +2,44 @@ package net.floodlightcontroller.nfvtest.nfvslaveservice;
 
 import java.util.concurrent.LinkedBlockingQueue;
 
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.nfvtest.message.Message;
 import net.floodlightcontroller.nfvtest.message.MessageProcessor;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVNode;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVServiceChain;
+import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
 import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import org.zeromq.ZMQ.Socket;
+import org.projectfloodlight.openflow.types.DatapathId;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Context;
 
-public class ServiceChainHandler extends MessageProcessor {
-	
+public class ServiceChainHandler extends MessageProcessor { 
 	private final HashMap<String, NFVServiceChain> serviceChainMap;
 	private NFVZmqPoller poller;
 	private final HashMap<UUID, Message> pendingMap;
 	private Context context;
 	
 	private boolean reactiveStart;
+	
+	private int dcNum;
+	private int dcIndex;
+	
+	protected IOFSwitchService switchService;
+	
+	private final HashMap<String, HostServer> hostServerMap;
+	private final HashMap<DatapathId, HostServer> dpidHostServerMap;
 
-	public ServiceChainHandler(String id, Context context){
+	public ServiceChainHandler(String id, Context context, IOFSwitchService switchService){
 		this.id = id;
 		this.context = context;
 		this.queue = new LinkedBlockingQueue<Message>();
@@ -36,6 +47,24 @@ public class ServiceChainHandler extends MessageProcessor {
 		this.pendingMap = new HashMap<UUID, Message>();
 		
 		this.reactiveStart = false;
+		
+		this.dcNum = 0;
+		this.dcIndex = 0;
+		
+		this.switchService = switchService;
+		
+		this.hostServerMap = new HashMap<String, HostServer>();
+		this.dpidHostServerMap = new HashMap<DatapathId, HostServer> ();
+	}
+	
+	public void addHostServer(HostServer hostServer){
+		this.hostServerMap.put(hostServer.hostServerConfig.managementIp, hostServer);
+		for(String chainName : hostServer.serviceChainDpidMap.keySet()){
+			List<String> dpidList = hostServer.serviceChainDpidMap.get(chainName);
+			for(int i=0; i<dpidList.size(); i++){
+				this.dpidHostServerMap.put(DatapathId.of(dpidList.get(i)), hostServer);
+			}
+		}
 	}
 	
 	public void startPollerThread(){
@@ -71,6 +100,10 @@ public class ServiceChainHandler extends MessageProcessor {
 	@Override
 	protected void onReceive(Message m) {
 		// TODO Auto-generated method stub
+		if(m instanceof LocalControllerNotification){
+			LocalControllerNotification req = (LocalControllerNotification)m;
+			handleLocalControllerNotification(req);
+		}
 		if(m instanceof ProactiveScalingRequest){
 			ProactiveScalingRequest request = (ProactiveScalingRequest)m;
 			handleProactiveScalingRequest(request);
@@ -93,6 +126,30 @@ public class ServiceChainHandler extends MessageProcessor {
 		if(m instanceof ProactiveScalingStartRequest){
 			proactiveScalingStart();
 		}
+		if(m instanceof CreateInterDcTunnelMash){
+			CreateInterDcTunnelMash req = (CreateInterDcTunnelMash)m;
+			relayCreateInterDcTunnelMash(req);
+		}
+		if(m instanceof CreateInterDcTunnelMashReply){
+			handleCreateInterDcTunnelMashReply();
+		}
+	}
+	
+	private void handleLocalControllerNotification(LocalControllerNotification req){
+		this.dcIndex = req.getDcIndex();
+		this.dcNum = req.getDcNum();
+	}
+	
+	private void relayCreateInterDcTunnelMash(CreateInterDcTunnelMash req){
+		this.mh.sendTo("vmAllocator", req);
+	}
+	
+	private void handleCreateInterDcTunnelMashReply(){
+		Socket requester = context.socket(ZMQ.REQ);
+		requester.connect("inproc://schSync");
+		requester.send("TUNNELFINISH", ZMQ.SNDMORE);
+		requester.recv(0);
+		requester.close();
 	}
 	
 	private void proactiveScalingStart(){

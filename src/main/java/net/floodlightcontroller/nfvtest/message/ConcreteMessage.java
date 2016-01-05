@@ -1,5 +1,6 @@
 package net.floodlightcontroller.nfvtest.message;
 import java.util.ArrayList;
+import java.util.Map;
 
 import org.zeromq.ZMQ.Socket;
 
@@ -430,6 +431,80 @@ public class ConcreteMessage {
 		
 		public String getSourceId(){
 			return this.sourceId;
+		}
+	}
+	
+	static public class LocalControllerNotification extends Message {
+		private final String sourceId;
+		private final int dcIndex;
+		private final int dcNum;
+		
+		public LocalControllerNotification(String sourceId, int dcIndex, int dcNum){
+			this.sourceId = sourceId;
+			this.dcIndex = dcIndex;
+			this.dcNum = dcNum;
+		}
+		
+		public String getSourceId(){
+			return this.sourceId;
+		}
+		
+		public int getDcIndex(){
+			return this.dcIndex;
+		}
+		
+		public int getDcNum(){
+			return this.dcNum;
+		}
+	}
+	
+	static public class CreateInterDcTunnelRequest extends Message{
+		public final String sourceId;
+		
+		public final int srcDcIndex;
+		public final String srcIp;
+		
+		public final int dstDcIndex;
+		public final String dstIp;
+		
+		public final int interDcVniIndex;
+		public final int tunnelPortNum;
+		public final int baseVniIndex;
+		
+		public CreateInterDcTunnelRequest(String sourceId, int srcDcIndex, String srcIp,
+				int dstDcIndex, String dstIp, int interDcVniIndex, int tunnelPortNum, int baseVniIndex){
+			this.sourceId = sourceId;
+			this.srcDcIndex = srcDcIndex;
+			this.srcIp = srcIp;
+			this.dstDcIndex = dstDcIndex;
+			this.dstIp = dstIp;
+			this.interDcVniIndex = interDcVniIndex;
+			this.tunnelPortNum = tunnelPortNum; 
+			this.baseVniIndex = baseVniIndex;
+		}
+	}
+	
+	static public class CreateInterDcTunnelMash extends Message{
+		public final String sourceId;
+		
+		public final String srcIp;
+		public final int globalBaseVni;
+		
+		public final Map<String, Integer> localcIndexMap;
+		
+		public CreateInterDcTunnelMash(String sourceId, String srcIp, int globalBaseVni, Map<String, Integer> localcIndexMap){
+			this.sourceId = sourceId;
+			this.srcIp = srcIp;
+			this.globalBaseVni = globalBaseVni;
+			this.localcIndexMap = localcIndexMap;
+		}
+	}
+	
+	static public class CreateInterDcTunnelMashReply extends Message{
+		public final String sourceId;
+		
+		public CreateInterDcTunnelMashReply(String sourceId){
+			this.sourceId = sourceId;
 		}
 	}
 }

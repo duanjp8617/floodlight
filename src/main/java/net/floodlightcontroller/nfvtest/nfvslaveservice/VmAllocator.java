@@ -9,28 +9,28 @@ import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.*;
 import net.floodlightcontroller.nfvtest.message.Pending;
 
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 
 
 public class VmAllocator extends MessageProcessor {
-	private final ArrayList<HostServer> hostServerList;
+	public final ArrayList<HostServer> hostServerList;
 	private final HashMap<UUID, Pending> pendingMap;
 	private int vni;
 	public final HashMap<DatapathId, HostServer> dpidHostServerMap;
 	public final HashMap<DatapathId, Integer> dpidStageIndexMap;
 
-	public VmAllocator(String id){
+	public VmAllocator(String id, int baseVni){
 		this.id = id;
 		this.queue = new LinkedBlockingQueue<Message>();
 		this.hostServerList = new ArrayList<HostServer>();
 		this.pendingMap = new HashMap<UUID, Pending>();
-		this.vni=100;
+		this.vni=baseVni;
 		this.dpidHostServerMap = new HashMap<DatapathId, HostServer>();
 		this.dpidStageIndexMap = new HashMap<DatapathId, Integer>();
 	}
@@ -77,6 +77,10 @@ public class VmAllocator extends MessageProcessor {
 		else if(m instanceof DestroyVmReply){
 			DestroyVmReply reply = (DestroyVmReply)m;
 			handleDestroyVmReply(reply);
+		}
+		else if(m instanceof CreateInterDcTunnelMash){
+			CreateInterDcTunnelMash req = (CreateInterDcTunnelMash)m;
+			createInterDcTunnelMash(req);
 		}
 	}
 	
@@ -163,6 +167,139 @@ public class VmAllocator extends MessageProcessor {
 				this.dpidStageIndexMap.put(DatapathId.of(dpidList.get(i)), new Integer(i));
 			}
 		}
+	}
+	
+	private void createInterDcTunnelMash(CreateInterDcTunnelMash req){
+		String srcIp = req.srcIp;
+		Map<String, Integer> localcIndexMap = req.localcIndexMap;
+		
+		int basePort = this.hostServerList.get(0).tunnelPort;
+		basePort += 10;
+		
+		int baseVni = this.vni;
+		baseVni += 1;
+		
+		int srcIndex = localcIndexMap.get(srcIp).intValue();
+		int dstIndex = 0;
+		String dstIp = null;
+		int interDcVniIndex = 0;
+		
+		for(String key : localcIndexMap.keySet()){
+			if(localcIndexMap.get(key).intValue() != srcIndex){
+				dstIndex = localcIndexMap.get(key).intValue();
+				dstIp = key;
+				if(srcIndex<dstIndex){
+					interDcVniIndex = req.globalBaseVni+srcIndex*localcIndexMap.size()+dstIndex;
+				}
+				else{
+					interDcVniIndex = req.globalBaseVni+dstIndex*localcIndexMap.size()+srcIndex;
+				}
+				
+				int newVniPort[] = createInterDcPort(new CreateInterDcTunnelRequest("this", srcIndex, srcIp, dstIndex, dstIp, 
+						interDcVniIndex, basePort, baseVni));
+				basePort = newVniPort[0];
+				baseVni = newVniPort[1];
+			}
+		}
+		
+		mh.sendTo(req.sourceId, new CreateInterDcTunnelMashReply("vmAllocator"));
+	}
+	
+	private int[] createInterDcPort(CreateInterDcTunnelRequest req){
+		HostServer edgeServer = this.hostServerList.get(0);
+		String edgeBridge  = edgeServer.serviceChainConfigMap.get("DATA").bridges.get(0);
+		HostAgent edgeServerAgent = new HostAgent(edgeServer.hostServerConfig);
+		
+		try {
+			edgeServerAgent.connect();
+			String portName = "interDc-src-"+Integer.toString(req.srcDcIndex)+"-dst-"+Integer.toString(req.dstDcIndex);
+			edgeServerAgent.createTunnelPort(portName, edgeBridge, req.dstIp, req.tunnelPortNum, req.interDcVniIndex);
+			edgeServerAgent.disconnect();
+		} catch(Exception e){
+			e.printStackTrace();
+		}
+		
+		int tunnelPortNum = req.tunnelPortNum+1;
+		int baseVniIndex = req.baseVniIndex;
+		
+		edgeServer.dcIndexPortMap.put(new Integer(req.dstDcIndex), new Integer(req.tunnelPortNum));
+		edgeServer.portDcIndexMap.put(new Integer(req.tunnelPortNum), new Integer(req.dstDcIndex));
+		List<String> dpBridgeList = edgeServer.serviceChainConfigMap.get("DATA").bridges;
+		for(int i=1; i<dpBridgeList.size()-1; i++){
+			String bridge = dpBridgeList.get(i);
+			String localPortName = "wrelay-dst-"+Integer.toString(req.dstDcIndex)+"-idx-"+Integer.toString(i);
+			String remotePortName = "erelay-dst-"+Integer.toString(req.dstDcIndex)+"-idx-"+Integer.toString(i);
+			
+			try {
+				edgeServerAgent.connect();
+				edgeServerAgent.addPatchPort(bridge, localPortName, req.tunnelPortNum, remotePortName);
+				edgeServerAgent.addPatchPort(edgeBridge, remotePortName, tunnelPortNum, localPortName);
+				edgeServerAgent.disconnect();
+			} catch(Exception e){
+				e.printStackTrace();
+			}
+			
+			try {
+				edgeServerAgent.connect();
+				edgeServerAgent.addFlow(edgeBridge, tunnelPortNum, req.tunnelPortNum);
+				edgeServerAgent.disconnect();
+			} catch(Exception e){
+				e.printStackTrace();
+			}
+			
+			tunnelPortNum += 1;
+		}
+		
+		for(int i=1; i<this.hostServerList.size(); i++){
+			HostServer workingServer = this.hostServerList.get(i);
+			HostAgent workingServerAgent = new HostAgent(workingServer.hostServerConfig);
+			dpBridgeList = workingServer.serviceChainConfigMap.get("DATA").bridges;
+			
+			workingServer.dcIndexPortMap.put(new Integer(req.dstDcIndex), new Integer(req.tunnelPortNum));
+			workingServer.portDcIndexMap.put(new Integer(req.tunnelPortNum), new Integer(req.dstDcIndex));
+			
+			for(int j=1; j<dpBridgeList.size()-1; j++){
+				String workingBridge = dpBridgeList.get(j);
+				
+				try {
+					workingServerAgent.connect();
+					String portName = "wrelay-dst-"+Integer.toString(req.dstDcIndex)+"-vni-"+Integer.toString(baseVniIndex);
+					workingServerAgent.createTunnelPort(portName, workingBridge, edgeServer.hostServerConfig.internalIp, 
+							req.tunnelPortNum, baseVniIndex);
+					workingServerAgent.disconnect();
+				} catch(Exception e){
+					e.printStackTrace();
+				}
+				
+				try {
+					edgeServerAgent.connect();
+					String portName = "erelay-dst-"+Integer.toString(req.dstDcIndex)+"-vni-"+Integer.toString(baseVniIndex);
+					edgeServerAgent.createTunnelPort(portName, edgeBridge, workingServer.hostServerConfig.internalIp, 
+							tunnelPortNum, baseVniIndex);
+					edgeServerAgent.disconnect();
+				} catch(Exception e){
+					e.printStackTrace();
+				}
+				
+				//Adding a static flow rule here
+				
+				try {
+					edgeServerAgent.connect();
+					edgeServerAgent.addFlow(edgeBridge, tunnelPortNum, req.tunnelPortNum);
+					edgeServerAgent.disconnect();
+				} catch(Exception e){
+					e.printStackTrace();
+				}
+				tunnelPortNum += 1;
+				baseVniIndex += 1;
+			}
+		}
+		
+		int returnVal[] = new int[2];
+		returnVal[0] = tunnelPortNum;
+		returnVal[1] = baseVniIndex;
+		
+		return returnVal;
 	}
 	
 	//Deallocate an existing vm. Note that we first destroy the vm.

@@ -106,6 +106,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	private HostServer hostServer1;
 	private IpAddressAllocator ipAllocator;
 	private HashMap<DatapathId, HostServer> dpidHostServerMap;
+	private VmAllocator vmAllocator;
 	
 	private ServiceChainConfig dpServiceChainConfig;
 	private ServiceChainConfig cpServiceChainConfig;
@@ -161,6 +162,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         switchService = context.getServiceImpl(IOFSwitchService.class);
         macAddresses = new ConcurrentSkipListSet<Long>();
         logger = LoggerFactory.getLogger(NFVTest.class);
+        
+        Context zmqContext = ZMQ.context(1);
         
         logger.info("start testing network xml");
         //TestHostServer testHostServer = new TestHostServer();
@@ -221,10 +224,10 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		VmWorker vmWorker = new VmWorker("vmWorker");
 		vmWorker.registerWithMessageHub(mh);
 		
-		VmAllocator vmAllocator = new VmAllocator("vmAllocator");
+		vmAllocator = new VmAllocator("vmAllocator", 100);
 		vmAllocator.registerWithMessageHub(mh);
 		
-		Context zmqContext = ZMQ.context(1);
+		
 		SubscriberConnector subscriberConnector = new SubscriberConnector("subscriberConnector",
 																			zmqContext);
 		subscriberConnector.registerWithMessageHub(mh);
@@ -233,11 +236,13 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		//dnsUpdator.registerWithMessageHub(mh);
 		//dnsUpdator.connect();
 		
-		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler");
+		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler", zmqContext, this.switchService);
 		chainHandler.registerWithMessageHub(mh);
 		chainHandler.startPollerThread();
 		chainHandler.addServiceChain(this.cpServiceChain);
 		chainHandler.addServiceChain(this.dpServiceChain);
+		chainHandler.addHostServer(hostServer);
+		chainHandler.addHostServer(hostServer1);
 		
 		mh.startProcessors();
 		
@@ -321,13 +326,10 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         } 
         
         if(pkt instanceof IPv4){
-        	IPv4 ip_pkt = (IPv4)pkt;
-       	 	int destIpAddress = ip_pkt.getDestinationAddress().getInt();
-       	 	if(destIpAddress == IPv4Address.of("192.168.57.51").getInt()){
-       	 		if(sw.getId().getLong() == DatapathId.of(this.dpServiceChain.getEntryDpid()).getLong()){
-       	 			serviceChainLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT));
-       	 			return Command.STOP;
-       	 		}
+        	String edgeSwitch = vmAllocator.hostServerList.get(0).serviceChainDpidMap.get("DATA").get(0);
+       	 	if( (sw.getId().equals(DatapathId.of(edgeSwitch))) ){
+       	 		serviceChainLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT));
+       	 		return Command.STOP;
        	 	}
         }
         
@@ -408,8 +410,94 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         	}
  
         	OFPort inPort = initialInPort;
+        	if(inPort.getPortNumber() == vmAllocator.hostServerList.get(0).entryExitPort){
+        		//This is the new flow, we need to query local controller to know where exactly this flow want
+        		//to go.
+        		String srcAddr = srcIp.toString()+":"+srcPort.toString();
+        		int srcDst[] = localController.getSrcDcDstDc(srcAddr);
+        		
+        		int srcDcIndex = localController.getSrcDcIndex();
+        		
+        		int scalingInterval = this.dpServiceChain.getScalingInterval();
+        		int dpPaths[] = this.dpServiceChain.getDpPaths(srcDst[0], srcDst[1]);
+        		
+        		ArrayList<Integer> stageList = new ArrayList<Integer>();
+        		
+        		for(int i=0; i<dpPaths.length; i++){
+        			if(dpPaths[i] == srcDcIndex){
+        				stageList.add(new Integer(i));
+        			}
+        		}
+        		
+        		List<NFVNode> routeList = this.dpServiceChain.forwardRoute(stageList.get(0).intValue(),
+        				stageList.get(stageList.size()-1).intValue());
+        		
+        		IOFSwitch hitSwitch = sw;
+        		//here I need to know the the HostServer class that hitSwitch is on.
+        		HostServer localHostServer = this.dpidHostServerMap.get(hitSwitch.getId());
+        		
+        		for(int i=0; i<routeList.size(); i++){
+        			NFVNode currentNode = routeList.get(i);
+        			IOFSwitch nodeSwitch = this.switchService.getSwitch(DatapathId.of(currentNode.getBridgeDpid(0)));
+        			//create flow rules to route the flow from hitSwitch to nodeSwitch.
+        			
+        			if(hitSwitch.getId().getLong() == nodeSwitch.getId().getLong()){
+        				Match flowMatch = createMatch(hitSwitch, inPort, srcIp, transportProtocol, srcPort);
+        				OFFlowMod flowMod = createFlowMod(hitSwitch, flowMatch, 
+        						                          MacAddress.of(currentNode.getMacAddress(0)),
+        												  OFPort.of(currentNode.getPort(0)));
+        				hitSwitch.write(flowMod);
+        				
+        				RouteTuple routeTuple = new RouteTuple(srcIp.getInt(), dstIp.getInt(), 
+        			   transportProtocol.equals(IpProtocol.TCP)?RouteTuple.TCP:RouteTuple.UDP,
+        								                 srcPort.getPort(), dstPort.getPort(), 
+        								DatapathId.of(currentNode.getBridgeDpid(0)).getLong());
+        				
+        				this.routeMap.put(routeTuple, currentNode.getManagementIp());
+        			}
+        			else{
+        				//temporarily ignore this condition.
+        				String localServerIp = localHostServer.hostServerConfig.managementIp;
+        				HostServer remoteHostServer = currentNode.vmInstance.hostServer;
+        				String remoteServerIp = remoteHostServer.hostServerConfig.managementIp;
+        				
+        				int localPort = localHostServer.tunnelPortMap.get(remoteServerIp).intValue();
+        				int remotePort = remoteHostServer.tunnelPortMap.get(localServerIp).intValue();
+        				
+        				//first, push flow rules on hitSwitch. Without changing the mac address, push 
+        				//The flow to the localPort on hitSwitch.
+        				Match flowMatch = createMatch(hitSwitch, inPort, srcIp, dstIp,
+    							  					  transportProtocol, srcPort, dstPort);
+        				OFFlowMod flowMod = createFlowMod(hitSwitch, flowMatch, 
+    	                          					      MacAddress.of(currentNode.getMacAddress(0)),
+    	                          					  	  OFPort.of(localPort));
+        				hitSwitch.write(flowMod);
+        				
+        				flowMatch = createMatch(nodeSwitch, OFPort.of(remotePort), srcIp, dstIp,
+    		  					                transportProtocol, srcPort, dstPort);
+        				flowMod = createFlowMod(nodeSwitch, flowMatch, 
+        					                    MacAddress.of(currentNode.getMacAddress(0)),
+        					                    OFPort.of(currentNode.getPort(0)));
+        				nodeSwitch.write(flowMod);
+        				
+        				
+        				RouteTuple routeTuple = new RouteTuple(srcIp.getInt(), dstIp.getInt(), 
+        		       transportProtocol.equals(IpProtocol.TCP)?RouteTuple.TCP:RouteTuple.UDP,
+        		    								     srcPort.getPort(), dstPort.getPort(), 
+        		    				   DatapathId.of(currentNode.getBridgeDpid(0)).getLong());
+        		    				
+        		    	this.routeMap.put(routeTuple, currentNode.getManagementIp());
+        			}
+        			
+        			currentNode.addActiveFlow();
+        			hitSwitch = this.switchService.getSwitch(DatapathId.of(currentNode.getBridgeDpid(1)));
+        			inPort = OFPort.of(currentNode.getPort(1));
+        			localHostServer = currentNode.vmInstance.hostServer;
+        		}
+        		
+        	}
         	
-    		List<NFVNode> routeList = this.dpServiceChain.forwardRoute();
+    		/*List<NFVNode> routeList = this.dpServiceChain.forwardRoute();
     		IOFSwitch hitSwitch = sw;
     		//here I need to know the the HostServer class that hitSwitch is on.
     		HostServer localHostServer = this.dpidHostServerMap.get(hitSwitch.getId());
@@ -472,29 +560,26 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     			hitSwitch = this.switchService.getSwitch(DatapathId.of(currentNode.getBridgeDpid(1)));
     			inPort = OFPort.of(currentNode.getPort(1));
     			localHostServer = currentNode.vmInstance.hostServer;
-    		}
+    		}*/
     	}
     }
     
     private Match createMatch(IOFSwitch sw, OFPort inPort, 
-    						  IPv4Address srcIp, IPv4Address dstIp, IpProtocol transportProtocol,
-    						  TransportPort srcPort, TransportPort dstPort){
+    						  IPv4Address srcIp, IpProtocol transportProtocol,
+    						  TransportPort srcPort){
     	Match.Builder mb = sw.getOFFactory().buildMatch();
     	mb.setExact(MatchField.IN_PORT, inPort);
     	
         mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
-        .setExact(MatchField.IPV4_SRC, srcIp)
-        .setExact(MatchField.IPV4_DST, dstIp);
+        .setExact(MatchField.IPV4_SRC, srcIp);
         
         if(transportProtocol.equals(IpProtocol.TCP)){
 			mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
-			.setExact(MatchField.TCP_SRC, srcPort)
-			.setExact(MatchField.TCP_DST, dstPort);
+			.setExact(MatchField.TCP_SRC, srcPort);
         }
         else{
     		mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
-    		.setExact(MatchField.UDP_SRC, srcPort)
-    		.setExact(MatchField.UDP_DST, dstPort);
+    		.setExact(MatchField.UDP_SRC, srcPort);
         }
        
         return mb.build();
@@ -506,6 +591,79 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		OFOxms oxms = sw.getOFFactory().oxms();
 		
 		actionList.add(actions.setField(oxms.ethDst(dstMac)));
+		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
+		
+		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+		fmb.setHardTimeout(0);
+		fmb.setIdleTimeout(15);
+		fmb.setBufferId(OFBufferId.NO_BUFFER);
+		fmb.setCookie(U64.of(8617));
+		fmb.setPriority(5);
+		fmb.setOutPort(outPort);
+		fmb.setActions(actionList);
+		fmb.setMatch(flowMatch);
+		
+		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
+		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
+		fmb.setFlags(sfmf);
+		
+		return fmb.build();
+    }
+    
+    private OFFlowMod createEntryFlowMod(IOFSwitch sw, Match flowMatch, MacAddress dstMac, OFPort outPort, 
+    		int srcDcIndex, int dstDcIndex, int scalingInterval, String udpOrTcp){
+    	byte newDstAddr[] = new byte[4];
+		newDstAddr[0] = (byte)(dstDcIndex & 0x000000FF);
+		newDstAddr[1] = (byte)(srcDcIndex & 0x000000FF);
+		newDstAddr[2] = 0;
+		newDstAddr[3] = 0;
+    	
+    	List<OFAction> actionList = new ArrayList<OFAction>();	
+		OFActions actions = sw.getOFFactory().actions();
+		OFOxms oxms = sw.getOFFactory().oxms();
+		
+		actionList.add(actions.setField(oxms.ethDst(dstMac)));
+		if(udpOrTcp.equals("udp")){
+			actionList.add(actions.setField(oxms.udpDst(TransportPort.of(scalingInterval))));
+		}
+		else{
+			actionList.add(actions.setField(oxms.tcpDst(TransportPort.of(scalingInterval))));
+		}
+		actionList.add(actions.setField(oxms.ipv4Dst(IPv4Address.of(newDstAddr))));
+		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
+		
+		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+		fmb.setHardTimeout(0);
+		fmb.setIdleTimeout(15);
+		fmb.setBufferId(OFBufferId.NO_BUFFER);
+		fmb.setCookie(U64.of(8617));
+		fmb.setPriority(5);
+		fmb.setOutPort(outPort);
+		fmb.setActions(actionList);
+		fmb.setMatch(flowMatch);
+		
+		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
+		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
+		fmb.setFlags(sfmf);
+		
+		return fmb.build();
+    }
+    
+    private OFFlowMod createExitFlowMod(IOFSwitch sw, Match flowMatch, MacAddress dstMac, OFPort outPort, 
+    		String srcIp, String dstIp, int dstPort, String udpOrTcp){
+		List<OFAction> actionList = new ArrayList<OFAction>();	
+		OFActions actions = sw.getOFFactory().actions();
+		OFOxms oxms = sw.getOFFactory().oxms();
+		
+		actionList.add(actions.setField(oxms.ethDst(dstMac)));
+		actionList.add(actions.setField(oxms.ipv4Src(IPv4Address.of(srcIp))));
+		actionList.add(actions.setField(oxms.ipv4Dst(IPv4Address.of(dstIp))));
+		if(udpOrTcp.equals("udp")){
+			actionList.add(actions.setField(oxms.udpDst(TransportPort.of(dstPort))));
+		}
+		else{
+			actionList.add(actions.setField(oxms.tcpDst(TransportPort.of(dstPort))));
+		}
 		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
 		
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();

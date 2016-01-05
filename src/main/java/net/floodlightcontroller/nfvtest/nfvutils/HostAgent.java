@@ -373,7 +373,8 @@ public class HostAgent{
 		src.portTunnelMap.put(new Integer(src.tunnelPort), dstIp);
 		
 		for(int i=0; i<srcBridgeList.size(); i++){
-			this.createTunnelPort(srcBridgeList.get(i), dstIp, src.tunnelPort, vniIndex);
+			String ovsPortName = "intraDc-"+dstIp+"-vni-"+new Integer(vniIndex).toString();
+			this.createTunnelPort(ovsPortName, srcBridgeList.get(i), dstIp, src.tunnelPort, vniIndex);
 			vniIndex+=1;
 		}
 		src.tunnelPort +=1;
@@ -382,12 +383,11 @@ public class HostAgent{
 		return vniIndex;
 	}
 	
-	public boolean createTunnelPort(String bridgeName, String dstIp, int tunnelPort, int vniIndex)throws
+	public boolean createTunnelPort(String portName, String bridgeName, String dstIp, int tunnelPort, int vniIndex)throws
 		IOException, UserAuthException, TransportException{
 		
-		String ovsPortName = "tun"+new Integer(vniIndex).toString();
-		String strCmd = "sudo ovs-vsctl add-port "+bridgeName+" "+ovsPortName+" -- set interface "+
-						ovsPortName+" type=vxlan options:remote_ip=\""+dstIp+"\""+" options:key="+
+		String strCmd = "sudo ovs-vsctl add-port "+bridgeName+" "+portName+" -- set interface "+
+				portName+" type=vxlan options:remote_ip=\""+dstIp+"\""+" options:key="+
 						new Integer(vniIndex).toString()+" ofport_request="+new Integer(tunnelPort).toString();
 		
 		final Session session = sshClient.startSession();
@@ -433,6 +433,45 @@ public class HostAgent{
 			}
 		}
 		return false;
+	}
+	
+	public boolean addPatchPort(String bridgeName, String localPortName, int localPortNum, String remotePortName)throws
+		IOException, UserAuthException, TransportException{
+	
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo ovs-vsctl add-port "+bridgeName+" "+localPortName+
+				" -- set interface "+localPortName+" type=patch ofport_request="+new Integer(localPortNum).toString()+
+				" options:peer="+remotePortName);
+		command.join(60, TimeUnit.SECONDS);
+	
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+	
+		}
+	}
+	
+	public boolean addFlow(String bridgeName, int inPort, int outPort)throws
+		IOException, UserAuthException, TransportException{
+	
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo ovs-ofctl add-flow "+bridgeName+
+				" in_port="+Integer.toString(inPort)+" actions=output:"+Integer.toString(outPort));
+		command.join(60, TimeUnit.SECONDS);
+	
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+	
+		}
 	}
 	
 	public boolean addPort(String bridgeName, String port, int ofPort)throws

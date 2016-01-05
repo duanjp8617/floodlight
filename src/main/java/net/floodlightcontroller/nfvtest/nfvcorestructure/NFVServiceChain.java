@@ -62,6 +62,14 @@ public class NFVServiceChain {
 		this.nextDpPaths = null;
 	}
 	
+	public int getScalingInterval(){
+		return (this.scalingInterval)%4;
+	}
+	
+	public int[] getDpPaths(int srcDcIndex, int dstDcIndex){
+		return this.dpPaths[srcDcIndex][dstDcIndex];
+	}
+	
 	public synchronized  void addNextDpPaths(int[][][] nextDpPaths){
 		if(this.serviceChainConfig.nVmInterface == 3){
 			this.nextDpPaths = nextDpPaths;
@@ -188,10 +196,10 @@ public class NFVServiceChain {
 		return null;
 	}
 	
-	public   List<NFVNode> forwardRoute(){
+	public   List<NFVNode> forwardRoute(int startStage, int endStage){
 		//a simple round rubin.
 		List<NFVNode> routeList = new ArrayList<NFVNode>();
-		for(int i=0; i<this.workingNodeMaps.size(); i++){
+		for(int i=startStage; i<=endStage; i++){
 			Map<String, NFVNode> stageMap = this.workingNodeMaps.get(i);
 			if(stageMap.size()>0){
 			
