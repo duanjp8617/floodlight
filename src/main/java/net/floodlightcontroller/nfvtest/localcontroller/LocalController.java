@@ -83,7 +83,7 @@ public class LocalController implements Runnable{
 		this.srcAddrDstAddrMap = new HashMap<String, String>();
 	}
 	
-	public int getSrcDcIndex(){
+	public int getCurrentDcIndex(){
 		return localcIndexMap.get(localIp).intValue();
 	}
 	
@@ -447,7 +447,7 @@ public class LocalController implements Runnable{
 		}
 	}
 	
-	public int[] getSrcDcDstDc(String srcAddr){
+	public int[] getSrcDstPair(String srcAddr){
 		int srcDst[] = new int[2];
 		synchronized(this.srcAddrDstAddrMap){
 			int srcDcIndex = localcIndexMap.get(localIp).intValue();

@@ -66,8 +66,16 @@ public class NFVServiceChain {
 		return (this.scalingInterval)%4;
 	}
 	
-	public int[] getDpPaths(int srcDcIndex, int dstDcIndex){
+	public int[] getPreviousDpPaths(int srcDcIndex, int dstDcIndex){
+		return this.previousDpPaths[srcDcIndex][dstDcIndex];
+	}
+	
+	public int[] getCurrentDpPaths(int srcDcIndex, int dstDcIndex){
 		return this.dpPaths[srcDcIndex][dstDcIndex];
+	}
+	
+	public int[] getNextDpPaths(int srcDcIndex, int dstDcIndex){
+		return this.nextDpPaths[srcDcIndex][dstDcIndex];
 	}
 	
 	public synchronized  void addNextDpPaths(int[][][] nextDpPaths){
@@ -81,7 +89,6 @@ public class NFVServiceChain {
 			this.scalingInterval += 1;
 			previousDpPaths = dpPaths;
 			dpPaths = nextDpPaths;
-			nextDpPaths = null;
 		}
 	}
 	
