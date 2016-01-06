@@ -94,29 +94,21 @@ import net.floodlightcontroller.nfvtest.nfvslaveservice.NFVZmqPoller;
 public class NFVTest implements IOFMessageListener, IFloodlightModule {
  
 	protected IFloodlightProviderService floodlightProvider;
-	protected Set<Long> macAddresses;
 	protected static Logger logger;
     protected IOFSwitchService switchService;
-    
-	private ControllerConfig controllerConfig;
-	private HostServerConfig hostServerConfig;
-	private HostServerConfig hostServerConfig1;
-	private MacAddressAllocator macAllocator;
-	private HostServer hostServer;
-	private HostServer hostServer1;
-	private IpAddressAllocator ipAllocator;
-	private HashMap<DatapathId, HostServer> dpidHostServerMap;
-	private VmAllocator vmAllocator;
-	
-	private ServiceChainConfig dpServiceChainConfig;
-	private ServiceChainConfig cpServiceChainConfig;
+
 	private NFVServiceChain dpServiceChain;
 	private NFVServiceChain cpServiceChain;
 	
 	private LocalController localController;
-	
+	private VmAllocator vmAllocator;
 	private HashMap<FlowTuple, Integer> flowMap;
 	private HashMap<RouteTuple, String> routeMap;
+	private Context zmqContext;
+	private MessageHub mh;
+	private VmWorker vmWorker;
+	private SubscriberConnector subscriberConnector;
+	private DNSUpdator dnsUpdator;
 	
 	@Override
 	public String getName() {
@@ -160,24 +152,27 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     public void init(FloodlightModuleContext context) throws FloodlightModuleException {
         floodlightProvider = context.getServiceImpl(IFloodlightProviderService.class);
         switchService = context.getServiceImpl(IOFSwitchService.class);
-        macAddresses = new ConcurrentSkipListSet<Long>();
         logger = LoggerFactory.getLogger(NFVTest.class);
-        
-        Context zmqContext = ZMQ.context(1);
+        zmqContext = ZMQ.context(1);
         
         logger.info("start testing network xml");
-        //TestHostServer testHostServer = new TestHostServer();
-        //testHostServer.testVmAllocator();
-		this.controllerConfig = 
+
+        //create controller config and host server config
+		ControllerConfig controllerConfig = 
 				new ControllerConfig("202.45.128.151", "/home/net/base-env", "basexml.xml", "networkxml.xml");
-		
-		this.hostServerConfig = 
+		HostServerConfig hostServerConfig = 
 				new HostServerConfig("202.45.128.149", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
 						             "xx", "xx", "/home/net/nfvenv");
+		byte[] prefix = new byte[3];
+		prefix[0] = 0x52;
+		prefix[1] = 0x54;
+		prefix[2] = 0x00;
+		MacAddressAllocator macAllocator = new MacAddressAllocator(prefix);
+		IpAddressAllocator ipAllocator = new IpAddressAllocator(192,168,64);
 		
-		this.hostServerConfig1 = 
-				new HostServerConfig("202.45.128.151", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
-						             "xx", "xx", "/home/net/nfvenv");
+		this.flowMap = new HashMap<FlowTuple, Integer>();
+		this.routeMap = new HashMap<RouteTuple, String>();
+		
 		
 		//create service chain configuration for control plane
 		StageVmInfo bonoInfo = new StageVmInfo(1,2*1024,2*1024,"bono.img");
@@ -185,7 +180,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		ArrayList<StageVmInfo> cpList = new ArrayList<StageVmInfo>();
 		cpList.add(bonoInfo);
 		cpList.add(sproutInfo);
-		this.cpServiceChainConfig = new ServiceChainConfig("CONTROL", 2, cpList);
+		ServiceChainConfig cpServiceChainConfig = new ServiceChainConfig("CONTROL", 2, cpList);
 		
 		//create data plane service chain configuration
 		StageVmInfo firewallInfo = new StageVmInfo(1, 2*1024, 2*1024, "firewall.img");
@@ -195,58 +190,44 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		dpList.add(firewallInfo);
 		dpList.add(ipsInfo);
 		dpList.add(transcoderInfo);
-		this.dpServiceChainConfig = new ServiceChainConfig("DATA", 2, dpList);
+		ServiceChainConfig dpServiceChainConfig = new ServiceChainConfig("DATA", 2, dpList);
 		
-		byte[] prefix = new byte[3];
-		prefix[0] = 0x52;
-		prefix[1] = 0x54;
-		prefix[2] = 0x00;
-		macAllocator = new MacAddressAllocator(prefix);
-		ipAllocator = new IpAddressAllocator(192,168,64);
-			
+		//create HostServer 
 		HashMap<String, ServiceChainConfig> map = new HashMap<String, ServiceChainConfig>();
-		map.put(this.cpServiceChainConfig.name, this.cpServiceChainConfig);
-		map.put(this.dpServiceChainConfig.name, this.dpServiceChainConfig);
+		map.put(cpServiceChainConfig.name, cpServiceChainConfig);
+		map.put(dpServiceChainConfig.name, dpServiceChainConfig);
+		HostServer hostServer = new HostServer(controllerConfig, hostServerConfig, map, macAllocator,
+										ipAllocator, "192.168.1.1", "192.168.1.2");
 		
-		hostServer = new HostServer(this.controllerConfig, this.hostServerConfig, map, this.macAllocator,
-										this.ipAllocator, "192.168.1.1", "192.168.1.2");
-		hostServer1 = new HostServer(this.controllerConfig, this.hostServerConfig1, map, this.macAllocator,
-										this.ipAllocator, "192.168.1.1", "192.168.1.2");
+		this.cpServiceChain = new NFVServiceChain(cpServiceChainConfig);
+		this.dpServiceChain = new NFVServiceChain(dpServiceChainConfig);
 		
-		this.flowMap = new HashMap<FlowTuple, Integer>();
-		this.routeMap = new HashMap<RouteTuple, String>();
+		mh = new MessageHub();
 		
-		this.cpServiceChain = new NFVServiceChain(this.cpServiceChainConfig);
-		this.dpServiceChain = new NFVServiceChain(this.dpServiceChainConfig);
-		
-		MessageHub mh = new MessageHub();
-		
-		VmWorker vmWorker = new VmWorker("vmWorker");
+		vmWorker = new VmWorker("vmWorker");
 		vmWorker.registerWithMessageHub(mh);
 		
 		vmAllocator = new VmAllocator("vmAllocator", 100);
 		vmAllocator.registerWithMessageHub(mh);
 		
 		
-		SubscriberConnector subscriberConnector = new SubscriberConnector("subscriberConnector",
-																			zmqContext);
+		subscriberConnector = new SubscriberConnector("subscriberConnector",zmqContext);
 		subscriberConnector.registerWithMessageHub(mh);
 		
-		//DNSUpdator dnsUpdator = new DNSUpdator("dnsUpdator", "192.168.126.123", "7773", zmqContext);
-		//dnsUpdator.registerWithMessageHub(mh);
-		//dnsUpdator.connect();
+		dnsUpdator = new DNSUpdator("dnsUpdator", "192.168.126.123", "7773", zmqContext);
+		dnsUpdator.registerWithMessageHub(mh);
+		dnsUpdator.connect();
 		
 		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler", zmqContext, this.switchService);
 		chainHandler.registerWithMessageHub(mh);
 		chainHandler.startPollerThread();
-		chainHandler.addServiceChain(this.cpServiceChain);
-		chainHandler.addServiceChain(this.dpServiceChain);
+		chainHandler.addServiceChain(cpServiceChain);
+		chainHandler.addServiceChain(dpServiceChain);
 		chainHandler.addHostServer(hostServer);
-		chainHandler.addHostServer(hostServer1);
 		
 		mh.startProcessors();
 		
-		HostInitializationRequest m = new HostInitializationRequest("hehe",this.hostServer);
+		HostInitializationRequest m = new HostInitializationRequest("hehe",hostServer);
 		mh.sendTo("vmWorker", m);
 		try{
 			Thread.sleep(5000);
@@ -255,16 +236,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			e.printStackTrace();
 		}
 		
-		HostInitializationRequest m1 = new HostInitializationRequest("hehe",this.hostServer1);
-		mh.sendTo("vmWorker", m1);
-		try{
-			Thread.sleep(5000);
-		}
-		catch (Exception e){
-			e.printStackTrace();
-		}
-		
-		AddHostServerRequest m2 = new AddHostServerRequest("hehe", this.hostServer);
+		AddHostServerRequest m2 = new AddHostServerRequest("hehe", hostServer);
 		mh.sendTo("vmAllocator", m2);
 		try{
 			Thread.sleep(200);
@@ -272,17 +244,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		catch (Exception e){
 			e.printStackTrace();
 		}
-		
-		AddHostServerRequest m3 = new AddHostServerRequest("hehe", this.hostServer1);
-		mh.sendTo("vmAllocator", m3);
-		try{
-			Thread.sleep(200);
-		}
-		catch (Exception e){
-			e.printStackTrace();
-		}
-		
-		dpidHostServerMap = vmAllocator.dpidHostServerMap;
 		
 		int c[] = {100, 30, 80};
 		localController = new LocalController("127.0.0.1", 5555, 5556, 5557, 5558, "127.0.0.1", 
@@ -406,7 +367,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         	int dpPaths[] = null;    //dpPaths of the current scaling interval
         	int currentDcIndex = localController.getCurrentDcIndex();
         	
-        	if(inPort.getPortNumber() == vmAllocator.hostServerList.get(0).entryExitPort){
+        	if(inPort.getPortNumber() == vmAllocator.hostServerList.get(0).entryPort){
         		//This is the new flow, we need to query local controller to know where exactly this flow want
         		//to go.
         		String srcAddr = srcIp.toString()+":"+srcPort.toString();
@@ -455,7 +416,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     				stageList.get(stageList.size()-1).intValue());
     		
     		IOFSwitch hitSwitch = sw;
-    		HostServer localHostServer = this.dpidHostServerMap.get(hitSwitch.getId());
+    		HostServer localHostServer = vmAllocator.dpidHostServerMap.get(hitSwitch.getId());
     		
     		for(int i=0; i<routeList.size(); i++){
     			NFVNode currentNode = routeList.get(i);

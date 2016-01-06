@@ -8,7 +8,6 @@ import net.floodlightcontroller.nfvtest.message.Message;
 
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
-import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVNode;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVServiceChain;
 
 public class ConcreteMessage {

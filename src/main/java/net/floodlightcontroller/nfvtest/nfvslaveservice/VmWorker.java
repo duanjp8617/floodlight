@@ -106,15 +106,20 @@ public class VmWorker extends MessageProcessor{
 					
 					if(i==0){
 						//create an entry ip for the first bridge.
-						agent.addPort(chainConfig.bridges.get(i), "entry", hostServer.entryExitPort);
+						agent.addPort(chainConfig.bridges.get(i), "entry", hostServer.entryPort);
 						agent.upPort("entry", hostServer.entryIp);
 						hostServer.entryMac = agent.getMac(chainConfig.bridges.get(i), "entry");
+						agent.addPatchPort(chainConfig.bridges.get(i), hostServer.frontPortName, hostServer.patchPort, 
+								hostServer.rearPortName);
+						
 					}
 					if(i==chainConfig.bridges.size()-1){
 						//create an exit ip for the last bridge
-						agent.addPort(chainConfig.bridges.get(i), "exit", hostServer.entryExitPort);
+						agent.addPort(chainConfig.bridges.get(i), "exit", hostServer.exitPort);
 						agent.upPort("exit", hostServer.exitIp);
 						hostServer.exitMac = agent.getMac(chainConfig.bridges.get(i), "exit");
+						agent.addPatchPort(chainConfig.bridges.get(i), hostServer.rearPortName, hostServer.patchPort, 
+								hostServer.frontPortName);
 					}
 				}
 				

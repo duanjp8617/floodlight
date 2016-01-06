@@ -162,11 +162,18 @@ public class HostServer {
 	public final Map<String, Integer> tunnelPortMap;
 	public final Map<Integer, String> portTunnelMap;
 	public int tunnelPort;
-	public int entryExitPort;
+
 	public String entryMac;
 	public String entryIp;
+	public int entryPort;
+	
 	public String exitMac;
 	public String exitIp;
+	public int exitPort;
+	
+	public int patchPort;
+	public String frontPortName;
+	public String rearPortName;
 	
 	//For inter-datacenter tunnels
 	public final Map<Integer, Integer> dcIndexPortMap;
@@ -221,11 +228,16 @@ public class HostServer {
 		this.tunnelPortMap = new HashMap<String, Integer>();
 		this.portTunnelMap = new HashMap<Integer, String>();
 		this.tunnelPort = 10;
-		this.entryExitPort=9;
+		this.entryPort = 9;
+		this.exitPort = 8;
+		this.patchPort = 7;
 		this.entryMac = "nil";
 		this.exitMac = "nil";
 		this.entryIp = entryIp;
 		this.exitIp = exitIp;
+		
+		this.frontPortName = "frontPort";
+		this.rearPortName = "rearPort";
 	}
 	
 	public VmInstance allocateVmInstance(String chainName, int stageIndex){

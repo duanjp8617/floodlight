@@ -174,7 +174,7 @@ public class VmAllocator extends MessageProcessor {
 		Map<String, Integer> localcIndexMap = req.localcIndexMap;
 		
 		int basePort = this.hostServerList.get(0).tunnelPort;
-		basePort += 10;
+		basePort += 1;
 		
 		int baseVni = this.vni;
 		baseVni += 1;
