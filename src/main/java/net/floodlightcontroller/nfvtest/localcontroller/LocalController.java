@@ -336,7 +336,7 @@ public class LocalController implements Runnable{
 		
 		for(int i=0; i<delay.length; i++){
 			if(i==delay.length-1){
-				pusher.send(Integer.toString(delay[i]), 0);
+				pusher.send(Integer.toString(delay[i]), ZMQ.SNDMORE);
 			}
 			else{
 				pusher.send(Integer.toString(delay[i]), ZMQ.SNDMORE);
