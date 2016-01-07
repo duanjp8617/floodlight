@@ -157,12 +157,17 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         
         logger.info("start testing network xml");
 
-        //create controller config and host server config
+        //create controller config and host server configi
+		String gIp = "202.45.128.147";
+		String mIp = "202.45.128.*";
+		String pIp = "202.45.128.*";
+		String iIp = "202.45.128.*";
+		String userName = "*";
+		String password = "*";
 		ControllerConfig controllerConfig = 
-				new ControllerConfig("202.45.128.151", "/home/net/base-env", "basexml.xml", "networkxml.xml");
+				new ControllerConfig(mIp, "/home/net/base-env", "basexml.xml", "networkxml.xml");
 		HostServerConfig hostServerConfig = 
-				new HostServerConfig("202.45.128.149", "1.1.1.2", "2.2.2.2", 1, 32*1024, 100*1024, 1,
-						             "xx", "xx", "/home/net/nfvenv");
+				new HostServerConfig(mIp, iIp, pIp, 24, 48*1024, 100*1024, 1, userName, password, "/home/net/nfvenv");
 		byte[] prefix = new byte[3];
 		prefix[0] = 0x52;
 		prefix[1] = 0x54;
@@ -190,7 +195,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		dpList.add(firewallInfo);
 		dpList.add(ipsInfo);
 		dpList.add(transcoderInfo);
-		ServiceChainConfig dpServiceChainConfig = new ServiceChainConfig("DATA", 2, dpList);
+		ServiceChainConfig dpServiceChainConfig = new ServiceChainConfig("DATA", 3, dpList);
 		
 		//create HostServer 
 		HashMap<String, ServiceChainConfig> map = new HashMap<String, ServiceChainConfig>();
@@ -216,7 +221,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		dnsUpdator = new DNSUpdator("dnsUpdator", "192.168.126.123", "7773", zmqContext);
 		dnsUpdator.registerWithMessageHub(mh);
-		dnsUpdator.connect();
+		//dnsUpdator.connect();
 		
 		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler", zmqContext, this.switchService);
 		chainHandler.registerWithMessageHub(mh);
@@ -246,7 +251,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		}
 		
 		int c[] = {100, 30, 80};
-		localController = new LocalController("127.0.0.1", 5555, 5556, 5557, 5558, "127.0.0.1", 
+		localController = new LocalController(gIp, 5555, 5556, 5557, 5558, mIp, 
 				true, 2000, c, mh, zmqContext);
 		Thread lcThread = new Thread(localController);
 		lcThread.start();
