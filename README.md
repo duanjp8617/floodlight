@@ -121,4 +121,8 @@ To download a pre-built VM appliance, access documentation, and sign up for the 
 http://www.projectfloodlight.org/floodlight
 
 By Djp
-Use sshj to interact with each host for vm management. Remember to install BouncyCastle library according to its main website. Otherwise ECDSA based authentication will not be performed.
+Use sshj to interact with each host for vm management. Remember to install BouncyCastle library according to its main website. Otherwise ECDSA based authentication will not be performed. Copy the bcprov-ext-jdk15on-154.jar file to /usr/lib/jvm/java-1.7.0-openjdk-amd64/jre/lib/ext folder. Then open /usr/lib/jvm/java-1.7.0-openjdk-amd64/jre/lib/security/java.security file, add the following line to proper position in the file:
+
+security.provider.11=org.bouncycastle.jce.provider.BouncyCastleProvider
+
+Then we can use sshj to communicate with out server.

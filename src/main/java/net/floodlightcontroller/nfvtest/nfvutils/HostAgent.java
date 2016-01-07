@@ -9,6 +9,9 @@ import net.schmizz.sshj.xfer.FileSystemFile;
 import net.schmizz.sshj.transport.TransportException;
 import net.schmizz.sshj.common.IOUtils;
 import net.schmizz.sshj.connection.channel.direct.Session;
+import net.schmizz.sshj.transport.verification.*;
+import java.security.PublicKey;
+
 
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.HostServerConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig;
@@ -30,7 +33,14 @@ public class HostAgent{
 	
 	public void connect() throws
 	   			   IOException, UserAuthException, TransportException{
-		sshClient.loadKnownHosts();
+		sshClient.addHostKeyVerifier(
+                	new HostKeyVerifier() {
+                    		@Override
+                    		public boolean verify(String s, int i, PublicKey publicKey) {
+                        		return true;
+                    		}	
+
+                });		
 		sshClient.connect(this.managementIp);
 		sshClient.authPassword(this.userName, this.passWord);
 	}
