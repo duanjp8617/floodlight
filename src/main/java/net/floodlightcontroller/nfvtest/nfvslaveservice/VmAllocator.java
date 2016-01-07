@@ -210,11 +210,15 @@ public class VmAllocator extends MessageProcessor {
 		String edgeBridge  = edgeServer.serviceChainConfigMap.get("DATA").bridges.get(0);
 		HostAgent edgeServerAgent = new HostAgent(edgeServer.hostServerConfig);
 		
-		try {
+		try{
 			edgeServerAgent.connect();
+		} catch(Exception e){
+			e.printStackTrace();
+		}
+		
+		try {
 			String portName = "interDc-src-"+Integer.toString(req.srcDcIndex)+"-dst-"+Integer.toString(req.dstDcIndex);
 			edgeServerAgent.createTunnelPort(portName, edgeBridge, req.dstIp, req.tunnelPortNum, req.interDcVniIndex);
-			edgeServerAgent.disconnect();
 		} catch(Exception e){
 			e.printStackTrace();
 		}
@@ -231,18 +235,14 @@ public class VmAllocator extends MessageProcessor {
 			String remotePortName = "erelay-dst-"+Integer.toString(req.dstDcIndex)+"-idx-"+Integer.toString(i);
 			
 			try {
-				edgeServerAgent.connect();
 				edgeServerAgent.addPatchPort(bridge, localPortName, req.tunnelPortNum, remotePortName);
 				edgeServerAgent.addPatchPort(edgeBridge, remotePortName, tunnelPortNum, localPortName);
-				edgeServerAgent.disconnect();
 			} catch(Exception e){
 				e.printStackTrace();
 			}
 			
 			try {
-				edgeServerAgent.connect();
 				edgeServerAgent.addFlow(edgeBridge, tunnelPortNum, req.tunnelPortNum);
-				edgeServerAgent.disconnect();
 			} catch(Exception e){
 				e.printStackTrace();
 			}
@@ -255,6 +255,12 @@ public class VmAllocator extends MessageProcessor {
 			HostAgent workingServerAgent = new HostAgent(workingServer.hostServerConfig);
 			dpBridgeList = workingServer.serviceChainConfigMap.get("DATA").bridges;
 			
+			try {
+				workingServerAgent.connect();
+			} catch(Exception e){
+				e.printStackTrace();
+			}
+			
 			workingServer.dcIndexPortMap.put(new Integer(req.dstDcIndex), new Integer(req.tunnelPortNum));
 			workingServer.portDcIndexMap.put(new Integer(req.tunnelPortNum), new Integer(req.dstDcIndex));
 			
@@ -262,21 +268,17 @@ public class VmAllocator extends MessageProcessor {
 				String workingBridge = dpBridgeList.get(j);
 				
 				try {
-					workingServerAgent.connect();
 					String portName = "wrelay-dst-"+Integer.toString(req.dstDcIndex)+"-vni-"+Integer.toString(baseVniIndex);
 					workingServerAgent.createTunnelPort(portName, workingBridge, edgeServer.hostServerConfig.internalIp, 
 							req.tunnelPortNum, baseVniIndex);
-					workingServerAgent.disconnect();
 				} catch(Exception e){
 					e.printStackTrace();
 				}
 				
 				try {
-					edgeServerAgent.connect();
 					String portName = "erelay-dst-"+Integer.toString(req.dstDcIndex)+"-vni-"+Integer.toString(baseVniIndex);
 					edgeServerAgent.createTunnelPort(portName, edgeBridge, workingServer.hostServerConfig.internalIp, 
 							tunnelPortNum, baseVniIndex);
-					edgeServerAgent.disconnect();
 				} catch(Exception e){
 					e.printStackTrace();
 				}
@@ -284,15 +286,25 @@ public class VmAllocator extends MessageProcessor {
 				//Adding a static flow rule here
 				
 				try {
-					edgeServerAgent.connect();
 					edgeServerAgent.addFlow(edgeBridge, tunnelPortNum, req.tunnelPortNum);
-					edgeServerAgent.disconnect();
 				} catch(Exception e){
 					e.printStackTrace();
 				}
 				tunnelPortNum += 1;
 				baseVniIndex += 1;
 			}
+			
+			try {
+				workingServerAgent.disconnect();
+			} catch(Exception e){
+				e.printStackTrace();
+			}
+		}
+		
+		try{
+			edgeServerAgent.disconnect();
+		} catch(Exception e){
+			e.printStackTrace();
 		}
 		
 		int returnVal[] = new int[2];
