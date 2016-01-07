@@ -147,7 +147,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	private void handleCreateInterDcTunnelMashReply(){
 		Socket requester = context.socket(ZMQ.REQ);
 		requester.connect("inproc://schSync");
-		requester.send("TUNNELFINISH", ZMQ.SNDMORE);
+		requester.send("TUNNELFINISH", 0);
 		requester.recv(0);
 		requester.close();
 	}
