@@ -23,6 +23,8 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
@@ -30,6 +32,8 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 public class VmWorker extends MessageProcessor{
+	
+	private final Logger logger =  LoggerFactory.getLogger(VmWorker.class);
 	
 	public VmWorker(String id){
 		this.id = id;
@@ -197,6 +201,7 @@ public class VmWorker extends MessageProcessor{
 			//finally query the ovs ports for the vm and 
 			//set ovs ports in VmInstance
 			//reply to the actor that sends the CreateVmRequest
+			logger.info("start creating node "+vmInstance.managementIp);
 			agent.connect();
 			agent.uploadFile(localXmlFile, remoteXmlFile);
 			agent.copyFile(remoteBaseImgFile, remoteImgFile);
@@ -211,6 +216,7 @@ public class VmWorker extends MessageProcessor{
 			}
 			vmInstance.setPort(portList);
 			agent.disconnect();
+			logger.info("finish creating node "+vmInstance.managementIp);
 			CreateVmReply reply = new CreateVmReply(this.getId(), request, true);
 			this.mh.sendTo(reply.getRequest().getSourceId(), reply);
 		}

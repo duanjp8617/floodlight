@@ -3,6 +3,7 @@ package net.floodlightcontroller.nfvtest.nfvslaveservice;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import net.floodlightcontroller.core.internal.IOFSwitchService;
+import net.floodlightcontroller.nfvtest.localcontroller.LocalController;
 import net.floodlightcontroller.nfvtest.message.Message;
 import net.floodlightcontroller.nfvtest.message.MessageProcessor;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
@@ -20,6 +21,8 @@ import java.util.UUID;
 
 import org.zeromq.ZMQ.Socket;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Context;
 
@@ -38,6 +41,8 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private final HashMap<String, HostServer> hostServerMap;
 	private final HashMap<DatapathId, HostServer> dpidHostServerMap;
+	
+	private final Logger logger =  LoggerFactory.getLogger(ServiceChainHandler.class);
 
 	public ServiceChainHandler(String id, Context context, IOFSwitchService switchService){
 		this.id = id;
@@ -179,11 +184,24 @@ public class ServiceChainHandler extends MessageProcessor {
 		
 		requester.recv(0);
 		requester.close();
+		
+		logger.info("ServiceChainHandler receives proactive start request, stops reactive scaling");
 	}
 	
 	private void handleProactiveProvision(NFVServiceChain serviceChain, int newProvision[]){
 		synchronized(serviceChain){
 			int oldProvision[] = serviceChain.getProvision();
+			
+			String print = serviceChain.serviceChainConfig.name + " service chain old configuration: ";
+			for(int i=0; i<oldProvision.length; i++){
+				print = print + " " + Integer.toString(oldProvision[i]); 
+			}
+			logger.info("{}", print);
+			print = serviceChain.serviceChainConfig.name + " service chain new configuration: ";
+			for(int i=0; i<oldProvision.length; i++){
+				print = print + " " + Integer.toString(newProvision[i]); 
+			}
+			logger.info("{}", print);
 			
 			for(int i=0; i<oldProvision.length; i++){
 				if(newProvision[i] > oldProvision[i]){
@@ -192,8 +210,12 @@ public class ServiceChainHandler extends MessageProcessor {
 					
 					int j = 0;
 					for(j=0; j<scaleUpNum; j++){
-						NFVNode bufferNode = serviceChain.removeFromBqRear();
+						NFVNode bufferNode = serviceChain.removeFromBqRear(i);
 						if(bufferNode != null){
+							
+							logger.info(serviceChain.serviceChainConfig.name+" proactive scaling: transforming a stage "+
+							Integer.toString(i)+" buffer node into working node");
+							
 							serviceChain.addWorkingNode(bufferNode);
 							if(serviceChain.serviceChainConfig.nVmInterface == 2){
 								//in this case, we need to add the IP address of the control plane
@@ -217,6 +239,10 @@ public class ServiceChainHandler extends MessageProcessor {
 					}
 					scaleUpNum = scaleUpNum - j;
 					for(j=0; j<scaleUpNum; j++){
+						
+						logger.info(serviceChain.serviceChainConfig.name+" proactive scaling: creating a stage "+
+								Integer.toString(i)+" working node");
+						
 						AllocateVmRequest newReq = new AllocateVmRequest(this.getId(),
 								serviceChain.serviceChainConfig.name, i);
 						this.pendingMap.put(newReq.getUUID(), newReq);
@@ -232,6 +258,10 @@ public class ServiceChainHandler extends MessageProcessor {
 							break;
 						}
 						else{
+							
+							logger.info(serviceChain.serviceChainConfig.name+" proactive scaling: transforming a stage "+
+									Integer.toString(i)+" working node into buffer node");
+							
 							serviceChain.removeWorkingNode(workingNode);
 							serviceChain.addToBqRear(workingNode);
 							if(serviceChain.serviceChainConfig.nVmInterface == 2){
@@ -277,12 +307,17 @@ public class ServiceChainHandler extends MessageProcessor {
 			requester.recv(0);
 			requester.close();
 			this.reactiveStart = true;
+			logger.info("service chain handler finishes executing proactive scaling decision");
 		}
 	}
 	
 	private void handleAllocateVmReply(AllocateVmReply reply){
+		
 		AllocateVmRequest originalRequest = reply.getAllocateVmRequest();
 		VmInstance vmInstance = reply.getVmInstance();
+		
+		logger.info("receive AllocateVmReply for "+vmInstance.serviceChainConfig.name+" and stage "+
+		Integer.toString(vmInstance.stageIndex));
 		
 		String serviceChainName = vmInstance.serviceChainConfig.name;
 		if(this.serviceChainMap.containsKey(serviceChainName)){
@@ -320,6 +355,7 @@ public class ServiceChainHandler extends MessageProcessor {
 					requester.recv(0);
 					requester.close();
 					this.reactiveStart = true;
+					logger.info("service chain handler finishes executing proactive scaling decision");
 				}
 			}
 			else{
@@ -358,6 +394,9 @@ public class ServiceChainHandler extends MessageProcessor {
 		NFVServiceChain serviceChain = this.serviceChainMap.get(vmInstance.serviceChainConfig.name);
 		NFVNode node = new NFVNode(vmInstance);
 		
+		logger.info("receive SubConnReply for "+vmInstance.serviceChainConfig.name+" and stage "+
+		Integer.toString(vmInstance.stageIndex));
+		
 		if(vmInstance.serviceChainConfig.nVmInterface == 3){
 			String managementIp = vmInstance.managementIp;
 			Socket subscriber1 = reply.getSubscriber1();
@@ -383,16 +422,24 @@ public class ServiceChainHandler extends MessageProcessor {
 		
 		NFVNode destroyNode = null;
 		synchronized(dpServiceChain){
-			destroyNode = dpServiceChain.removeFromBqHead();
-			while(destroyNode != null){
-				dpServiceChain.addDestroyNode(destroyNode);
+			for(int i=0; i<dpServiceChain.serviceChainConfig.stages.size(); i++){
+				destroyNode = dpServiceChain.removeFromBqHead(i);
+				while(destroyNode != null){
+					logger.info("a DATA node will be destroyed");
+					dpServiceChain.addDestroyNode(destroyNode);
+					destroyNode = dpServiceChain.removeFromBqHead(i);
+				}
 			}
 		}
 		
 		synchronized(cpServiceChain){
-			destroyNode = cpServiceChain.removeFromBqHead();
-			while(destroyNode != null){
-				cpServiceChain.addDestroyNode(destroyNode);
+			for(int i=0; i<cpServiceChain.serviceChainConfig.stages.size(); i++){
+				destroyNode = cpServiceChain.removeFromBqHead(i);
+				while(destroyNode != null){
+					logger.info("a CONTROL node will be destroyed");
+					cpServiceChain.addDestroyNode(destroyNode);
+					destroyNode = cpServiceChain.removeFromBqHead(i);
+				}
 			}
 		}
 	}
@@ -400,6 +447,12 @@ public class ServiceChainHandler extends MessageProcessor {
 	private void statUpdate(StatUpdateRequest request){
 		ArrayList<String> statList = request.getStatList();
 		String managementIp = request.getManagementIp();
+		
+		String print = "receive node stat report for node "+managementIp+": ";
+		for(int i=0; i<statList.size(); i++){
+			print = print+" "+statList.get(i);
+		}
+		logger.info("{}", print);
 		
 		for(String chainName : this.serviceChainMap.keySet()){
 			NFVServiceChain chain = this.serviceChainMap.get(chainName);
@@ -425,7 +478,7 @@ public class ServiceChainHandler extends MessageProcessor {
 						    (!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
 							//Here we trigger a reactive scaling condition.
 							//Create a new vm.
-							NFVNode bufferNode = chain.removeFromBqRear();
+							NFVNode bufferNode = chain.removeFromBqRear(node.vmInstance.stageIndex);
 							if(bufferNode != null){
 								chain.addWorkingNode(bufferNode);
 								

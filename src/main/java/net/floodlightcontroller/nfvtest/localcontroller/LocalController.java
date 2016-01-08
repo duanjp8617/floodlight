@@ -3,6 +3,7 @@ package net.floodlightcontroller.nfvtest.localcontroller;
 import org.zeromq.ZMQ.Socket;
 
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
+import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVTest;
 import net.floodlightcontroller.nfvtest.message.MessageHub;
 
 import org.zeromq.ZMQ.Context;
@@ -10,6 +11,8 @@ import org.zeromq.ZMQ.Context;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zeromq.ZMQ;
 
 public class LocalController implements Runnable{
@@ -51,6 +54,8 @@ public class LocalController implements Runnable{
 	
 	private HashMap<String, String> srcAddrDstAddrMap;
 	
+	private final Logger logger =  LoggerFactory.getLogger(LocalController.class);
+	
 	public LocalController(String globalIp, int publishPort, int syncPort, int pullPort, int repPort,
 			String localIp, boolean hasScscf, int delayPollInterval, int dpCapacity[], MessageHub mh, Context context){
 		this.globalIp = globalIp;
@@ -89,8 +94,9 @@ public class LocalController implements Runnable{
 	
 	@Override
 	public void run() {
-		System.out.println("start local controller on IP: "+localIp+" \n");
-		System.out.println("connecting to globalc ontroller on IP: "+globalIp+"\n");
+		
+		logger.info("start local controller on IP: "+localIp);
+		logger.info("connecting to globalc ontroller on IP: "+globalIp);
 		
 		subscriber = context.socket(ZMQ.SUB);
 		subscriber.connect("tcp://"+globalIp+":"+Integer.toString(publishPort));
@@ -123,7 +129,7 @@ public class LocalController implements Runnable{
 		}
 		requester.recv(0);
 		
-		System.out.println("local controller connects to global controller, waiting for final configuration"+"\n");
+		logger.info("local controller connects to global controller, waiting for final configuration"+"\n");
 		
 		//wait for the final sync message from global controller
 		//global controller will broadcast all the local controller IPs and their corresponding indexes.
@@ -247,6 +253,17 @@ public class LocalController implements Runnable{
 			pusher.send(Integer.toString(cpProvision[1]), 0);
 			
 			curState = "waitNewConfigPath";
+			
+			String print = "Data plane service chain configuration: ";
+			for(int i=0; i<dpProvision.length; i++){
+				print = print + " " + Integer.toString(dpProvision[i]);
+			}
+			logger.info("{}", print);
+			print = "Control plane service chain configuration: ";
+			for(int i=0; i<cpProvision.length; i++){
+				print = print + " " + Integer.toString(cpProvision[i]);
+			}
+			logger.info("{}", print);
 		}
 	}
 	
@@ -262,7 +279,7 @@ public class LocalController implements Runnable{
 			
 			//disable reactive scaling for both control plane and data plane service chain
 			
-			System.out.println("receive proactive start message, send local configuration\n");
+			logger.info("receive proactive start message, send local configuration\n");
 			
 			assert initMsg.equals("SCALINGSTART");
 			boolean hasMore = subscriber.hasReceiveMore();
@@ -271,6 +288,8 @@ public class LocalController implements Runnable{
 			this.mh.sendTo("chainHandler", new ProactiveScalingStartRequest("lc"));
 		}
 		else if(curState.equals("waitNewConfigPath")){
+			logger.info("receives new configuration, start executing proactive scaling decision");
+			
 			ArrayList<String> list = new ArrayList<String>();
 			boolean hasMore = true;
 			while(hasMore){
@@ -320,8 +339,7 @@ public class LocalController implements Runnable{
 			this.mh.sendTo("chainHandler", m);
 		}
 		else if(curState.equals("waitNewInterval")){
-			System.out.println("local controller at local IP: "+localIp+" with index: "+
-		localcIndexMap.get(localIp)+"finish proactive scaling");
+			logger.info("all local controller have finish proactive scaling, enter new proactive scaling interval");
 			curState = "initial";
 			this.mh.sendTo("chainHandler", new NewProactiveIntervalRequest("lc"));
 		}
@@ -345,7 +363,11 @@ public class LocalController implements Runnable{
 		
 		pusher.send("", 0);
 		
-		System.out.println("local controller"+localIp+"sends delay");
+		String print = "delay stats: ";
+		for(int i=0; i<delay.length; i++){
+			print = print+" "+Integer.toString(delay[i]);
+		}
+		logger.info("{}", print);
 	}
 	
 	private void processStatPuller(){
@@ -390,7 +412,19 @@ public class LocalController implements Runnable{
 				}
 			}
 		}
-		System.out.println("local controller"+localIp+"sends data plane stats");
+		
+		String print = "data plane traffic stat for dc "+Integer.toString(srcIndex)+": ";
+		if(statArray.length != localcIndexMap.size()){
+			for(int i=0; i<localcIndexMap.size(); i++){
+				print = print+" 0";
+			}
+		}
+		else{
+			for(int i=0; i<localcIndexMap.size(); i++){
+				print = print+" "+statArray[i];
+			}
+		}
+		logger.info("{}", print);
 	}
 	
 	private void processCpStatPoll(String interval, String statMat){
@@ -406,7 +440,6 @@ public class LocalController implements Runnable{
 				sendCpStat(i, interval, statArray, i*localcIndexMap.size(), i*localcIndexMap.size()+localcIndexMap.size()-1 );
 			}
 		}
-		System.out.println("local controller"+localIp+"sends control plane stats");
 	}
 	
 	private void sendCpStat(int srcIndex, String interval, String[] statArray, int start, int end){		
@@ -423,6 +456,12 @@ public class LocalController implements Runnable{
 				pusher.send(statArray[i], ZMQ.SNDMORE);
 			}
 		}
+		
+		String print = "control plane traffic stat for dc "+Integer.toString(srcIndex)+": ";
+		for(int i=start; i<end; i++){
+			print = print+" "+statArray[i];
+		}
+		logger.info("{}", print);
 	}
 	
 	private void sendZero(int srcIndex, String interval){
@@ -439,6 +478,12 @@ public class LocalController implements Runnable{
 				pusher.send(Integer.toString(0), ZMQ.SNDMORE);
 			}
 		}
+		
+		String print = "control plane traffic stat for dc "+Integer.toString(srcIndex)+": ";
+		for(int i=0; i<localcIndexMap.size(); i++){
+			print = print+" 0";
+		}
+		logger.info("{}", print);
 	}
 	
 	public void addSrcAddrDstAddr(String srcAddr, String dstAddr){

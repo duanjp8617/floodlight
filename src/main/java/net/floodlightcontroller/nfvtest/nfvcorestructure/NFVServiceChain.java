@@ -20,7 +20,7 @@ public class NFVServiceChain {
 	private final boolean[] scaleIndicators;
 	
 	private final List<Map<String, NFVNode>> workingNodeMaps;
-	private final Deque<NFVNode> bufferNodeQueue;
+	private final List<Deque<NFVNode>>       bufferNodeQueues;
 	public final Map<String, NFVNode> destroyNodeMap;
 	
 	private int scalingInterval;
@@ -44,11 +44,15 @@ public class NFVServiceChain {
 		}
 		
 		this.workingNodeMaps = new ArrayList<Map<String, NFVNode>>();
+		this.bufferNodeQueues = new ArrayList<Deque<NFVNode>>();
 		for(int i=0; i<this.serviceChainConfig.stages.size(); i++){
 			Map<String, NFVNode> nodeMap = new HashMap<String, NFVNode>();
 			this.workingNodeMaps.add(nodeMap);
+			
+			Deque<NFVNode> bufferNodeQueue = new LinkedList<NFVNode>();
+			this.bufferNodeQueues.add(bufferNodeQueue);
 		}
-		bufferNodeQueue = new LinkedList<NFVNode>();
+		
 		destroyNodeMap = new HashMap<String, NFVNode>();
 		
 		scaleIndicators = new boolean[this.serviceChainConfig.stages.size()];
@@ -104,27 +108,28 @@ public class NFVServiceChain {
 	//the buffer queue is a double linked list. When a new node is added to the queue,
 	//it will be tagged with the current scaling interval. When the node is removed from
 	//the queue, the tag is removed.
-	public   int bqSize(){
-		return bufferNodeQueue.size();
+	public   int bqSize(int stageIndex){
+		return bufferNodeQueues.get(stageIndex).size();
 	}
 	
 	public   void addToBqRear(NFVNode node){
+		int stageIndex = node.vmInstance.stageIndex;
 		node.setScalingInterval(this.scalingInterval);
-		bufferNodeQueue.addLast(node);
+		bufferNodeQueues.get(stageIndex).addLast(node);
 	}
 	
-	public   NFVNode removeFromBqRear(){
-		NFVNode node = bufferNodeQueue.pollLast();
+	public   NFVNode removeFromBqRear(int stageIndex){
+		NFVNode node = bufferNodeQueues.get(stageIndex).pollLast();
 		if(node!=null)
 			node.setScalingInterval(-1);
 		return node;
 	}
 	
-	public   NFVNode removeFromBqHead(){
-		NFVNode head = bufferNodeQueue.peek();
+	public   NFVNode removeFromBqHead(int stageIndex){
+		NFVNode head = bufferNodeQueues.get(stageIndex).peek();
 		if(head != null){
 			if((scalingInterval-head.getScalingInterval())>maximumBufferingInterval){
-				head = bufferNodeQueue.poll();
+				head = bufferNodeQueues.get(stageIndex).poll();
 				head.setScalingInterval(-1);
 				return head;
 			}
