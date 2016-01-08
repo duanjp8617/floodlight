@@ -2,6 +2,8 @@ package net.floodlightcontroller.nfvtest.nfvslaveservice;
 
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Context;
 import org.zeromq.ZMQ.Socket;
@@ -15,7 +17,7 @@ import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
 
 public class SubscriberConnector extends MessageProcessor{
 	private final Context zmqContext;
-	
+	private final Logger logger =  LoggerFactory.getLogger(SubscriberConnector.class);
 	
 	public SubscriberConnector(String id, Context zmqContext){
 		this.id = id;
@@ -56,11 +58,13 @@ public class SubscriberConnector extends MessageProcessor{
 		private final SubConnRequest request;
 		private final Context zmqContext;
 		private final MessageHub mh;
+		private final Logger logger;
 		
-		public SubConnThread(SubConnRequest request, Context zmqContext, MessageHub mh){
+		public SubConnThread(SubConnRequest request, Context zmqContext, MessageHub mh, Logger logger){
 			this.request = request;
 			this.zmqContext = zmqContext;
 			this.mh = mh;
+			this.logger = logger;
 		}
 		
 		@Override
@@ -78,7 +82,9 @@ public class SubscriberConnector extends MessageProcessor{
 			String port1 = this.request.getPort1();
 			String port2 = this.request.getPort2();
 			Socket subscriber1 = null;
-				
+			
+			logger.info("trying to connect subscriber1 for node "+ipAddress);
+			
 			for(int i=0; i<1000; i++){
 				subscriber1 = zmqContext.socket(ZMQ.SUB);
 				subscriber1.monitor("inproc://monitor"+ipAddress, ZMQ.EVENT_CONNECTED);
@@ -101,6 +107,8 @@ public class SubscriberConnector extends MessageProcessor{
 	        	}
 			}
 			
+			logger.info("finish connecting subscriber1 for node "+ipAddress);
+			
 			if(this.request.getVmInstance().serviceChainConfig.nVmInterface == 3){
 				SubConnReply reply = new SubConnReply("hehe", this.request, subscriber1, null);
         		mh.sendTo(this.request.getSourceId(), reply);
@@ -108,6 +116,9 @@ public class SubscriberConnector extends MessageProcessor{
 			}
 			
 			Socket subscriber2 = null;
+			
+			logger.info("trying to connect subscriber2 for node "+ipAddress);
+			
 			for(int i=0; i<1000; i++){
 				subscriber2 = zmqContext.socket(ZMQ.SUB);
 				subscriber2.monitor("inproc://monitor"+ipAddress, ZMQ.EVENT_CONNECTED);
@@ -130,6 +141,8 @@ public class SubscriberConnector extends MessageProcessor{
 	        	}
 			}
 			
+			logger.info("finish connecting subscriber2 for node "+ipAddress);
+			
 			SubConnReply reply = new SubConnReply("hehe", this.request, subscriber1, subscriber2);
     		mh.sendTo(this.request.getSourceId(), reply);
     		return;
@@ -137,7 +150,7 @@ public class SubscriberConnector extends MessageProcessor{
 	}
 	
 	private void subscriberConnect(SubConnRequest request){
-		SubConnThread newThread = new SubConnThread(request, this.zmqContext, this.mh);
+		SubConnThread newThread = new SubConnThread(request, this.zmqContext, this.mh, this.logger);
 		Thread t = new Thread(newThread);
 		t.start();
 	}
