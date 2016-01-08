@@ -8,7 +8,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zeromq.ZMQ;
+
+import net.floodlightcontroller.nfvtest.nfvslaveservice.SubscriberConnector;
 
 public class MeasureDelay implements Runnable
 {
@@ -16,10 +20,12 @@ public class MeasureDelay implements Runnable
 	{
 		private ZMQ.Socket replier;
 		private boolean bool = true;
+		private final Logger logger;
 		
-		Replier(ZMQ.Socket replier)
+		Replier(ZMQ.Socket replier, Logger logger)
 		{
 			this.replier = replier;
+			this.logger = logger;
 		}
 		
 		public void setRun(boolean bool)
@@ -63,6 +69,8 @@ public class MeasureDelay implements Runnable
 	private volatile boolean bool;
 	private static List<Map.Entry<Integer,Integer>> list;
 	
+	private final Logger logger =  LoggerFactory.getLogger(MeasureDelay.class);
+	
 	MeasureDelay(String ip, String repPort, ZMQ.Socket replySocket, int interval, Map<String, Integer> map, ZMQ.Context context)
 	{
 		this.ip = ip;
@@ -78,24 +86,13 @@ public class MeasureDelay implements Runnable
 	}
 	
 	public void init()
-	{
-	    this.replier = new Replier(this.replySocket);
-		Thread th = new Thread(this.replier);
-		th.start();
-		
-		try {
-			Thread.sleep(100);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
+	{	
 		for(String key : this.map.keySet()){
 			int dstIndex = this.map.get(key).intValue();
 			if(this.id<dstIndex){
 				ZMQ.Socket requester = this.zmqContext.socket(ZMQ.REQ);
 				requester.connect("tcp://"+key+":"+repPort);
-				
+				logger.info("MeasureDelay thread connect to "+key+":"+repPort);
 				try {
 					Thread.sleep(50);
 				} catch (InterruptedException e) {
@@ -106,6 +103,17 @@ public class MeasureDelay implements Runnable
 				requesterMap.put(key, requester);
 			}
 		}
+		
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		this.replier = new Replier(this.replySocket, logger);
+		Thread th = new Thread(this.replier);
+		th.start();
 	}
 	
 	private void exit()
@@ -131,7 +139,7 @@ public class MeasureDelay implements Runnable
 			requester.send("Hello");
 			requester.recv();
 			int consumingTime = (int) ((System.nanoTime() - startTime)/1000);
-			
+			logger.info("delay to "+key+" is "+Integer.toString(consumingTime));
 			delay.put(this.map.get(key).intValue(), consumingTime);
 		}
 		sortDelay();
