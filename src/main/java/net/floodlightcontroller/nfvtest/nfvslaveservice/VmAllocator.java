@@ -117,7 +117,7 @@ public class VmAllocator extends MessageProcessor {
 			AllocateVmRequest originalRequest = (AllocateVmRequest)pending.getCachedMessage();
 			AllocateVmReply originalReply = new AllocateVmReply(this.getId(), 
 					                                newReply.getRequest().getVmInstance(), originalRequest);
-			System.out.println("Sending AllocateVmReply to: "+originalReply.getAllocateVmRequest().getSourceId());
+			//System.out.println("Sending AllocateVmReply to: "+originalReply.getAllocateVmRequest().getSourceId());
 			this.mh.sendTo(originalReply.getAllocateVmRequest().getSourceId(), originalReply);
 		}
 		this.pendingMap.remove(newRequest.getUUID());
