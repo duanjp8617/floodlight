@@ -36,6 +36,7 @@ public class StatCollector implements Runnable {
 	private int totalPollNum;
 	
 	private Socket statPush;
+	private boolean hasScscf;
 
 	
 	private boolean quit;
@@ -44,11 +45,12 @@ public class StatCollector implements Runnable {
 	}
 	
 	public StatCollector(Context context, String bindIp, int cpStatRecvPort, int tfcGenPort, long dpPollInterval,
-			long cpPushInterval){
+			long cpPushInterval, boolean hasScscf){
 		this.context = context;
 		this.cpStatRecvPort = cpStatRecvPort;
 		this.bindIp = bindIp;
 		this.tfcGenPort = tfcGenPort;
+		this.hasScscf = hasScscf;
 		
 		this.quit = false;
 		
@@ -171,17 +173,19 @@ public class StatCollector implements Runnable {
 	//the main thread will handle everyhing
 	//don't forget to clear the cpStat ArrayList
 	private void pushCpStat(){
-		statPush.send("CONTROL", ZMQ.SNDMORE);
-		
-		statPush.send(Long.toString(cpPushInterval), ZMQ.SNDMORE);
-		
-		String cpStatMat = "";
-		for(int i=0; i<cpStat.size(); i++){
-			cpStatMat = cpStatMat + cpStat.get(i).toString() + " ";
+		if(hasScscf){
+			statPush.send("CONTROL", ZMQ.SNDMORE);
+			
+			statPush.send(Long.toString(cpPushInterval), ZMQ.SNDMORE);
+			
+			String cpStatMat = "";
+			for(int i=0; i<cpStat.size(); i++){
+				cpStatMat = cpStatMat + cpStat.get(i).toString() + " ";
+			}
+			statPush.send(cpStatMat, 0);
+			
+			cpStat.clear();
 		}
-		statPush.send(cpStatMat, 0);
-		
-		cpStat.clear();
 		previousPushTime = System.currentTimeMillis();
 	}
 	

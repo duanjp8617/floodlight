@@ -159,7 +159,7 @@ public class LocalController implements Runnable{
 		Thread mdThread = new Thread(measureDelay);
 		mdThread.start();
 		
-		statCollector = new StatCollector(context, localIp, 5000, 5001, 2000, 5000);
+		statCollector = new StatCollector(context, localIp, 5000, 5001, 2000, 5000, this.hasScscf);
 		Thread scThread = new Thread(statCollector);
 		scThread.start();
 		
