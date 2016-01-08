@@ -62,6 +62,7 @@ public class LocalController implements Runnable{
 		this.publishPort = publishPort;
 		this.syncPort = syncPort;
 		this.pullPort = pullPort;
+		this.repPort = repPort;
 		
 		this.localIp = localIp;
 		
