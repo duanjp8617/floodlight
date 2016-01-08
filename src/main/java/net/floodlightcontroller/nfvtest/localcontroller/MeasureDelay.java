@@ -89,6 +89,7 @@ public class MeasureDelay implements Runnable
 	{	
 		for(String key : this.map.keySet()){
 			int dstIndex = this.map.get(key).intValue();
+			logger.info("preparing to connect to replier at local controler: "+Integer.toString(dstIndex));
 			if(this.id<dstIndex){
 				ZMQ.Socket requester = this.zmqContext.socket(ZMQ.REQ);
 				requester.connect("tcp://"+key+":"+repPort);

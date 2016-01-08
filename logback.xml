@@ -13,4 +13,7 @@
   <logger name="net.floodlightcontroller.logging" level="INFO"></logger>
   <logger name="org.sdnplatform" level="INFO"/>
   <logger name="net.schmizz.sshj" level="INFO"/>
+  <logger name="net.floodlightcontroller.devicemanager.internal" level="OFF" />
+  <logger name="net.floodlightcontroller.linkdiscovery.internal" level="OFF" />
+  <logger name="net.floodlightcontroller.core.internal" level="OFF" />
 </configuration>
