@@ -460,7 +460,12 @@ public class ServiceChainHandler extends MessageProcessor {
 				if(chain.hasNode(managementIp)){
 					//The stat comes from a NFV node on this service chain.
 					//update the stat on this node.
-					chain.updateDataNodeStat(managementIp, statList);
+					if(chain.serviceChainConfig.nVmInterface == 3){
+						chain.updateDataNodeStat(managementIp, statList);
+					}
+					else{
+						chain.updateControlNodeStat(managementIp, statList);
+					}
 					
 					if(reactiveStart == true){
 						NFVNode node = chain.getNode(managementIp);
