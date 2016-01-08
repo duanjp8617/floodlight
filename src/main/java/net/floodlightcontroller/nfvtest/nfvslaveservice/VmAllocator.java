@@ -217,7 +217,7 @@ public class VmAllocator extends MessageProcessor {
 		}
 		
 		try {
-			String portName = "interDc-src-"+Integer.toString(req.srcDcIndex)+"-dst-"+Integer.toString(req.dstDcIndex);
+			String portName = "s"+Integer.toString(req.srcDcIndex)+"d"+Integer.toString(req.dstDcIndex);
 			edgeServerAgent.createTunnelPort(portName, edgeBridge, req.dstIp, req.tunnelPortNum, req.interDcVniIndex);
 		} catch(Exception e){
 			e.printStackTrace();
@@ -231,8 +231,8 @@ public class VmAllocator extends MessageProcessor {
 		List<String> dpBridgeList = edgeServer.serviceChainConfigMap.get("DATA").bridges;
 		for(int i=1; i<dpBridgeList.size()-1; i++){
 			String bridge = dpBridgeList.get(i);
-			String localPortName = "wrelay-dst-"+Integer.toString(req.dstDcIndex)+"-idx-"+Integer.toString(i);
-			String remotePortName = "erelay-dst-"+Integer.toString(req.dstDcIndex)+"-idx-"+Integer.toString(i);
+			String localPortName = "wd"+Integer.toString(req.dstDcIndex)+"id"+Integer.toString(i);
+			String remotePortName = "ed"+Integer.toString(req.dstDcIndex)+"id"+Integer.toString(i);
 			
 			try {
 				edgeServerAgent.addPatchPort(bridge, localPortName, req.tunnelPortNum, remotePortName);
@@ -268,7 +268,7 @@ public class VmAllocator extends MessageProcessor {
 				String workingBridge = dpBridgeList.get(j);
 				
 				try {
-					String portName = "wrelay-dst-"+Integer.toString(req.dstDcIndex)+"-vni-"+Integer.toString(baseVniIndex);
+					String portName = "wd"+Integer.toString(req.dstDcIndex)+"vni"+Integer.toString(baseVniIndex);
 					workingServerAgent.createTunnelPort(portName, workingBridge, edgeServer.hostServerConfig.internalIp, 
 							req.tunnelPortNum, baseVniIndex);
 				} catch(Exception e){
@@ -276,7 +276,7 @@ public class VmAllocator extends MessageProcessor {
 				}
 				
 				try {
-					String portName = "erelay-dst-"+Integer.toString(req.dstDcIndex)+"-vni-"+Integer.toString(baseVniIndex);
+					String portName = "ed"+Integer.toString(req.dstDcIndex)+"vni"+Integer.toString(baseVniIndex);
 					edgeServerAgent.createTunnelPort(portName, edgeBridge, workingServer.hostServerConfig.internalIp, 
 							tunnelPortNum, baseVniIndex);
 				} catch(Exception e){

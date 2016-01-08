@@ -205,6 +205,7 @@ public class VmWorker extends MessageProcessor{
 			agent.connect();
 			agent.uploadFile(localXmlFile, remoteXmlFile);
 			agent.copyFile(remoteBaseImgFile, remoteImgFile);
+			Thread.sleep(2000);
 			agent.createVMFromXml(remoteXmlFile);
 			int[] portList = new int[vmInstance.macList.size()];
 			for(int i=0; i<vmInstance.macList.size(); i++){
@@ -219,6 +220,7 @@ public class VmWorker extends MessageProcessor{
 			logger.info("finish creating node "+vmInstance.managementIp);
 			CreateVmReply reply = new CreateVmReply(this.getId(), request, true);
 			this.mh.sendTo(reply.getRequest().getSourceId(), reply);
+			Thread.sleep(10*1000);
 		}
 		catch (Exception e){
 			e.printStackTrace();

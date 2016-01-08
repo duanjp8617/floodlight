@@ -236,8 +236,8 @@ public class HostServer {
 		this.entryIp = entryIp;
 		this.exitIp = exitIp;
 		
-		this.frontPortName = "frontPort";
-		this.rearPortName = "rearPort";
+		this.frontPortName = "front";
+		this.rearPortName = "rear";
 	}
 	
 	public VmInstance allocateVmInstance(String chainName, int stageIndex){
