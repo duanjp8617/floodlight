@@ -206,7 +206,13 @@ public class VmWorker extends MessageProcessor{
 			agent.uploadFile(localXmlFile, remoteXmlFile);
 			agent.copyFile(remoteBaseImgFile, remoteImgFile);
 			Thread.sleep(1000);
-			agent.createVMFromXml(remoteXmlFile);
+			for(int i=0; i<10; i++){
+				boolean successful = agent.createVMFromXml(remoteXmlFile);
+				if(successful == true){
+					logger.info("the node "+vmInstance.managementIp+" is successfully created");
+					break;
+				}
+			}
 			int[] portList = new int[vmInstance.macList.size()];
 			for(int i=0; i<vmInstance.macList.size(); i++){
 				String mac = vmInstance.macList.get(i);

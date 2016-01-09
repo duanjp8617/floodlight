@@ -141,7 +141,7 @@ public class MeasureDelay implements Runnable
 			requester.send("Hello");
 			requester.recv();
 			int consumingTime = (int) ((System.nanoTime() - startTime)/1000);
-			logger.info("delay to "+key+" is "+Integer.toString(consumingTime));
+			//logger.info("delay to "+key+" is "+Integer.toString(consumingTime));
 			delay.put(this.map.get(key).intValue(), consumingTime);
 		}
 		sortDelay();

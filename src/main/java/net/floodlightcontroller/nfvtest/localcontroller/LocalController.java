@@ -489,7 +489,7 @@ public class LocalController implements Runnable{
 		for(int i=0; i<localcIndexMap.size(); i++){
 			print = print+" 0";
 		}
-		logger.info("{}", print);
+		//logger.info("{}", print);
 	}
 	
 	public void addSrcAddrDstAddr(String srcAddr, String dstAddr){
