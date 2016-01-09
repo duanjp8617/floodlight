@@ -453,15 +453,15 @@ public class NFVNode {
 		//if(this.vmInstance.stageIndex == 0){
 		if(this.state == NFVNode.IDLE){
 			String output = "Node-"+this.getManagementIp()+" is IDLE : "+stat;
-			logger.info("{}", output);
+			//logger.info("{}", output);
 		}
 		if(this.state == NFVNode.NORMAL){
 			String output = "Node-"+this.getManagementIp()+" is NORMAL : "+stat;
-			logger.info("{}", output);
+			//logger.info("{}", output);
 		}
 		if(this.state == NFVNode.OVERLOAD){
 			String output = "Node-"+this.getManagementIp()+" is OVERLOAD : "+stat;
-			logger.info("{}", output);
+			//logger.info("{}", output);
 		}
 	}
 	
@@ -476,15 +476,15 @@ public class NFVNode {
 		
 		if(this.tranState == NFVNode.IDLE){
 			String output = "Tran Node-"+this.getManagementIp()+" is IDLE : "+stat;
-			logger.info("{}", output);
+			//logger.info("{}", output);
 		}
 		if(this.tranState == NFVNode.NORMAL){
 			String output = "Tran Node-"+this.getManagementIp()+" is NORMAL : "+stat;
-			logger.info("{}", output);
+			//logger.info("{}", output);
 		}
 		if(this.tranState == NFVNode.OVERLOAD){
 			String output = "Tran Node-"+this.getManagementIp()+" is OVERLOAD : "+stat;
-			logger.info("{}", output);
+			//logger.info("{}", output);
 		}
 		
 	}

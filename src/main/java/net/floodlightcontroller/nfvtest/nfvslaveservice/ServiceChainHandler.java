@@ -254,7 +254,7 @@ public class ServiceChainHandler extends MessageProcessor {
 						AllocateVmRequest newReq = new AllocateVmRequest(this.getId(),
 								serviceChain.serviceChainConfig.name, i);
 						this.pendingMap.put(newReq.getUUID(), newReq);
-						//this.mh.sendTo("vmAllocator", newReq);
+						this.mh.sendTo("vmAllocator", newReq);
 					}
 				}
 				else if(newProvision[i] < oldProvision[i]){
@@ -460,7 +460,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		for(int i=0; i<statList.size(); i++){
 			print = print+" "+statList.get(i);
 		}
-		logger.info("{}", print);
+		//logger.info("{}", print);
 		
 		for(String chainName : this.serviceChainMap.keySet()){
 			NFVServiceChain chain = this.serviceChainMap.get(chainName);

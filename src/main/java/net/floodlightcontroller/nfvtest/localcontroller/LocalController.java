@@ -270,7 +270,7 @@ public class LocalController implements Runnable{
 	
 	private void processSubscriber(){
 		String initMsg = subscriber.recvStr();
-		logger.info(initMsg);
+		//logger.info(initMsg);
 		
 		if(curState.equals("initial")){
 			//This is the starting point of a proactive scaling interval
@@ -296,7 +296,7 @@ public class LocalController implements Runnable{
 			boolean hasMore = true;
 			while(hasMore){
 				String result = subscriber.recvStr();
-				logger.info(result);
+				//logger.info(result);
 				if(!result.equals("HEHE")){
 					list.add(result);
 				}
@@ -373,7 +373,7 @@ public class LocalController implements Runnable{
 		for(int i=0; i<delay.length; i++){
 			print = print+" "+Integer.toString(delay[i]);
 		}
-		logger.info("{}", print);
+		//logger.info("{}", print);
 	}
 	
 	private void processStatPuller(){
@@ -467,7 +467,7 @@ public class LocalController implements Runnable{
 		for(int i=start; i<end; i++){
 			print = print+" "+statArray[i];
 		}
-		logger.info("{}", print);
+		//logger.info("{}", print);
 	}
 	
 	private void sendZero(int srcIndex, String interval){
