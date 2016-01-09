@@ -51,7 +51,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		this.serviceChainMap = new HashMap<String, NFVServiceChain>();
 		this.pendingMap = new HashMap<UUID, Message>();
 		
-		this.reactiveStart = false;
+		disableReactive();
 		
 		this.dcNum = 0;
 		this.dcIndex = 0;
@@ -70,6 +70,14 @@ public class ServiceChainHandler extends MessageProcessor {
 				this.dpidHostServerMap.put(DatapathId.of(dpidList.get(i)), hostServer);
 			}
 		}
+	}
+	
+	private void disableReactive(){
+		this.reactiveStart = false;
+	}
+	
+	private void enableReactive(){
+		this.reactiveStart = false;
 	}
 	
 	public void startPollerThread(){
@@ -158,7 +166,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	}
 	
 	private void proactiveScalingStart(){
-		this.reactiveStart = false;
+		disableReactive();
 		
 		NFVServiceChain dpServiceChain = serviceChainMap.get("DATA");
 		int dpProvision[] = dpServiceChain.getProvision();
@@ -246,7 +254,7 @@ public class ServiceChainHandler extends MessageProcessor {
 						AllocateVmRequest newReq = new AllocateVmRequest(this.getId(),
 								serviceChain.serviceChainConfig.name, i);
 						this.pendingMap.put(newReq.getUUID(), newReq);
-						this.mh.sendTo("vmAllocator", newReq);
+						//this.mh.sendTo("vmAllocator", newReq);
 					}
 				}
 				else if(newProvision[i] < oldProvision[i]){
@@ -306,7 +314,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			requester.send("COMPLETE", 0);
 			requester.recv(0);
 			requester.close();
-			this.reactiveStart = true;
+			enableReactive();
 			logger.info("service chain handler finishes executing proactive scaling decision");
 		}
 	}
@@ -354,7 +362,7 @@ public class ServiceChainHandler extends MessageProcessor {
 					requester.send("COMPLETE", 0);
 					requester.recv(0);
 					requester.close();
-					this.reactiveStart = true;
+					enableReactive();
 					logger.info("service chain handler finishes executing proactive scaling decision");
 				}
 			}
