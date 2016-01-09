@@ -472,7 +472,7 @@ public class HostAgent{
 		System.out.println("HostAgent adding static flow: "+"sudo ovs-ofctl add-flow "+bridgeName+
 				" in_port="+Integer.toString(inPort)+" actions=output:"+Integer.toString(outPort));
 		final Session.Command command = session.exec("sudo ovs-ofctl add-flow "+bridgeName+
-				" in_port="+Integer.toString(inPort)+" actions=output:"+Integer.toString(outPort));
+				" in_port="+Integer.toString(inPort)+",actions=output:"+Integer.toString(outPort));
 		command.join(60, TimeUnit.SECONDS);
 	
 		if(command.getExitStatus().intValue()==0){
