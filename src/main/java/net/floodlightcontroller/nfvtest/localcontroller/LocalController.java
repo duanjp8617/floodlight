@@ -270,6 +270,7 @@ public class LocalController implements Runnable{
 	
 	private void processSubscriber(){
 		String initMsg = subscriber.recvStr();
+		logger.info(initMsg);
 		
 		if(curState.equals("initial")){
 			//This is the starting point of a proactive scaling interval
