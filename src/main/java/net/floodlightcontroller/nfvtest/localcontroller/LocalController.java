@@ -297,7 +297,9 @@ public class LocalController implements Runnable{
 			while(hasMore){
 				String result = subscriber.recvStr();
 				logger.info(result);
-				list.add(result);
+				if(!result.equals("HEHE")){
+					list.add(result);
+				}
 				hasMore = subscriber.hasReceiveMore();
 			}
 			
