@@ -295,6 +295,7 @@ public class LocalController implements Runnable{
 			boolean hasMore = true;
 			while(hasMore){
 				String result = subscriber.recvStr();
+				logger.info(result);
 				list.add(result);
 				hasMore = subscriber.hasReceiveMore();
 			}
@@ -310,18 +311,19 @@ public class LocalController implements Runnable{
 			int dcNum = localcIndexMap.size();
 			for(int i=0; i<dcNum; i++){
 				for(int j=0; j<2; j++){
-					cpProvision[i][j] = Integer.parseInt(list.get(cpStart+dcNum*i+j));
+					cpProvision[i][j] = Integer.parseInt(list.get(cpStart+2*i+j));
 				}
 			}		
 			for(int i=0; i<dcNum; i++){
 				for(int j=0; j<dpCapacity.length; j++){
-					dpProvision[i][j] = Integer.parseInt(list.get(dpStart+dcNum*i+j));
+					dpProvision[i][j] = Integer.parseInt(list.get(dpStart+dpCapacity.length*i+j));
 				}
 			}
 			for(int i=0; i<dcNum; i++){
 				for(int j=0; j<dcNum; j++){
 					for(int k=0; k<dpCapacity.length; k++){
-						dpPaths[i][j][k] = Integer.parseInt(list.get(dpPathStart+dcNum*i+dcNum*j+k));
+						dpPaths[i][j][k] = Integer.parseInt(list.get(dpPathStart+dcNum*dpCapacity.length*i+
+								dpCapacity.length*j+k));
 					}
 				}
 			}
