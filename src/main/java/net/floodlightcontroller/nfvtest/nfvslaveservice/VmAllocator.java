@@ -6,6 +6,7 @@ import net.floodlightcontroller.nfvtest.message.MessageProcessor;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
 import net.floodlightcontroller.nfvtest.nfvutils.HostAgent;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
+import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.*;
 import net.floodlightcontroller.nfvtest.message.Pending;
 
@@ -206,6 +207,20 @@ public class VmAllocator extends MessageProcessor {
 						interDcVniIndex, basePort, baseVni));
 				basePort = newVniPort[0];
 				baseVni = newVniPort[1];
+			}
+		}
+		
+		for(int i=0; i<hostServerList.size(); i++){
+			HostServer hostServer = hostServerList.get(i);
+			ServiceChainConfig chainConfig = hostServer.serviceChainConfigMap.get("DATA");
+			HostAgent hostAgent = new HostAgent(hostServer.hostServerConfig);
+			try{
+				hostAgent.connect();
+				hostAgent.addFlowDstMac(chainConfig.bridges.get(0), hostServer.patchPort, hostServer.entryPort, hostServer.entryMac);
+				hostAgent.disconnect();
+			}
+			catch(Exception e){
+				e.printStackTrace();
 			}
 		}
 		

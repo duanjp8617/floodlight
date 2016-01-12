@@ -486,6 +486,25 @@ public class HostAgent{
 		}
 	}
 	
+	public boolean addFlowDstMac(String bridgeName, int inPort, int outPort, String dstMac)throws
+		IOException, UserAuthException, TransportException{
+	
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo ovs-ofctl add-flow "+bridgeName+
+				" in_port="+Integer.toString(inPort)+",actions=mod_dl_dst:"+dstMac+",output:"+Integer.toString(outPort));
+		command.join(60, TimeUnit.SECONDS);
+	
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+	
+		}
+	}
+	
 	public boolean addPort(String bridgeName, String port, int ofPort)throws
 		IOException, UserAuthException, TransportException{
 	
