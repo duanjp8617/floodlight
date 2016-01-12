@@ -90,9 +90,9 @@ public class VmWorker extends MessageProcessor{
 			//dirs do not exist. If dirs exist, 
 			//we remove previous uploaded xml files
 			agent.connect();
-			agent.createDir(hostServer.hostServerConfig.homeDir);
-			agent.createDir(hostServer.hostServerConfig.xmlDir);
-			agent.createDir(hostServer.hostServerConfig.imgDir);
+			//agent.createDir(hostServer.hostServerConfig.homeDir);
+			//agent.createDir(hostServer.hostServerConfig.xmlDir);
+			//agent.createDir(hostServer.hostServerConfig.imgDir);
 			//agent.removeFilesFromDir(hostServer.hostServerConfig.xmlDir);
 			
 			//The following loop initialize the runtime environment in host server.
@@ -129,14 +129,14 @@ public class VmWorker extends MessageProcessor{
 				}
 				
 				//upload base vm image files
-				for(int i=0; i<chainConfig.stages.size(); i++){
+				/*for(int i=0; i<chainConfig.stages.size(); i++){
 					baseImgList.add(chainConfig.getImgNameForStage(i));
 					if(!agent.fileExistInDir(hostServer.hostServerConfig.imgDir, chainConfig.getImgNameForStage(i))){
 						String imgPath = hostServer.controllerConfig.imgDir+"/"+chainConfig.getImgNameForStage(i);
 						String remotePath = hostServer.hostServerConfig.imgDir+"/"+chainConfig.getImgNameForStage(i);
 						agent.uploadFile(imgPath, remotePath);
 					}
-				}
+				}*/
 				
 				//create management network
 				/*if(agent.networkExist(chainConfig.getManagementNetwork())){
