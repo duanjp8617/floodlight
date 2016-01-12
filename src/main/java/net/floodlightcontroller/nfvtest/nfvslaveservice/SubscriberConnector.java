@@ -150,9 +150,11 @@ public class SubscriberConnector extends MessageProcessor{
 	}
 	
 	private void subscriberConnect(SubConnRequest request){
-		SubConnThread newThread = new SubConnThread(request, this.zmqContext, this.mh, this.logger);
-		Thread t = new Thread(newThread);
-		t.start();
+		//SubConnThread newThread = new SubConnThread(request, this.zmqContext, this.mh, this.logger);
+		//Thread t = new Thread(newThread);
+		//t.start();
+		SubConnReply reply = new SubConnReply("hehe", request, null, null);
+		mh.sendTo(request.getSourceId(), reply);
 	}
 	
 }
