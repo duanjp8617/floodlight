@@ -395,4 +395,13 @@ public class NFVServiceChain {
 	public   boolean getScaleIndicator(int stage){
 		return this.scaleIndicators[stage];
 	}
+	
+	public NFVNode randomlyGetWorkingNode(int stageIndex){
+		Map<String, NFVNode> nodeMap = this.workingNodeMaps.get(stageIndex);
+		HashSet<String> hasSet = new HashSet<String>(nodeMap.keySet());
+		String[] array = hasSet.toArray(new String[hasSet.size()]);
+		int random = (int )(Math.random() * 100);
+		
+		return nodeMap.get(array[random%array.length]);
+	}
 }
