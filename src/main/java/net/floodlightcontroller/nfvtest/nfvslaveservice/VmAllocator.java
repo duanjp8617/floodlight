@@ -184,6 +184,13 @@ public class VmAllocator extends MessageProcessor {
 		String dstIp = null;
 		int interDcVniIndex = 0;
 		
+		try {
+			Thread.sleep(10*1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		for(String key : localcIndexMap.keySet()){
 			if(localcIndexMap.get(key).intValue() != srcIndex){
 				dstIndex = localcIndexMap.get(key).intValue();

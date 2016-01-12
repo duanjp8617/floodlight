@@ -165,6 +165,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		String iIp = "202.45.128.*";
 		String userName = "*";
 		String password = "*";
+		String entryIp = "10.*.1.1";
+		String exitIp  = "10.*.9.1";
+		int middle = 160+0;
 		ControllerConfig controllerConfig = 
 				new ControllerConfig(mIp, "/home/net/base-env", "basexml.xml", "networkxml.xml");
 		HostServerConfig hostServerConfig = 
@@ -174,7 +177,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		prefix[1] = 0x54;
 		prefix[2] = 0x00;
 		MacAddressAllocator macAllocator = new MacAddressAllocator(prefix);
-		IpAddressAllocator ipAllocator = new IpAddressAllocator(192,168,64);
+		IpAddressAllocator ipAllocator = new IpAddressAllocator(192,middle,64);
 		
 		this.flowMap = new HashMap<FlowTuple, Integer>();
 		this.routeMap = new HashMap<RouteTuple, String>();
@@ -203,7 +206,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		map.put(cpServiceChainConfig.name, cpServiceChainConfig);
 		map.put(dpServiceChainConfig.name, dpServiceChainConfig);
 		HostServer hostServer = new HostServer(controllerConfig, hostServerConfig, map, macAllocator,
-										ipAllocator, "192.168.1.1", "192.168.1.2");
+										ipAllocator, entryIp, exitIp);
 		
 		this.cpServiceChain = new NFVServiceChain(cpServiceChainConfig);
 		this.dpServiceChain = new NFVServiceChain(dpServiceChainConfig);
