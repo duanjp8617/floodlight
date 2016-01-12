@@ -507,6 +507,24 @@ public class HostAgent{
 		}
 	}
 	
+	public boolean removePort(String bridgeName, String port)throws
+		IOException, UserAuthException, TransportException{
+	
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo ovs-vsctl del-port "+bridgeName+" "+port);
+		command.join(60, TimeUnit.SECONDS);
+	
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+	
+		}
+	}
+	
 	public boolean upPort(String port, String ip)throws
 		IOException, UserAuthException, TransportException{
 	

@@ -470,9 +470,22 @@ public class VmWorker extends MessageProcessor{
 		HostAgent agent = new HostAgent(vmInstance.hostServerConfig);
 		try{
 			agent.connect();
-			agent.destroyVm(vmInstance.vmName);
-			agent.removeFile(remoteXmlPath);
-			agent.removeFile(remoteImgPath);
+			//agent.destroyVm(vmInstance.vmName);
+			//agent.removeFile(remoteXmlPath);
+			//agent.removeFile(remoteImgPath);
+			if(vmInstance.serviceChainConfig.nVmInterface == 3){
+				int stageIndex = vmInstance.stageIndex;
+				
+				int entryPort = vmInstance.getPort(0);
+				String entryPortName = Integer.toString(entryPort);
+				String entryBridgeName = vmInstance.serviceChainConfig.bridges.get(stageIndex);
+				agent.removePort(entryBridgeName, entryPortName);
+				
+				int exitPort = vmInstance.getPort(1);
+				String exitPortName = Integer.toString(exitPort);
+				String exitBridgeName  = vmInstance.serviceChainConfig.bridges.get(stageIndex+1);
+				agent.removePort(exitBridgeName, exitPortName);
+			}
 			agent.disconnect();
 			DestroyVmReply reply = new DestroyVmReply(this.getId(), request, true);
 			this.mh.sendTo(request.getSourceId(), reply);
