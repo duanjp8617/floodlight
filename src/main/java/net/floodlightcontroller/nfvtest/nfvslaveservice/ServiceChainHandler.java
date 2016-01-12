@@ -544,4 +544,13 @@ public class ServiceChainHandler extends MessageProcessor {
 			}
 		}
 	}
+	
+	public String getRegIp(){
+		NFVServiceChain cpServiceChain = this.serviceChainMap.get("CONTROL");
+		synchronized(cpServiceChain){
+			
+		}
+		
+		return "";
+	}
 }

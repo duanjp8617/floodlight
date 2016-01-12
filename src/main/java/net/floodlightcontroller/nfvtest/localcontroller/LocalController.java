@@ -22,15 +22,17 @@ public class LocalController implements Runnable{
 	private int syncPort;    //global controller replier port
 	private int pullPort;    //global controller poll port
 	private int repPort;     //rep port that is used to reply to ping message
+	private int pcscfPort;   //pcscfPort that is used to communicate with pcscf(traffic generator)
 	
 	private String localIp;  //local controller IP
 	
 	private Context context;
 	private Socket subscriber;
-	private Socket requester;
 	private Socket pusher;
 	private Socket statPuller;
-	private Socket replier;
+	
+	private Socket pcscfPuller;
+	private HashMap<String, Socket> pcscfPusherMap;
 	
 	private Socket schSync;
 	
@@ -56,19 +58,28 @@ public class LocalController implements Runnable{
 	
 	private final Logger logger =  LoggerFactory.getLogger(LocalController.class);
 	
-	public LocalController(String globalIp, int publishPort, int syncPort, int pullPort, int repPort,
-			String localIp, boolean hasScscf, int delayPollInterval, int dpCapacity[], MessageHub mh, Context context){
+	private String entryIp;
+	
+	//all the following 3 maps are indexed using src address, which will never be changed through
+	//out the service chain path.
+	private HashMap<String, Integer> entryFlowDstDcMap;   //contains the exit datacenter for the entry flow
+	private HashMap<String, String>  exitFLowDstAddrMap;  //contains the destination address for exit flow
+	private HashMap<String, String>  exitFlowSrcIpMap;    //contains the src IP address for exit flow
+	
+	public LocalController(String globalIp, int publishPort, int syncPort, int pullPort, int repPort, int pcscfPort,
+			String localIp, boolean hasScscf, int delayPollInterval, int dpCapacity[], MessageHub mh, Context context,
+			String entryIp){
 		this.globalIp = globalIp;
 		this.publishPort = publishPort;
 		this.syncPort = syncPort;
 		this.pullPort = pullPort;
 		this.repPort = repPort;
+		this.pcscfPort = pcscfPort;
 		
 		this.localIp = localIp;
 		
 		this.context = null;
 		this.subscriber = null;
-		this.requester = null;
 		this.pusher = null;
 		this.schSync = null;
 		
@@ -87,6 +98,13 @@ public class LocalController implements Runnable{
 		this.context = context;
 		
 		this.srcAddrDstAddrMap = new HashMap<String, String>();
+		this.entryIp = entryIp;
+		
+		this.pcscfPusherMap = new HashMap<String, Socket>();
+		
+		this.entryFlowDstDcMap  = new HashMap<String, Integer>();
+		this.exitFLowDstAddrMap = new HashMap<String, String>();
+		this.exitFlowSrcIpMap   = new HashMap<String, String>(); 
 	}
 	
 	public int getCurrentDcIndex(){
@@ -106,29 +124,32 @@ public class LocalController implements Runnable{
 		pusher = context.socket(ZMQ.PUSH);
 		pusher.connect("tcp://"+globalIp+":"+Integer.toString(pullPort));
 		
-		requester = context.socket(ZMQ.REQ);
-		requester.connect("tcp://"+globalIp+":"+Integer.toString(syncPort));
-		
 		statPuller = context.socket(ZMQ.PULL);
 		statPuller.bind("inproc://statPull");
-		
-		replier = context.socket(ZMQ.REP);
-		replier.bind("tcp://"+localIp+":"+Integer.toString(repPort));
 		
 		schSync = context.socket(ZMQ.REP);
 		schSync.bind("inproc://schSync");
 		
+		pcscfPuller = context.socket(ZMQ.PULL);
+		pcscfPuller.bind("tcp://"+localIp+":"+Integer.toString(pcscfPort));
+		
 		//send to global controller necessary information for sync
 		//JOIN -> IP of local controller -> whether has SCSCF servers 
+		Socket requester = context.socket(ZMQ.REQ);
+		requester.connect("tcp://"+globalIp+":"+Integer.toString(syncPort));
+		
 		requester.send("JOIN", ZMQ.SNDMORE);
 		requester.send(localIp, ZMQ.SNDMORE);
 		if(hasScscf==true){
-			requester.send("HASSCSCF", 0);
+			requester.send("HASSCSCF", ZMQ.SNDMORE);
 		}
 		else{
-			requester.send("NOSCSCF", 0);
+			requester.send("NOSCSCF", ZMQ.SNDMORE);
 		}
+		requester.send(entryIp, 0);
+		
 		requester.recv(0);
+		requester.close();
 		
 		logger.info("local controller connects to global controller, waiting for final configuration"+"\n");
 		
@@ -154,6 +175,8 @@ public class LocalController implements Runnable{
 		//The measure class will measure delay, data plane stat
 		//if the local controller owns scscf, measure will also measure control plane stat
 		//The measurement result are acquired through regular polling the measure class
+		Socket replier = context.socket(ZMQ.REP);
+		replier.bind("tcp://"+localIp+":"+Integer.toString(repPort));
 		measureDelay = new MeasureDelay(localIp, Integer.toString(repPort), replier, 2000, localcIndexMap, context);
 		measureDelay.init();
 		Thread mdThread = new Thread(measureDelay);
@@ -176,9 +199,10 @@ public class LocalController implements Runnable{
 	
 	private void localLoop(){
 		ZMQ.Poller items = new ZMQ.Poller (3);
-		items.register(subscriber, ZMQ.Poller.POLLIN);
-		items.register(statPuller, ZMQ.Poller.POLLIN);
-		items.register(schSync, ZMQ.Poller.POLLIN);
+		items.register(subscriber,  ZMQ.Poller.POLLIN);
+		items.register(statPuller,  ZMQ.Poller.POLLIN);
+		items.register(schSync,     ZMQ.Poller.POLLIN);
+		items.register(pcscfPuller, ZMQ.Poller.POLLIN);
 		
 		long delayPollTime = System.currentTimeMillis();
 
@@ -200,12 +224,71 @@ public class LocalController implements Runnable{
 				processSchSync();
 			}
 			
+			if(items.pollin(3)){
+				processPcscfPuller();
+			}
+			
 			//It's time to check for delay and report delay.
 			if((System.currentTimeMillis()-delayPollTime)>delayPollInterval){
 				processDelayPoll();
 				delayPollTime = System.currentTimeMillis();
 			}
 		}
+	}
+	
+	private void processPcscfPuller(){
+		String initMsg = pcscfPuller.recvStr();
+		if(initMsg.equals("PCSCFCONNECT")){
+			String pcscfAddr = pcscfPuller.recvStr();
+			String splitResult[] = pcscfAddr.split("\\s+");
+			String pcscfIp = splitResult[0];
+			String pcscfPort = splitResult[1];
+			
+			Socket newPcscfPusher = context.socket(ZMQ.PUSH);
+			newPcscfPusher.connect("tcp://"+pcscfIp+":"+pcscfPort);
+			
+			newPcscfPusher.send("OK", 0);
+			
+			this.pcscfPusherMap.put(pcscfIp+":"+pcscfPort, newPcscfPusher);
+		}
+		else if(initMsg.equals("OPEN")){
+			String pcscfIpPort      = pcscfPuller.recvStr();
+			
+			String entryFlowSrcAddr = pcscfPuller.recvStr();
+			String entryFlowDstDc   = pcscfPuller.recvStr();
+			
+			String exitFlowSrcAddr  = pcscfPuller.recvStr();
+			String exitFlowDstAddr  = pcscfPuller.recvStr();
+			String exitFlowSrcIp    = pcscfPuller.recvStr();
+			
+			synchronized(this){
+				this.entryFlowDstDcMap.put(entryFlowSrcAddr, Integer.parseInt(entryFlowDstDc));
+				this.exitFLowDstAddrMap.put(exitFlowSrcAddr, exitFlowDstAddr);
+				this.exitFlowSrcIpMap.put(exitFlowSrcAddr, exitFlowSrcIp);
+			}
+			
+			Socket socket = this.pcscfPusherMap.get(pcscfIpPort);
+			socket.send("REPLY", ZMQ.SNDMORE);
+			socket.send(entryFlowSrcAddr,ZMQ.SNDMORE);
+			//:TODO!socket.send(data)
+		}
+		else{
+			String pcscfIpPort      = pcscfPuller.recvStr();
+			String entryFlowSrcAddr = pcscfPuller.recvStr();
+			String exitFlowSrcAddr  = pcscfPuller.recvStr();
+			
+			synchronized(this){
+				this.entryFlowDstDcMap.remove(entryFlowSrcAddr);
+				this.exitFLowDstAddrMap.remove(exitFlowSrcAddr);
+				this.exitFlowSrcIpMap.remove(exitFlowSrcAddr);
+			}
+			
+			Socket socket = this.pcscfPusherMap.get(pcscfIpPort);
+			socket.send("REPLY", ZMQ.SNDMORE);
+			socket.send(entryFlowSrcAddr, ZMQ.SNDMORE);
+			socket.send(" ", 0);
+		}
+		
 	}
 	
 	private void processSchSync(){
