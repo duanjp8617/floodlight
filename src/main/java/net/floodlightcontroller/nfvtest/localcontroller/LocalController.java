@@ -4,6 +4,7 @@ import org.zeromq.ZMQ.Socket;
 
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVTest;
+import net.floodlightcontroller.nfvtest.nfvslaveservice.ServiceChainHandler;
 import net.floodlightcontroller.nfvtest.message.MessageHub;
 
 import org.zeromq.ZMQ.Context;
@@ -66,9 +67,11 @@ public class LocalController implements Runnable{
 	private HashMap<String, String>  exitFLowDstAddrMap;  //contains the destination address for exit flow
 	private HashMap<String, String>  exitFlowSrcIpMap;    //contains the src IP address for exit flow
 	
+	private ServiceChainHandler      chainHandler;
+	
 	public LocalController(String globalIp, int publishPort, int syncPort, int pullPort, int repPort, int pcscfPort,
 			String localIp, boolean hasScscf, int delayPollInterval, int dpCapacity[], MessageHub mh, Context context,
-			String entryIp){
+			String entryIp, ServiceChainHandler chainHandler){
 		this.globalIp = globalIp;
 		this.publishPort = publishPort;
 		this.syncPort = syncPort;
@@ -105,6 +108,7 @@ public class LocalController implements Runnable{
 		this.entryFlowDstDcMap  = new HashMap<String, Integer>();
 		this.exitFLowDstAddrMap = new HashMap<String, String>();
 		this.exitFlowSrcIpMap   = new HashMap<String, String>(); 
+		this.chainHandler = chainHandler;
 	}
 	
 	public int getCurrentDcIndex(){
@@ -270,7 +274,8 @@ public class LocalController implements Runnable{
 			Socket socket = this.pcscfPusherMap.get(pcscfIpPort);
 			socket.send("REPLY", ZMQ.SNDMORE);
 			socket.send(entryFlowSrcAddr,ZMQ.SNDMORE);
-			//:TODO!socket.send(data)
+			String regIp = chainHandler.getRegIp();
+			socket.send(regIp, 0);
 		}
 		else{
 			String pcscfIpPort      = pcscfPuller.recvStr();
