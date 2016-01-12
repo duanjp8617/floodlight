@@ -34,6 +34,7 @@ import org.w3c.dom.NodeList;
 public class VmWorker extends MessageProcessor{
 	
 	private final Logger logger =  LoggerFactory.getLogger(VmWorker.class);
+	private int basePortNum = 30;
 	
 	public VmWorker(String id){
 		this.id = id;
@@ -203,30 +204,54 @@ public class VmWorker extends MessageProcessor{
 			//reply to the actor that sends the CreateVmRequest
 			logger.info("start creating node "+vmInstance.managementIp);
 			agent.connect();
-			agent.uploadFile(localXmlFile, remoteXmlFile);
-			agent.copyFile(remoteBaseImgFile, remoteImgFile);
-			Thread.sleep(1000);
-			for(int i=0; i<10; i++){
-				boolean successful = agent.createVMFromXml(remoteXmlFile);
-				if(successful == true){
-					logger.info("the node "+vmInstance.managementIp+" is successfully created");
-					break;
-				}
-			}
+			//agent.uploadFile(localXmlFile, remoteXmlFile);
+			//agent.copyFile(remoteBaseImgFile, remoteImgFile);
+			//Thread.sleep(1000);
+			//for(int i=0; i<10; i++){
+			//	boolean successful = agent.createVMFromXml(remoteXmlFile);
+			//	if(successful == true){
+			//		logger.info("the node "+vmInstance.managementIp+" is successfully created");
+			//		break;
+			//	}
+			//}
 			int[] portList = new int[vmInstance.macList.size()];
-			for(int i=0; i<vmInstance.macList.size(); i++){
-				String mac = vmInstance.macList.get(i);
-				String portMac = "fe:"+mac.substring(3);
-				int portNum = agent.getPort(vmInstance.macBridgeMap.get(mac), 
-						                    portMac);
-				portList[i] = portNum;
+			if(vmInstance.serviceChainConfig.nVmInterface == 3){
+				int stageIndex = vmInstance.stageIndex;
+				String entryBridgeName = vmInstance.serviceChainConfig.bridges.get(stageIndex);
+				String exitBridgeName  = vmInstance.serviceChainConfig.bridges.get(stageIndex+1);
+				
+				int entryPortNum  = this.basePortNum;
+				this.basePortNum  += 1;
+				String entryPortName = Integer.toString(entryPortNum);
+				
+				int exitPortNum   = this.basePortNum;
+				this.basePortNum  += 1;
+				String exitPortName = Integer.toString(exitPortNum);
+				
+				
+				agent.addPatchPort(entryBridgeName, entryPortName, entryPortNum, exitPortName);
+				agent.addPatchPort(exitBridgeName , exitPortName,  exitPortNum,  entryPortName);
+				portList[0] = entryPortNum;
+				portList[1] = exitPortNum;
+				vmInstance.setPort(portList);
 			}
-			vmInstance.setPort(portList);
+			else{
+				vmInstance.setPort(portList);
+			}
+			//int[] portList = new int[vmInstance.macList.size()];
+			//for(int i=0; i<vmInstance.macList.size(); i++){
+			//	String mac = vmInstance.macList.get(i);
+			//	String portMac = "fe:"+mac.substring(3);
+			//	int portNum = agent.getPort(vmInstance.macBridgeMap.get(mac), 
+			//			                    portMac);
+			//	portList[i] = portNum;
+			//}
+			//vmInstance.setPort(portList);
 			agent.disconnect();
 			logger.info("finish creating node "+vmInstance.managementIp);
 			CreateVmReply reply = new CreateVmReply(this.getId(), request, true);
 			this.mh.sendTo(reply.getRequest().getSourceId(), reply);
-			Thread.sleep(5*1000);
+			//Thread.sleep(5*1000);
 		}
 		catch (Exception e){
 			e.printStackTrace();
