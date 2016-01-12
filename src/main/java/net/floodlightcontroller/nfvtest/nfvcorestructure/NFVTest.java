@@ -109,6 +109,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	private VmWorker vmWorker;
 	private SubscriberConnector subscriberConnector;
 	private DNSUpdator dnsUpdator;
+	private ServiceChainHandler chainHandler;
 	
 	@Override
 	public String getName() {
@@ -223,7 +224,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		dnsUpdator.registerWithMessageHub(mh);
 		//dnsUpdator.connect();
 		
-		ServiceChainHandler chainHandler = new ServiceChainHandler("chainHandler", zmqContext, this.switchService);
+		chainHandler = new ServiceChainHandler("chainHandler", zmqContext, this.switchService);
 		chainHandler.registerWithMessageHub(mh);
 		chainHandler.startPollerThread();
 		chainHandler.addServiceChain(cpServiceChain);

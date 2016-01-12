@@ -92,7 +92,7 @@ public class VmWorker extends MessageProcessor{
 			agent.createDir(hostServer.hostServerConfig.homeDir);
 			agent.createDir(hostServer.hostServerConfig.xmlDir);
 			agent.createDir(hostServer.hostServerConfig.imgDir);
-			agent.removeFilesFromDir(hostServer.hostServerConfig.xmlDir);
+			//agent.removeFilesFromDir(hostServer.hostServerConfig.xmlDir);
 			
 			//The following loop initialize the runtime environment in host server.
 			//All used service chains will be initialized in turns.
@@ -138,7 +138,7 @@ public class VmWorker extends MessageProcessor{
 				}
 				
 				//create management network
-				if(agent.networkExist(chainConfig.getManagementNetwork())){
+				/*if(agent.networkExist(chainConfig.getManagementNetwork())){
 					agent.deleteNetwork(chainConfig.getManagementNetwork());
 				}
 				String localMNetXMLFile = constructNetworkXmlFile(hostServer.controllerConfig,
@@ -147,10 +147,10 @@ public class VmWorker extends MessageProcessor{
 				String remoteMNetXMLFile = hostServer.hostServerConfig.xmlDir+"/"+
 										   chainConfig.getManagementNetwork();
 				agent.uploadFile(localMNetXMLFile, remoteMNetXMLFile);
-				agent.createNetworkFromXml(remoteMNetXMLFile);
+				agent.createNetworkFromXml(remoteMNetXMLFile);*/
 				
 				//create operational network if it's control plane
-				if(chainConfig.getOperationNetwork()!="nil"){
+				/*if(chainConfig.getOperationNetwork()!="nil"){
 					if(agent.networkExist(chainConfig.getOperationNetwork())){
 						agent.deleteNetwork(chainConfig.getOperationNetwork());
 					}
@@ -161,14 +161,14 @@ public class VmWorker extends MessageProcessor{
 											   chainConfig.getOperationNetwork();
 					agent.uploadFile(localMNetXMLFilz, remoteMNetXMLFilz);
 					agent.createNetworkFromXml(remoteMNetXMLFilz);
-				}
+				}*/
 			}
 			
-			//remove previous generated vm images
+			/*//remove previous generated vm images
 			String[] unusedImgArray = agent.createSelectedRemoveList(hostServer.hostServerConfig.imgDir, baseImgList);
 			for(int i=0; i<unusedImgArray.length; i++){
 				agent.removeFile(hostServer.hostServerConfig.imgDir+"/"+unusedImgArray[i]);
-			}
+			}*/
 			
 			agent.disconnect();
 		}
