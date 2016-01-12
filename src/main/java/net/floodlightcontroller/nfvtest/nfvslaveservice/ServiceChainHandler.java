@@ -553,10 +553,12 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	public String getRegIp(){
 		NFVServiceChain cpServiceChain = this.serviceChainMap.get("CONTROL");
+		String regIp = "";
 		synchronized(cpServiceChain){
-			
+			NFVNode pcscfNode = cpServiceChain.randomlyGetWorkingNode(0);
+			regIp = pcscfNode.vmInstance.operationIp;
 		}
 		
-		return "";
+		return regIp;
 	}
 }
