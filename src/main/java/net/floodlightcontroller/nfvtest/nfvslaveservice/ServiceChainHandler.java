@@ -414,14 +414,14 @@ public class ServiceChainHandler extends MessageProcessor {
 		if(vmInstance.serviceChainConfig.nVmInterface == 3){
 			String managementIp = vmInstance.managementIp;
 			Socket subscriber1 = reply.getSubscriber1();
-			this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
+			//this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 		}
 		else{
 			String managementIp = vmInstance.managementIp;
 			Socket subscriber1 = reply.getSubscriber1();
 			Socket subscriber2 = reply.getSubscriber2();
-			this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
-			this.poller.register(new Pair<String, Socket>(managementIp+":2", subscriber2));
+			//this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
+			//this.poller.register(new Pair<String, Socket>(managementIp+":2", subscriber2));
 		}
 		
 		addToServiceChain(serviceChain, node, originalMessage.getUUID());
