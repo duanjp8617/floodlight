@@ -258,8 +258,14 @@ public class ServiceChainHandler extends MessageProcessor {
 					}
 				}
 				else if(newProvision[i] < oldProvision[i]){
-					//scaleDown
-					int scaleDownNum = oldProvision[i]-newProvision[i];
+					//scaleDown, but we maintain at least one working node for each stage
+					int scaleDownNum = 0;
+					if(newProvision[i]==0){
+						scaleDownNum = oldProvision[i]-1;
+					}
+					else{
+						scaleDownNum = oldProvision[i] - newProvision[i];
+					}
 					for(int j=0; j<scaleDownNum; j++){
 						NFVNode workingNode = serviceChain.getNormalWorkingNode(i);
 						if(workingNode == null){
