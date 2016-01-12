@@ -55,8 +55,6 @@ public class LocalController implements Runnable{
 	private int dpProvision[][];
 	private int dpPaths[][][];
 	
-	private HashMap<String, String> srcAddrDstAddrMap;
-	
 	private final Logger logger =  LoggerFactory.getLogger(LocalController.class);
 	
 	private String entryIp;
@@ -100,7 +98,6 @@ public class LocalController implements Runnable{
 		this.mh = mh;
 		this.context = context;
 		
-		this.srcAddrDstAddrMap = new HashMap<String, String>();
 		this.entryIp = entryIp;
 		
 		this.pcscfPusherMap = new HashMap<String, Socket>();
@@ -580,21 +577,14 @@ public class LocalController implements Runnable{
 		//logger.info("{}", print);
 	}
 	
-	public void addSrcAddrDstAddr(String srcAddr, String dstAddr){
-		synchronized(this.srcAddrDstAddrMap){
-			this.srcAddrDstAddrMap.put(srcAddr, dstAddr);
-		}
-	}
-	
 	public int[] getSrcDstPair(String srcAddr){
 		int srcDst[] = new int[2];
-		synchronized(this.srcAddrDstAddrMap){
+		synchronized(this){
+			int dstDcIndex = entryFlowDstDcMap.get(srcAddr).intValue();
 			int srcDcIndex = localcIndexMap.get(localIp).intValue();
-			int dstDcIndex = 1; //we do some query here;
 			srcDst[0] = srcDcIndex;
 			srcDst[1] = dstDcIndex;
 		}
-		
 		return srcDst;
 	}
 	
