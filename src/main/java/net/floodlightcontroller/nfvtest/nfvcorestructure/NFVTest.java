@@ -166,6 +166,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		String userName = "*";
 		String password = "*";
 		String entryIp = "10.*.1.1";
+		String gatewayIp = "10.*.5.1";
 		String exitIp  = "10.*.9.1";
 		int middle = 160+0;
 		ControllerConfig controllerConfig = 
@@ -206,7 +207,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		map.put(cpServiceChainConfig.name, cpServiceChainConfig);
 		map.put(dpServiceChainConfig.name, dpServiceChainConfig);
 		HostServer hostServer = new HostServer(controllerConfig, hostServerConfig, map, macAllocator,
-										ipAllocator, entryIp, exitIp);
+										ipAllocator, entryIp, gatewayIp, exitIp);
 		
 		this.cpServiceChain = new NFVServiceChain(cpServiceChainConfig);
 		this.dpServiceChain = new NFVServiceChain(dpServiceChainConfig);
@@ -376,7 +377,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         	int dpPaths[] = null;    //dpPaths of the current scaling interval
         	int currentDcIndex = localController.getCurrentDcIndex();
         	
-        	if(inPort.getPortNumber() == vmAllocator.hostServerList.get(0).entryPort){
+        	if(inPort.getPortNumber() == vmAllocator.hostServerList.get(0).gatewayPort){
         		//This is the new flow, we need to query local controller to know where exactly this flow want
         		//to go.
         		String srcAddr = srcIp.toString()+":"+srcPort.toString();

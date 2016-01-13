@@ -163,13 +163,15 @@ public class HostServer {
 	public final Map<Integer, String> portTunnelMap;
 	public int tunnelPort;
 
-	public String entryMac;
-	public String entryIp;
-	public int entryPort;
+	public String gatewayMac;
+	public String gatewayIp;
+	public int gatewayPort;
 	
 	public String exitMac;
 	public String exitIp;
 	public int exitPort;
+	
+	public String entryIp;
 	
 	public int patchPort;
 	public String frontPortName;
@@ -185,6 +187,7 @@ public class HostServer {
 			   		  MacAddressAllocator macAllocator,
 			   		  IpAddressAllocator ipAllocator,
 			   		  String entryIp,
+			   		  String gatewayIp,
 			   		  String exitIp){
 		this.controllerConfig = controllerConfig;
 		this.hostServerConfig = hostServerConfig;
@@ -228,13 +231,14 @@ public class HostServer {
 		this.tunnelPortMap = new HashMap<String, Integer>();
 		this.portTunnelMap = new HashMap<Integer, String>();
 		this.tunnelPort = 10;
-		this.entryPort = 9;
+		this.gatewayPort = 9;
 		this.exitPort = 8;
 		this.patchPort = 7;
-		this.entryMac = "nil";
+		this.gatewayMac = "nil";
 		this.exitMac = "nil";
-		this.entryIp = entryIp;
+		this.gatewayIp = gatewayIp;
 		this.exitIp = exitIp;
+		this.entryIp = entryIp;
 		
 		this.frontPortName = "front";
 		this.rearPortName = "rear";

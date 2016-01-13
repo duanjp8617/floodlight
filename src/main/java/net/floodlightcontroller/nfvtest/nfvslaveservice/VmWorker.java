@@ -111,9 +111,9 @@ public class VmWorker extends MessageProcessor{
 					
 					if(i==0){
 						//create an entry ip for the first bridge.
-						agent.addPort(chainConfig.bridges.get(i), "entry", hostServer.entryPort);
-						agent.upPort("entry", hostServer.entryIp);
-						hostServer.entryMac = agent.getMac(chainConfig.bridges.get(i), "entry");
+						agent.addPort(chainConfig.bridges.get(i), "gateway", hostServer.gatewayPort);
+						agent.upPort("gateway", hostServer.gatewayIp);
+						hostServer.gatewayMac = agent.getMac(chainConfig.bridges.get(i), "gateway");
 						//agent.addPatchPort(chainConfig.bridges.get(i), hostServer.frontPortName, hostServer.patchPort, 
 						//		hostServer.rearPortName);
 						
