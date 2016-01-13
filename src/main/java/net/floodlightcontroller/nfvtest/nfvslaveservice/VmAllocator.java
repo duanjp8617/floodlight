@@ -210,7 +210,7 @@ public class VmAllocator extends MessageProcessor {
 			}
 		}
 		
-		for(int i=0; i<hostServerList.size(); i++){
+		/*for(int i=0; i<hostServerList.size(); i++){
 			HostServer hostServer = hostServerList.get(i);
 			ServiceChainConfig chainConfig = hostServer.serviceChainConfigMap.get("DATA");
 			HostAgent hostAgent = new HostAgent(hostServer.hostServerConfig);
@@ -222,7 +222,7 @@ public class VmAllocator extends MessageProcessor {
 			catch(Exception e){
 				e.printStackTrace();
 			}
-		}
+		}*/
 		
 		mh.sendTo(req.sourceId, new CreateInterDcTunnelMashReply("vmAllocator"));
 	}

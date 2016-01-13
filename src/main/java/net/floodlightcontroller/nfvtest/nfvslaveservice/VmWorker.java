@@ -114,8 +114,8 @@ public class VmWorker extends MessageProcessor{
 						agent.addPort(chainConfig.bridges.get(i), "entry", hostServer.entryPort);
 						agent.upPort("entry", hostServer.entryIp);
 						hostServer.entryMac = agent.getMac(chainConfig.bridges.get(i), "entry");
-						agent.addPatchPort(chainConfig.bridges.get(i), hostServer.frontPortName, hostServer.patchPort, 
-								hostServer.rearPortName);
+						//agent.addPatchPort(chainConfig.bridges.get(i), hostServer.frontPortName, hostServer.patchPort, 
+						//		hostServer.rearPortName);
 						
 					}
 					if(i==chainConfig.bridges.size()-1){
@@ -123,8 +123,8 @@ public class VmWorker extends MessageProcessor{
 						agent.addPort(chainConfig.bridges.get(i), "exit", hostServer.exitPort);
 						agent.upPort("exit", hostServer.exitIp);
 						hostServer.exitMac = agent.getMac(chainConfig.bridges.get(i), "exit");
-						agent.addPatchPort(chainConfig.bridges.get(i), hostServer.rearPortName, hostServer.patchPort, 
-								hostServer.frontPortName);
+						//agent.addPatchPort(chainConfig.bridges.get(i), hostServer.rearPortName, hostServer.patchPort, 
+						//		hostServer.frontPortName);
 					}
 				}
 				
