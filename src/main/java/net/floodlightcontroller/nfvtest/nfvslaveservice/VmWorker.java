@@ -384,6 +384,25 @@ public class VmWorker extends MessageProcessor{
 				}
 			}
 			
+			if(vmInstance.operationIp!="nil"){
+				Element eOInterface = doc.createElement("interface");
+				eOInterface.setAttribute("type", "network");
+				
+				Element eOMac = doc.createElement("mac");
+				eOMac.setAttribute("address", vmInstance.operationMac);
+				eOInterface.appendChild(eOMac);
+				
+				Element eOSource = doc.createElement("source");
+				eOSource.setAttribute("network", vmInstance.serviceChainConfig.getOperationNetwork());
+				eOInterface.appendChild(eOSource);
+				
+				Element eOModle = doc.createElement("model");
+				eOModle.setAttribute("type", "virtio");
+				eOInterface.appendChild(eOModle);
+				
+				devices.appendChild(eOInterface);
+			}
+			
 			Element eMInterface = doc.createElement("interface");
 			eMInterface.setAttribute("type", "network");
 			
@@ -424,25 +443,6 @@ public class VmWorker extends MessageProcessor{
 				eInterface.appendChild(eModel);
 			
 				devices.appendChild(eInterface);
-			}
-			
-			if(vmInstance.operationIp!="nil"){
-				Element eOInterface = doc.createElement("interface");
-				eOInterface.setAttribute("type", "network");
-				
-				Element eOMac = doc.createElement("mac");
-				eOMac.setAttribute("address", vmInstance.operationMac);
-				eOInterface.appendChild(eOMac);
-				
-				Element eOSource = doc.createElement("source");
-				eOSource.setAttribute("network", vmInstance.serviceChainConfig.getOperationNetwork());
-				eOInterface.appendChild(eOSource);
-				
-				Element eOModle = doc.createElement("model");
-				eOModle.setAttribute("type", "virtio");
-				eOInterface.appendChild(eOModle);
-				
-				devices.appendChild(eOInterface);
 			}
 			
 			doc.getDocumentElement().normalize();
