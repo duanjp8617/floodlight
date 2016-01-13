@@ -505,6 +505,28 @@ public class HostAgent{
 		}
 	}
 	
+	public boolean createRouteToGateway(String destinationIp, String gatewayIp, String devName)throws
+		IOException, UserAuthException, TransportException{
+		int thirdDotPos=destinationIp.lastIndexOf(".");
+		String firstThree = destinationIp.substring(0, thirdDotPos);
+		String subnetAddr = firstThree+".0";
+		
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo route add -net "+subnetAddr+" netmask 255.255.255.0 gw "+gatewayIp
+				+" dev "+devName);
+		command.join(60, TimeUnit.SECONDS);
+	
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+	
+		}
+	}
+	
 	public boolean addPort(String bridgeName, String port, int ofPort)throws
 		IOException, UserAuthException, TransportException{
 	
