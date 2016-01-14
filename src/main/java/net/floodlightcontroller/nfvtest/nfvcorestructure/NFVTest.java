@@ -378,6 +378,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     	IpProtocol transportProtocol = IpProtocol.UDP;
     	TransportPort srcPort = udp_pkt.getSourcePort();
     	TransportPort dstPort = udp_pkt.getDestinationPort();
+    	
+    	System.out.println("sdn controller receives flow srcIp:"+srcIp.toString()+" srcPort:"+srcPort.toString()
+    	+" dstIp:"+dstIp.toString()+" dstPort:"+dstPort.toString());
 
         OFPort inPort = initialInPort;
         	

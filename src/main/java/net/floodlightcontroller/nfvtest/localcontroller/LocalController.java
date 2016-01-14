@@ -240,6 +240,7 @@ public class LocalController implements Runnable{
 	private void processPcscfPuller(){
 		String initMsg = pcscfPuller.recvStr();
 		if(initMsg.equals("PCSCFCONNECT")){
+			System.out.println("Receive connection request from pcscf");
 			String pcscfAddr = pcscfPuller.recvStr();
 			String splitResult[] = pcscfAddr.split("\\s+");
 			String pcscfIp = splitResult[0];
@@ -261,6 +262,10 @@ public class LocalController implements Runnable{
 			String exitFlowSrcAddr  = pcscfPuller.recvStr();
 			String exitFlowDstAddr  = pcscfPuller.recvStr();
 			String exitFlowSrcIp    = pcscfPuller.recvStr();
+			
+			System.out.println("entryFlowSrcAddr: "+entryFlowSrcAddr+" entryFlowDstDc: "+entryFlowDstDc
+					+" exitFlowSrcAddr: "+exitFlowSrcAddr+" exitFlowDstAddr"+exitFlowDstAddr
+					+" exitFlowSrcIp "+exitFlowSrcIp);
 			
 			synchronized(this){
 				this.entryFlowDstDcMap.put(entryFlowSrcAddr, Integer.parseInt(entryFlowDstDc));
@@ -580,6 +585,7 @@ public class LocalController implements Runnable{
 	public int[] getSrcDstPair(String srcAddr){
 		int srcDst[] = new int[2];
 		synchronized(this){
+			System.out.println("the entryFlow addr is:"+srcAddr);
 			int dstDcIndex = entryFlowDstDcMap.get(srcAddr).intValue();
 			int srcDcIndex = localcIndexMap.get(localIp).intValue();
 			srcDst[0] = srcDcIndex;
