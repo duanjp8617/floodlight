@@ -246,8 +246,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     @Override
     public void startUp(FloodlightModuleContext context) {
         floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
-        floodlightProvider.addOFMessageListener(OFType.FLOW_REMOVED, this);
-        floodlightProvider.addOFMessageListener(OFType.ERROR, this);
+        //floodlightProvider.addOFMessageListener(OFType.FLOW_REMOVED, this);
+        //floodlightProvider.addOFMessageListener(OFType.ERROR, this);
     }
     
     private net.floodlightcontroller.core.IListener.Command processPktIn(IOFSwitch sw, OFMessage msg, FloodlightContext cntx){
@@ -656,7 +656,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		return fmb.build();
     }
     
-    private net.floodlightcontroller.core.IListener.Command processPktRemoved(IOFSwitch sw, OFFlowRemoved msg){
+    /*private net.floodlightcontroller.core.IListener.Command processPktRemoved(IOFSwitch sw, OFFlowRemoved msg){
     	if (!msg.getCookie().equals(U64.of(8617))) {
 			return Command.CONTINUE;
 		}
@@ -687,14 +687,12 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     		//System.out.println("Flow on node "+managementIp+" is removed");
     	}
     	return Command.STOP;
-    }
+    }*/
     @Override
     public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
     	switch (msg.getType()) {
     	case PACKET_IN:
     		return this.processPktIn(sw,msg,cntx);
-    	case FLOW_REMOVED:
-    		return this.processPktRemoved(sw, (OFFlowRemoved)msg);
 		default:
 			return Command.CONTINUE;
     	}
