@@ -257,14 +257,14 @@ public class VmAllocator extends MessageProcessor {
 			String remotePortName = "ed"+Integer.toString(req.dstDcIndex)+"id"+Integer.toString(i);
 			
 			try {
-				edgeServerAgent.addPatchPort(bridge, localPortName, req.tunnelPortNum, remotePortName);
-				edgeServerAgent.addPatchPort(edgeBridge, remotePortName, tunnelPortNum, localPortName);
+				//edgeServerAgent.addPatchPort(bridge, localPortName, req.tunnelPortNum, remotePortName);
+				//edgeServerAgent.addPatchPort(edgeBridge, remotePortName, tunnelPortNum, localPortName);
 			} catch(Exception e){
 				e.printStackTrace();
 			}
 			
 			try {
-				edgeServerAgent.addFlow(edgeBridge, tunnelPortNum, req.tunnelPortNum);
+				//edgeServerAgent.addFlow(edgeBridge, tunnelPortNum, req.tunnelPortNum);
 			} catch(Exception e){
 				e.printStackTrace();
 			}

@@ -229,8 +229,8 @@ public class VmWorker extends MessageProcessor{
 				String exitPortName = Integer.toString(exitPortNum);
 				
 				
-				agent.addPatchPort(entryBridgeName, entryPortName, entryPortNum, exitPortName);
-				agent.addPatchPort(exitBridgeName , exitPortName,  exitPortNum,  entryPortName);
+				//agent.addPatchPort(entryBridgeName, entryPortName, entryPortNum, exitPortName);
+				//agent.addPatchPort(exitBridgeName , exitPortName,  exitPortNum,  entryPortName);
 				portList[0] = entryPortNum;
 				portList[1] = exitPortNum;
 				vmInstance.setPort(portList);
