@@ -210,19 +210,19 @@ public class VmAllocator extends MessageProcessor {
 			}
 		}
 		
-		/*for(int i=0; i<hostServerList.size(); i++){
+		for(int i=0; i<hostServerList.size(); i++){
 			HostServer hostServer = hostServerList.get(i);
 			ServiceChainConfig chainConfig = hostServer.serviceChainConfigMap.get("DATA");
 			HostAgent hostAgent = new HostAgent(hostServer.hostServerConfig);
 			try{
 				hostAgent.connect();
-				hostAgent.addFlowDstMac(chainConfig.bridges.get(0), hostServer.patchPort, hostServer.entryPort, hostServer.entryMac);
+				hostAgent.addFlowDstMac(chainConfig.bridges.get(0), hostServer.patchPort, hostServer.gatewayPort, hostServer.gatewayMac);
 				hostAgent.disconnect();
 			}
 			catch(Exception e){
 				e.printStackTrace();
 			}
-		}*/
+		}
 		
 		mh.sendTo(req.sourceId, new CreateInterDcTunnelMashReply("vmAllocator"));
 	}

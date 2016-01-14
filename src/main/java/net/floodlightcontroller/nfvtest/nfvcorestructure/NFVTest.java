@@ -319,6 +319,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
                 byte[] packetData = arpReply.serialize();
                 pob.setData(packetData);
                 sw.write(pob.build());
+                sw.flush();
     		}
     	}
     	else{
@@ -356,6 +357,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	            byte[] packetData = arpReply.serialize();
 	            pob.setData(packetData);
 	            sw.write(pob.build());
+	            sw.flush();
 			}
     	}
     }
@@ -459,6 +461,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 				}
 				
 				hitSwitch.write(flowMod);
+				hitSwitch.flush();
 			}
 			else{
 				//temporarily ignore this condition.
@@ -485,6 +488,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 							  OFPort.of(localPort));
 				}
 				hitSwitch.write(flowMod);
+				hitSwitch.flush();
 				
 				flowMatch = createMatch(nodeSwitch, OFPort.of(remotePort), srcIp,
 	  					                transportProtocol, srcPort);
@@ -492,6 +496,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 					                    MacAddress.of(currentNode.getMacAddress(0)),
 					                    OFPort.of(currentNode.getPort(0)));
 				nodeSwitch.write(flowMod);
+				nodeSwitch.flush();
 			}
 			
 			currentNode.addActiveFlow();
@@ -518,6 +523,10 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			OFFlowMod flowMod = createExitFlowMod(exitSwitch, flowMatch, MacAddress.of(inputHostServer.gatewayMac), 
 					OFPort.of(inputHostServer.patchPort), exitFlowSrcIp, exitFlowDstip, Integer.parseInt(exitFlowDstPort), "udp");
 			exitSwitch.write(flowMod);
+			exitSwitch.flush();
+			
+			//we need to add a flow rule here!
+			//localHostServer = vmAllocator.dpidHostServerMap.get(sw.getId());
 		}
 		else{
 			//Please route the flow to another datacenter
@@ -537,6 +546,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 					OFPort.of(interDcPort));
 			
 			exitSwitch.write(flowMod);
+			exitSwitch.flush();
 		}
     }
     
