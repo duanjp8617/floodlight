@@ -3,6 +3,9 @@ package net.floodlightcontroller.nfvtest.nfvcorestructure;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.projectfloodlight.openflow.types.DatapathId;
+
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
@@ -12,9 +15,6 @@ import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.*;
 public class NFVServiceChain {
 	
 	public final ServiceChainConfig serviceChainConfig;
-	
-	private final Map<String, NFVNode> entryMacNodeMap;
-	private final Map<String, NFVNode> exitMacNodeMap;
 	private final Map<String, NFVNode> managementIpNodeMap;
 
 	private final boolean[] scaleIndicators;
@@ -30,18 +30,11 @@ public class NFVServiceChain {
 	private int previousDpPaths[][][];
 	private int nextDpPaths[][][];
 	
+	private final Map<DatapathId, Map<Integer, NFVNode>> dpidNodeExitPortMap;
+	
 	NFVServiceChain(ServiceChainConfig serviceChainConfig){
 		this.serviceChainConfig = serviceChainConfig;
 		this.managementIpNodeMap = new HashMap<String, NFVNode>();
-		
-		if(serviceChainConfig.nVmInterface == 3){
-			this.entryMacNodeMap = new HashMap<String, NFVNode>();
-			this.exitMacNodeMap = new HashMap<String, NFVNode>();
-		}
-		else{
-			this.entryMacNodeMap = null;
-			this.exitMacNodeMap = null;
-		}
 		
 		this.workingNodeMaps = new ArrayList<Map<String, NFVNode>>();
 		this.bufferNodeQueues = new ArrayList<Deque<NFVNode>>();
@@ -59,6 +52,8 @@ public class NFVServiceChain {
 		for(int i=0; i<scaleIndicators.length; i++){
 			scaleIndicators[i] = false;
 		}
+		
+		this.dpidNodeExitPortMap = new HashMap<DatapathId, Map<Integer, NFVNode>>();
 	
 		this.scalingInterval = 0;
 		this.dpPaths = null;
@@ -176,21 +171,42 @@ public class NFVServiceChain {
 	public   void addToServiceChain(NFVNode node){
 		if(!this.managementIpNodeMap.containsKey(node.getManagementIp())){
 			this.managementIpNodeMap.put(node.getManagementIp(), node);
-			if(this.serviceChainConfig.nVmInterface == 3){
-				this.entryMacNodeMap.put(node.vmInstance.macList.get(0), node);
-				this.exitMacNodeMap.put(node.vmInstance.macList.get(1), node);
+			
+			DatapathId exitSwitchDpid = DatapathId.of(node.getBridgeDpid(1));
+			if(!this.dpidNodeExitPortMap.containsKey(exitSwitchDpid)){
+				this.dpidNodeExitPortMap.put(exitSwitchDpid, new HashMap<Integer, NFVNode>());
+				int exitPortNum = node.vmInstance.getPort(1);
+				this.dpidNodeExitPortMap.get(exitSwitchDpid).put(new Integer(exitPortNum), node);
+			}
+			else{
+				int exitPortNum = node.vmInstance.getPort(1);
+				this.dpidNodeExitPortMap.get(exitSwitchDpid).put(new Integer(exitPortNum), node);
 			}
 		}
 	}
 	
 	public   void removeFromServiceChain(NFVNode node){
 		
-		if(!this.managementIpNodeMap.containsKey(node.getManagementIp())){
+		if(this.managementIpNodeMap.containsKey(node.getManagementIp())){
 			this.managementIpNodeMap.remove(node.getManagementIp());
-			if(this.serviceChainConfig.nVmInterface == 3){
-				this.entryMacNodeMap.remove(node.vmInstance.macList.get(0));
-				this.exitMacNodeMap.remove(node.vmInstance.macList.get(1));
+			
+			DatapathId exitSwitchDpid = DatapathId.of(node.getBridgeDpid(1));
+			int exitPortNum = node.vmInstance.getPort(1);
+			this.dpidNodeExitPortMap.get(exitSwitchDpid).remove(new Integer(exitPortNum));
+		}
+	}
+	
+	public boolean exitFromNode(DatapathId dpid, int portNum){
+		if(this.dpidNodeExitPortMap.containsKey(dpid)){
+			if(this.dpidNodeExitPortMap.get(dpid).containsKey(new Integer(portNum))){
+				return true;
 			}
+			else{
+				return false;
+			}
+		}
+		else{
+			return false;
 		}
 	}
 	
@@ -238,40 +254,6 @@ public class NFVServiceChain {
 	
 	public   String getEntryDpid(){
 		return this.serviceChainConfig.bridges.get(0);
-	}
-	
-	public   String getDpidForMac(String mac){
-		if(this.serviceChainConfig.nVmInterface == 3){
-			if(this.entryMacNodeMap.containsKey(mac)){
-				return this.entryMacNodeMap.get(mac).vmInstance.bridgeDpidList.get(0);
-			}
-			else if(this.exitMacNodeMap.containsKey(mac)){
-				return this.exitMacNodeMap.get(mac).vmInstance.bridgeDpidList.get(1);
-			}
-			else {
-				return null;
-			}
-		}
-		else{
-			return null;
-		}
-	}
-	
-	public   boolean macOnRearSwitch(String mac){
-		boolean returnVal = false;
-		if(this.entryMacNodeMap.containsKey(mac)){
-			returnVal = false;
-		}
-		else if(this.exitMacNodeMap.containsKey(mac)){
-			NFVNode node = this.exitMacNodeMap.get(mac);
-			if(node.vmInstance.stageIndex == (node.vmInstance.serviceChainConfig.stages.size()-1)){
-				returnVal = true;
-			}
-			else{
-				returnVal = false;
-			}
-		}
-		return returnVal;
 	}
 	
 	public   void updateDataNodeStat(String managementIp, ArrayList<String> statList){

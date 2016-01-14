@@ -278,21 +278,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         OFPacketIn pi = (OFPacketIn)msg;
         if (eth.isBroadcast() || eth.isMulticast()) {
             if (pkt instanceof ARP) {   
-            	MacAddress srcMac = eth.getSourceMACAddress();
-            	String switchDpid = this.dpServiceChain.getDpidForMac(srcMac.toString());
-            	
-            	if(switchDpid != null){
-            		if(!this.dpServiceChain.macOnRearSwitch(srcMac.toString())){
-            			handleArp(eth, sw, pi);
-            			return Command.STOP;
-            		}
-            		else{
-            			return Command.CONTINUE;
-            		}
-            	}
-            	else{
-            		return Command.CONTINUE;
-            	}
+    			handleArp(eth, sw, pi);
+    			return Command.STOP;
             }
         } 
         
@@ -304,44 +291,92 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
        	 	}
         }
         
-        return Command.CONTINUE;
+        return Command.STOP;
     }
     
     private void handleArp(Ethernet eth, IOFSwitch sw, OFPacketIn pi){
+    	
+    	//Let's check which stage is this switch
+    	HashMap<DatapathId, Integer> dpidStageIndexMap = vmAllocator.dpidStageIndexMap;
+    	HostServer hostServer = vmAllocator.dpidHostServerMap.get(sw.getId());
+    	int switchStageIndex = dpidStageIndexMap.get(sw.getId()).intValue();
+    	String switchDpid = hostServer.serviceChainDpidMap.get("DATA").get(switchStageIndex);
+    	OFPort inPort = pi.getMatch().get(MatchField.IN_PORT);
+    	
     	ARP arpRequest = (ARP) eth.getPayload();
-        MacAddress srcMac = eth.getSourceMACAddress();
-
-        String switchDpid = this.dpServiceChain.getDpidForMac(srcMac.toString());
-        if(switchDpid != null){
-        	IPacket arpReply = new Ethernet()
-            .setSourceMACAddress(MacAddress.of(switchDpid))
-            .setDestinationMACAddress(eth.getSourceMACAddress())
-            .setEtherType(EthType.ARP)
-            .setVlanID(eth.getVlanID())
-            .setPriorityCode(eth.getPriorityCode())
-            .setPayload(
-                new ARP()
-                .setHardwareType(ARP.HW_TYPE_ETHERNET)
-                .setProtocolType(ARP.PROTO_TYPE_IP)
-                .setHardwareAddressLength((byte) 6)
-                .setProtocolAddressLength((byte) 4)
-                .setOpCode(ARP.OP_REPLY)
-                .setSenderHardwareAddress(MacAddress.of(switchDpid))
-                .setSenderProtocolAddress(arpRequest.getTargetProtocolAddress())
-                .setTargetHardwareAddress(eth.getSourceMACAddress())
-                .setTargetProtocolAddress(arpRequest.getSenderProtocolAddress()));
-        	
-        	OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
-        	List<OFAction> actions = new ArrayList<OFAction>();
-        	OFPort outPort = pi.getMatch().get(MatchField.IN_PORT);
-            actions.add(sw.getOFFactory().actions().buildOutput().setPort(outPort).setMaxLen(Integer.MAX_VALUE).build());
-            pob.setActions(actions);
-            pob.setBufferId(OFBufferId.NO_BUFFER);
-            pob.setInPort(OFPort.ANY);
-            byte[] packetData = arpReply.serialize();
-            pob.setData(packetData);
-            sw.write(pob.build());
-        }
+    	
+    	if( (switchStageIndex == 0)&&(inPort.getPortNumber() == hostServer.gatewayPort) ){
+    		//We got ARP request from the gatewayPort, check whether we need to answer this arp request.
+    		IPv4Address targetAddr = arpRequest.getTargetProtocolAddress();
+    		if(targetAddr.equals(IPv4Address.of(hostServer.entryIp))){
+    			//The ARP request comes from the traffic generator, handle it.
+    			IPacket arpReply = new Ethernet()
+	            .setSourceMACAddress(MacAddress.of(switchDpid))
+	            .setDestinationMACAddress(eth.getSourceMACAddress())
+	            .setEtherType(EthType.ARP)
+	            .setVlanID(eth.getVlanID())
+	            .setPriorityCode(eth.getPriorityCode())
+	            .setPayload(
+	                new ARP()
+	                .setHardwareType(ARP.HW_TYPE_ETHERNET)
+	                .setProtocolType(ARP.PROTO_TYPE_IP)
+	                .setHardwareAddressLength((byte) 6)
+	                .setProtocolAddressLength((byte) 4)
+	                .setOpCode(ARP.OP_REPLY)
+	                .setSenderHardwareAddress(MacAddress.of(switchDpid))
+	                .setSenderProtocolAddress(arpRequest.getTargetProtocolAddress())
+	                .setTargetHardwareAddress(eth.getSourceMACAddress())
+	                .setTargetProtocolAddress(arpRequest.getSenderProtocolAddress()));
+    			
+    			OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+            	List<OFAction> actions = new ArrayList<OFAction>();
+            	OFPort outPort = pi.getMatch().get(MatchField.IN_PORT);
+                actions.add(sw.getOFFactory().actions().buildOutput().setPort(outPort).setMaxLen(Integer.MAX_VALUE).build());
+                pob.setActions(actions);
+                pob.setBufferId(OFBufferId.NO_BUFFER);
+                pob.setInPort(OFPort.ANY);
+                byte[] packetData = arpReply.serialize();
+                pob.setData(packetData);
+                sw.write(pob.build());
+    		}
+    	}
+    	else{
+    		boolean flag = false;
+			synchronized(this.dpServiceChain){
+				//we check whether the arp comes from the exit end of a middlebox
+				flag = this.dpServiceChain.exitFromNode(DatapathId.of(switchDpid), inPort.getPortNumber());
+			}
+			if(flag == true){
+				IPacket arpReply = new Ethernet()
+	            .setSourceMACAddress(MacAddress.of(switchDpid))
+	            .setDestinationMACAddress(eth.getSourceMACAddress())
+	            .setEtherType(EthType.ARP)
+	            .setVlanID(eth.getVlanID())
+	            .setPriorityCode(eth.getPriorityCode())
+	            .setPayload(
+	                new ARP()
+	                .setHardwareType(ARP.HW_TYPE_ETHERNET)
+	                .setProtocolType(ARP.PROTO_TYPE_IP)
+	                .setHardwareAddressLength((byte) 6)
+	                .setProtocolAddressLength((byte) 4)
+	                .setOpCode(ARP.OP_REPLY)
+	                .setSenderHardwareAddress(MacAddress.of(switchDpid))
+	                .setSenderProtocolAddress(arpRequest.getTargetProtocolAddress())
+	                .setTargetHardwareAddress(eth.getSourceMACAddress())
+	                .setTargetProtocolAddress(arpRequest.getSenderProtocolAddress()));
+	        	
+	        	OFPacketOut.Builder pob = sw.getOFFactory().buildPacketOut();
+	        	List<OFAction> actions = new ArrayList<OFAction>();
+	        	OFPort outPort = pi.getMatch().get(MatchField.IN_PORT);
+	            actions.add(sw.getOFFactory().actions().buildOutput().setPort(outPort).setMaxLen(Integer.MAX_VALUE).build());
+	            pob.setActions(actions);
+	            pob.setBufferId(OFBufferId.NO_BUFFER);
+	            pob.setInPort(OFPort.ANY);
+	            byte[] packetData = arpReply.serialize();
+	            pob.setData(packetData);
+	            sw.write(pob.build());
+			}
+    	}
     }
     
     private void serviceChainLoadBalancing(IOFSwitch sw, FloodlightContext cntx, OFPort initialInPort){
