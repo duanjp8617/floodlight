@@ -257,20 +257,41 @@ public class LocalController implements Runnable{
 			String pcscfIpPort      = pcscfPuller.recvStr();
 			
 			String entryFlowSrcAddr = pcscfPuller.recvStr();
+			
+			String split[] = entryFlowSrcAddr.split(":");
+			String entryMinorFlowSrcAddr = split[0]+":"+new Integer(Integer.parseInt(split[1])+1).toString();
+			
 			String entryFlowDstDc   = pcscfPuller.recvStr();
 			
 			String exitFlowSrcAddr  = pcscfPuller.recvStr();
+			
+			split = exitFlowSrcAddr.split(":");
+			String exitMinorFlowSrcAddr = split[0]+":"+new Integer(Integer.parseInt(split[1])+1).toString();
+			
 			String exitFlowDstAddr  = pcscfPuller.recvStr();
+			
+			split = exitFlowDstAddr.split(":");
+			String exitMinorFlowDstAddr = split[0]+":"+new Integer(Integer.parseInt(split[1])+1).toString();
+			
 			String exitFlowSrcIp    = pcscfPuller.recvStr();
 			
 			System.out.println("entryFlowSrcAddr: "+entryFlowSrcAddr+" entryFlowDstDc: "+entryFlowDstDc
 					+" exitFlowSrcAddr: "+exitFlowSrcAddr+" exitFlowDstAddr"+exitFlowDstAddr
 					+" exitFlowSrcIp "+exitFlowSrcIp);
 			
+			System.out.println("entryMinorFlowSrcAddr: "+entryMinorFlowSrcAddr+" entryFlowDstDc: "+entryFlowDstDc
+					+" exitMinorFlowSrcAddr: "+exitMinorFlowSrcAddr+" exitMinorFlowDstAddr"+exitMinorFlowDstAddr
+					+" exitFlowSrcIp "+exitFlowSrcIp);
+			
 			synchronized(this){
 				this.entryFlowDstDcMap.put(entryFlowSrcAddr, Integer.parseInt(entryFlowDstDc));
+				this.entryFlowDstDcMap.put(entryMinorFlowSrcAddr, Integer.parseInt(entryFlowDstDc));
+				
 				this.exitFLowDstAddrMap.put(exitFlowSrcAddr, exitFlowDstAddr);
+				this.exitFLowDstAddrMap.put(exitMinorFlowSrcAddr, exitMinorFlowDstAddr);
+				
 				this.exitFlowSrcIpMap.put(exitFlowSrcAddr, exitFlowSrcIp);
+				this.exitFlowSrcIpMap.put(exitMinorFlowDstAddr, exitFlowSrcIp);
 			}
 			
 			Socket socket = this.pcscfPusherMap.get(pcscfIpPort);
@@ -284,10 +305,21 @@ public class LocalController implements Runnable{
 			String entryFlowSrcAddr = pcscfPuller.recvStr();
 			String exitFlowSrcAddr  = pcscfPuller.recvStr();
 			
+			String split[] = entryFlowSrcAddr.split(":");
+			String entryMinorFlowSrcAddr = split[0]+":"+new Integer(Integer.parseInt(split[1])+1).toString();
+			
+			split = exitFlowSrcAddr.split(":");
+			String exitMinorFlowSrcAddr = split[0]+":"+new Integer(Integer.parseInt(split[1])+1).toString();
+			
 			synchronized(this){
 				this.entryFlowDstDcMap.remove(entryFlowSrcAddr);
+				this.entryFlowDstDcMap.remove(entryMinorFlowSrcAddr);
+				
 				this.exitFLowDstAddrMap.remove(exitFlowSrcAddr);
+				this.exitFLowDstAddrMap.remove(exitMinorFlowSrcAddr);
+				
 				this.exitFlowSrcIpMap.remove(exitFlowSrcAddr);
+				this.exitFlowSrcIpMap.remove(exitMinorFlowSrcAddr);
 			}
 			
 			Socket socket = this.pcscfPusherMap.get(pcscfIpPort);
