@@ -588,4 +588,19 @@ public class LocalController implements Runnable{
 		return srcDst;
 	}
 	
+	public String getExitFlowDstAddr(String exitFlowSrcAddr){
+		String returnVal = null;
+		synchronized(this){
+			returnVal = new String(this.exitFLowDstAddrMap.get(exitFlowSrcAddr));
+		}
+		return returnVal;
+	}
+	
+	public String getExitFlowSrcIp(String exitFlowSrcAddr){
+		String returnVal = null;
+		synchronized(this){
+			returnVal = new String(this.exitFlowSrcIpMap.get(exitFlowSrcAddr));
+		}
+		return returnVal;
+	}
 }
