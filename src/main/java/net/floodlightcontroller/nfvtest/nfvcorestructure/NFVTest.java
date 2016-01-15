@@ -139,16 +139,17 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         logger.info("start testing network xml");
 
         //create controller config and host server configi
-		String gIp = "202.45.128.147";
-		String mIp = "202.45.128.*";
-		String pIp = "202.45.128.*";
-		String iIp = "202.45.128.*";
-		String userName = "*";
+        int bladeIndex = 1;
+        String userName = "*";
 		String password = "*";
-		String entryIp = "10.*.1.1";
-		String gatewayIp = "10.*.5.1";
-		String exitIp  = "10.*.9.1";
-		int middle = 160+0;
+		String gIp = "202.45.128.147";
+		String mIp = "202.45.128."+new Integer(145+bladeIndex).toString();
+		String pIp = "202.45.128."+new Integer(145+bladeIndex).toString();
+		String iIp = "202.45.128."+new Integer(145+bladeIndex).toString();
+		String entryIp = "10."+new Integer(bladeIndex).toString()+".1.1";
+		String gatewayIp = "10."+new Integer(bladeIndex).toString()+".5.1";
+		String exitIp  = "10."+new Integer(bladeIndex).toString()+".9.1";
+		int middle = 160+bladeIndex;
 		ControllerConfig controllerConfig = 
 				new ControllerConfig(mIp, "/home/net/base-env", "basexml.xml", "networkxml.xml");
 		HostServerConfig hostServerConfig = 

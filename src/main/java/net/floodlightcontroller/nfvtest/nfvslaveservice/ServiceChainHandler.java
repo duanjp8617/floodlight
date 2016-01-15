@@ -306,6 +306,18 @@ public class ServiceChainHandler extends MessageProcessor {
 		
 		int newDpProvision[] = req.getLocalDpProvision();
 		int newDpPaths[][][] = req.getDpPaths();
+		
+		for(int i=0; i<newDpPaths.length; i++){
+			String print = "";
+			for(int j=0; j<newDpPaths[i].length; j++){
+				for(int k=0; k<newDpPaths[i][j].length; k++){
+					print = print + new Integer(newDpPaths[i][j][k]).toString() + " ";
+				}
+				print = print + ": ";
+			}
+			System.out.println(print);
+		}
+		
 		NFVServiceChain dpServiceChain = serviceChainMap.get("DATA");
 		dpServiceChain.addNextDpPaths(newDpPaths);
 		handleProactiveProvision(dpServiceChain, newDpProvision);
