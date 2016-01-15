@@ -409,8 +409,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     		
     		byte byteArray[] = dstIp.getBytes();
     		srcDstPair = new int[2];
-    		srcDstPair[0] = (int)byteArray[0];
-    		srcDstPair[1] = (int)byteArray[1];
+    		srcDstPair[0] = (int)byteArray[1];
+    		srcDstPair[1] = (int)byteArray[0];
     		
     		scalingInterval = dstPort.getPort();
     		int currentScalingInterval = this.dpServiceChain.getScalingInterval();
