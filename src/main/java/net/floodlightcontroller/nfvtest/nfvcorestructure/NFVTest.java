@@ -525,8 +525,22 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			localHostServer = currentNode.vmInstance.hostServer;
 		}
 		
-		if(stageList.get(stageList.size()-1) == dpPaths.length-1){
+		if(stageList.get(stageList.size()-1).intValue() == dpPaths.length-1){
 			//This is the last stage
+			String print="the stage list is: ";
+			for(int i=0; i<stageList.size(); i++){
+				print  = print + stageList.get(i).toString()+" ";
+			}
+			System.out.println(print);
+			System.out.println(" the src is: "+new Integer(srcDstPair[0]).toString()+" the dst is: "+new Integer(srcDstPair[1]).toString());
+			print = "the path is: ";
+			for(int i=0; i<dpPaths.length; i++){
+				print = print + new Integer(dpPaths[i])+" ";
+			}
+			System.out.println(print);
+					
+			
+			
 			String exitFlowSrcAddr = srcIp.toString()+":"+srcPort.toString();
 			System.out.println(" exitFlowSrcAddr: "+exitFlowSrcAddr+" is going to access the map");
 			String exitFlowDstAddr = localController.getExitFlowDstAddr(exitFlowSrcAddr);
