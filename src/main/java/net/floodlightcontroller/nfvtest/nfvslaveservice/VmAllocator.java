@@ -248,6 +248,7 @@ public class VmAllocator extends MessageProcessor {
 		int tunnelPortNum = req.tunnelPortNum+1;
 		int baseVniIndex = req.baseVniIndex;
 		
+		ArrayList<Integer> patchPortList = new ArrayList<Integer>();
 		edgeServer.dcIndexPortMap.put(new Integer(req.dstDcIndex), new Integer(req.tunnelPortNum));
 		edgeServer.portDcIndexMap.put(new Integer(req.tunnelPortNum), new Integer(req.dstDcIndex));
 		List<String> dpBridgeList = edgeServer.serviceChainConfigMap.get("DATA").bridges;
@@ -269,8 +270,10 @@ public class VmAllocator extends MessageProcessor {
 				e.printStackTrace();
 			}
 			
+			patchPortList.add(new Integer(tunnelPortNum));
 			tunnelPortNum += 1;
 		}
+		edgeServer.dcIndexPatchPortListMap.put(new Integer(req.dstDcIndex), patchPortList);
 		
 		for(int i=1; i<this.hostServerList.size(); i++){
 			HostServer workingServer = this.hostServerList.get(i);

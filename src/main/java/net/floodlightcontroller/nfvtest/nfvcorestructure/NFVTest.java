@@ -442,6 +442,20 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		IOFSwitch hitSwitch = sw;
 		HostServer localHostServer = vmAllocator.dpidHostServerMap.get(hitSwitch.getId());
 		
+		if(stageList.get(0).intValue()!=0){
+			//we got a flow coming from another datacenter, let's route the flow to 
+			//proper location
+			int incomingDcIndex = inputHostServer.portDcIndexMap.get(new Integer(initialInPort.getPortNumber()));
+			int toThisPort = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
+			Match flowMatch = createMatch(sw, initialInPort, srcIp, transportProtocol, srcPort);
+			OFFlowMod flowMod = createFlowModWithNoMac(sw, flowMatch, OFPort.of(toThisPort));
+			sw.write(flowMod);
+			sw.flush();
+			hitSwitch = this.switchService.getSwitch(
+					DatapathId.of(inputHostServer.serviceChainDpidMap.get("DATA").get(stageList.get(0))));
+			inPort = OFPort.of(inputHostServer.dcIndexPortMap.get(incomingDcIndex));
+		}
+		
 		for(int i=0; i<routeList.size(); i++){
 			NFVNode currentNode = routeList.get(i);
 			IOFSwitch nodeSwitch = this.switchService.getSwitch(DatapathId.of(currentNode.getBridgeDpid(0)));
@@ -537,6 +551,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			int nextDcIndex = dpPaths[lastStage+1];
 			
 			int interDcPort = lastNode.vmInstance.hostServer.dcIndexPortMap.get(new Integer(nextDcIndex)).intValue();
+			System.out.println("the port to next datacenter is: "+new Integer(interDcPort).toString());
 			
 			//Now create a flow rule to route the flow to that datacenter
 			IOFSwitch exitSwitch = this.switchService.getSwitch(DatapathId.of(lastNode.getBridgeDpid(1)));
@@ -577,6 +592,28 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		OFOxms oxms = sw.getOFFactory().oxms();
 		
 		actionList.add(actions.setField(oxms.ethDst(dstMac)));
+		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
+		
+		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+		fmb.setHardTimeout(0);
+		fmb.setIdleTimeout(15);
+		fmb.setBufferId(OFBufferId.NO_BUFFER);
+		fmb.setCookie(U64.of(8617));
+		fmb.setPriority(5);
+		fmb.setOutPort(outPort);
+		fmb.setActions(actionList);
+		fmb.setMatch(flowMatch);
+		
+		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
+		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
+		fmb.setFlags(sfmf);
+		
+		return fmb.build();
+    }
+    
+    private OFFlowMod createFlowModWithNoMac(IOFSwitch sw, Match flowMatch, OFPort outPort){
+		List<OFAction> actionList = new ArrayList<OFAction>();	
+		OFActions actions = sw.getOFFactory().actions();
 		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
 		
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();

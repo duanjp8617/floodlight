@@ -181,6 +181,8 @@ public class HostServer {
 	public final Map<Integer, Integer> dcIndexPortMap;
 	public final Map<Integer, Integer> portDcIndexMap;
 	
+	public final HashMap<Integer, ArrayList<Integer>> dcIndexPatchPortListMap;
+	
 	public HostServer(ControllerConfig controllerConfig,
 			   		  HostServerConfig hostServerConfig,
 			   		  Map<String, ServiceChainConfig> serviceChainConfigMap,
@@ -202,6 +204,8 @@ public class HostServer {
 		
 		this.dcIndexPortMap = new HashMap<Integer, Integer>();
 		this.portDcIndexMap = new HashMap<Integer, Integer>();
+		
+		this.dcIndexPatchPortListMap = new HashMap<Integer, ArrayList<Integer>>();
 		
 		for(String chainName : this.serviceChainConfigMap.keySet()){
 			
