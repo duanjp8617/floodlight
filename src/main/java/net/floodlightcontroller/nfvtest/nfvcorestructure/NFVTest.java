@@ -415,6 +415,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     		scalingInterval = dstPort.getPort();
     		int currentScalingInterval = this.dpServiceChain.getScalingInterval();
     		
+    		System.out.println("got a flow from another datacenter, src dc: "+new Integer(srcDstPair[0]).toString()+
+    				" dst dc: "+new Integer(srcDstPair[1]).toString() + " scalingInterval: "+new Integer(scalingInterval).toString());
+    		
     		//the scaling interval loops through 0-3. 
     		if(scalingInterval == currentScalingInterval){
     			dpPaths = this.dpServiceChain.getCurrentDpPaths(srcDstPair[0], srcDstPair[1]);
@@ -525,6 +528,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		if(stageList.get(stageList.size()-1) == dpPaths.length-1){
 			//This is the last stage
 			String exitFlowSrcAddr = srcIp.toString()+":"+srcPort.toString();
+			System.out.println(" exitFlowSrcAddr: "+exitFlowSrcAddr+" is going to access the map");
 			String exitFlowDstAddr = localController.getExitFlowDstAddr(exitFlowSrcAddr);
 			String exitFlowSrcIp   = localController.getExitFlowSrcIp(exitFlowSrcAddr);
 			String sArray[] = exitFlowDstAddr.split(":");
