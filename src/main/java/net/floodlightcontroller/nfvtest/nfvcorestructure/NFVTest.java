@@ -451,8 +451,18 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			//proper location
 			int incomingDcIndex = inputHostServer.portDcIndexMap.get(new Integer(initialInPort.getPortNumber()));
 			int toThisPort = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
+			
+			System.out.println("got a flow comming from datacenter: "+new Integer(incomingDcIndex).toString());
+			String printSth = "the patch port list is :";
+			ArrayList<Integer> array = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex));
+			for(int i=0; i<array.size(); i++){
+				printSth = printSth+array.get(i).toString()+" ";
+			}
+			System.out.println(printSth);
 			System.out.println("The flow comes from datacenter: "+new Integer(incomingDcIndex).toString());
 			System.out.println("The flow will be sent to this port: "+new Integer(toThisPort).toString());
+			
+			
 			Match flowMatch = createMatch(sw, initialInPort, srcIp, transportProtocol, srcPort);
 			OFFlowMod flowMod = createFlowModWithNoMac(sw, flowMatch, OFPort.of(toThisPort));
 			sw.write(flowMod);
