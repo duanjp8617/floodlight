@@ -291,7 +291,7 @@ public class LocalController implements Runnable{
 				this.exitFLowDstAddrMap.put(exitMinorFlowSrcAddr, exitMinorFlowDstAddr);
 				
 				this.exitFlowSrcIpMap.put(exitFlowSrcAddr, exitFlowSrcIp);
-				this.exitFlowSrcIpMap.put(exitMinorFlowDstAddr, exitFlowSrcIp);
+				this.exitFlowSrcIpMap.put(exitMinorFlowSrcAddr, exitFlowSrcIp);
 			}
 			
 			Socket socket = this.pcscfPusherMap.get(pcscfIpPort);
