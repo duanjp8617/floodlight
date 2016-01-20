@@ -3,6 +3,8 @@ package net.floodlightcontroller.nfvtest.nfvutils;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
+import org.projectfloodlight.openflow.types.IPv4Address;
+
 import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.userauth.UserAuthException;
 import net.schmizz.sshj.xfer.FileSystemFile;
@@ -473,6 +475,33 @@ public class HostAgent{
 				" in_port="+Integer.toString(inPort)+" actions=output:"+Integer.toString(outPort));
 		final Session.Command command = session.exec("sudo ovs-ofctl add-flow "+bridgeName+
 				" in_port="+Integer.toString(inPort)+",actions=output:"+Integer.toString(outPort));
+		command.join(60, TimeUnit.SECONDS);
+	
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+	
+		}
+	}
+	
+	public boolean addStatFlow(String bridgeName, int inPort, int outPort, int srcDcIndex, int dstDcIndex)throws
+		IOException, UserAuthException, TransportException{
+	
+		byte newDstAddr[] = new byte[4];
+		newDstAddr[0] = (byte)(dstDcIndex & 0x000000FF);
+		newDstAddr[1] = (byte)(srcDcIndex & 0x000000FF);
+		newDstAddr[2] = 0;
+		newDstAddr[3] = 0;
+		
+		final Session session = sshClient.startSession();
+		
+		final Session.Command command = session.exec("sudo ovs-ofctl add-flow "+bridgeName+
+				" in_port="+Integer.toString(inPort)+",nw_dst="+IPv4Address.of(newDstAddr).toString()
+				+",actions=output:"+Integer.toString(outPort));
 		command.join(60, TimeUnit.SECONDS);
 	
 		if(command.getExitStatus().intValue()==0){

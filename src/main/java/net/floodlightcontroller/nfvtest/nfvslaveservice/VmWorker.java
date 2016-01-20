@@ -123,6 +123,12 @@ public class VmWorker extends MessageProcessor{
 						agent.addPatchPort(chainConfig.bridges.get(i), hostServer.frontPortName, hostServer.patchPort, 
 								hostServer.rearPortName);
 						
+						agent.addPatchPort(chainConfig.bridges.get(i), "edgeIn", hostServer.statInPort, "statIn");
+						agent.addPatchPort("stat-br", "statIn", hostServer.statInPort, "edgeIn");
+						
+						agent.addPatchPort(chainConfig.bridges.get(i), "edgeOut", hostServer.statOutPort, "statOut");
+						agent.addPatchPort("stat-br", "statOut", hostServer.statOutPort, "edgeOut");
+						
 					}
 					if(i==chainConfig.bridges.size()-1){
 						//create an exit ip for the last bridge

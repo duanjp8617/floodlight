@@ -217,6 +217,7 @@ public class VmAllocator extends MessageProcessor {
 			try{
 				hostAgent.connect();
 				hostAgent.addFlowDstMac(chainConfig.bridges.get(0), hostServer.patchPort, hostServer.gatewayPort, hostServer.gatewayMac);
+				hostAgent.addStatFlow("stat-br", hostServer.statInPort, hostServer.statOutPort, srcIndex, dstIndex);
 				hostAgent.disconnect();
 			}
 			catch(Exception e){
