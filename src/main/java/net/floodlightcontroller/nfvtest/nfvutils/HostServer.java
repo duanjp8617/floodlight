@@ -183,6 +183,10 @@ public class HostServer {
 	
 	public final HashMap<Integer, ArrayList<Integer>> dcIndexPatchPortListMap;
 	
+	public final String statBridgeDpid;
+	public final int statInPort;
+	public final int statOutPort;
+	
 	public HostServer(ControllerConfig controllerConfig,
 			   		  HostServerConfig hostServerConfig,
 			   		  Map<String, ServiceChainConfig> serviceChainConfigMap,
@@ -231,6 +235,10 @@ public class HostServer {
 				this.serviceChainONetworkMap.put(chainName, null);
 			}
 		}
+		
+		this.statBridgeDpid = this.macAllocator.getMac();
+		this.statInPort = 6;
+		this.statOutPort = 5;
 		
 		this.tunnelPortMap = new HashMap<String, Integer>();
 		this.portTunnelMap = new HashMap<Integer, String>();

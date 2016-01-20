@@ -98,6 +98,12 @@ public class VmWorker extends MessageProcessor{
 			//The following loop initialize the runtime environment in host server.
 			//All used service chains will be initialized in turns.
 			ArrayList<String> baseImgList = new ArrayList<String>();
+			
+			agent.createBridge("stat-br");
+			agent.setBridgeDpid("stat-br", 
+					            hostServer.statBridgeDpid);
+			agent.setController("stat-br", hostServer.controllerConfig.managementIp);
+			
 			for(String chainName : hostServer.serviceChainConfigMap.keySet()){
 				ServiceChainConfig chainConfig = hostServer.serviceChainConfigMap.get(chainName);
 				
