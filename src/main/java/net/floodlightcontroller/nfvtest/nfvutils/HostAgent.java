@@ -500,7 +500,7 @@ public class HostAgent{
 		final Session session = sshClient.startSession();
 		
 		final Session.Command command = session.exec("sudo ovs-ofctl add-flow "+bridgeName+
-				" in_port="+Integer.toString(inPort)+",nw_dst="+IPv4Address.of(newDstAddr).toString()
+				" ip,nw_dst="+IPv4Address.of(newDstAddr).toString()
 				+",actions=output:"+Integer.toString(outPort));
 		command.join(60, TimeUnit.SECONDS);
 	
