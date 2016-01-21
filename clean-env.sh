@@ -1,3 +1,4 @@
+sudo ovs-vsctl del-br stat-br
 sudo ovs-vsctl del-br DATA-br0
 sudo ovs-vsctl del-br DATA-br1
 sudo ovs-vsctl del-br DATA-br2
