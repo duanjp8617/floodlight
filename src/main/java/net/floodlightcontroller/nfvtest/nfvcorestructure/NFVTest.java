@@ -478,20 +478,29 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			//create flow rules to route the flow from hitSwitch to nodeSwitch.
 			
 			if(hitSwitch.getId().getLong() == nodeSwitch.getId().getLong()){
-				Match flowMatch = createMatch(hitSwitch, inPort, srcIp, transportProtocol, srcPort);
-				OFFlowMod flowMod = null;
 				if(stageList.get(i).intValue() == 0){
-					flowMod = createEntryFlowMod(hitSwitch, flowMatch, MacAddress.of(currentNode.getMacAddress(0)), 
-							OFPort.of(currentNode.getPort(0)), srcDstPair[0], srcDstPair[1], scalingInterval, "udp");
+					Match flowMatch = createMatch(hitSwitch, inPort, srcIp, transportProtocol, srcPort);
+					OFFlowMod flowMod = createEntryFlowMod(hitSwitch, flowMatch, MacAddress.of(currentNode.getMacAddress(0)), 
+							OFPort.of(inputHostServer.statInPort), srcDstPair[0], srcDstPair[1], scalingInterval, "udp");
+					hitSwitch.write(flowMod);
+					hitSwitch.flush();
+					
+					flowMatch = createMatch(hitSwitch, OFPort.of(inputHostServer.statOutPort), srcIp, transportProtocol, srcPort);
+					flowMod = createFlowMod(hitSwitch, flowMatch, 
+					                          MacAddress.of(currentNode.getMacAddress(0)),
+											  OFPort.of(currentNode.getPort(0)));
+					hitSwitch.write(flowMod);
+					hitSwitch.flush();
+					
 				}
 				else{
-					flowMod = createFlowMod(hitSwitch, flowMatch, 
+					Match flowMatch = createMatch(hitSwitch, inPort, srcIp, transportProtocol, srcPort);
+					OFFlowMod flowMod = createFlowMod(hitSwitch, flowMatch, 
 	                          MacAddress.of(currentNode.getMacAddress(0)),
 							  OFPort.of(currentNode.getPort(0)));
+					hitSwitch.write(flowMod);
+					hitSwitch.flush();
 				}
-				
-				hitSwitch.write(flowMod);
-				hitSwitch.flush();
 			}
 			else{
 				//temporarily ignore this condition.
