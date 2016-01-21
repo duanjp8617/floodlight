@@ -109,7 +109,7 @@ public class LocalController implements Runnable{
 		this.exitFlowSrcIpMap   = new HashMap<String, String>(); 
 		this.chainHandler = chainHandler;
 		
-		this.dpTrafficPuller = new DpTrafficPuller(2000);
+		this.dpTrafficPuller = new DpTrafficPuller(2000, context);
 	}
 	
 	public int getCurrentDcIndex(){
