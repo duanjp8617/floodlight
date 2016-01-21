@@ -59,6 +59,8 @@ public class LocalController implements Runnable{
 	
 	private String entryIp;
 	
+	private DpTrafficPuller dpTrafficPuller;
+	
 	//all the following 3 maps are indexed using src address, which will never be changed through
 	//out the service chain path.
 	private HashMap<String, Integer> entryFlowDstDcMap;   //contains the exit datacenter for the entry flow
@@ -106,6 +108,8 @@ public class LocalController implements Runnable{
 		this.exitFLowDstAddrMap = new HashMap<String, String>();
 		this.exitFlowSrcIpMap   = new HashMap<String, String>(); 
 		this.chainHandler = chainHandler;
+		
+		this.dpTrafficPuller = new DpTrafficPuller(2000);
 	}
 	
 	public int getCurrentDcIndex(){
@@ -194,6 +198,9 @@ public class LocalController implements Runnable{
 		mh.sendTo("chainHandler", new CreateInterDcTunnelMash("chainHandler", localIp, 400, localcIndexMap));
 		schSync.recvStr();
 		schSync.send("", 0);
+		
+		Thread dpTrafficPullerThread = new Thread(dpTrafficPuller);
+		dpTrafficPullerThread.start();
 		
 		localLoop();
 	}
