@@ -12,11 +12,16 @@ public class DpTrafficPuller implements Runnable{
 	private volatile boolean quit;
 	private Context context;
 	private Socket socket;
+	private HashMap<Integer, Integer> map;
+    private HashMap<Integer, Integer> previousMap;
+	
 	
 	public DpTrafficPuller(int pullInterval, Context context){
 		this.pullInterval = pullInterval;
 		this.quit = false;
 		this.socket = context.socket(ZMQ.PUSH);
+		this.map = new HashMap<Integer, Integer>();
+		this.previousMap = new HashMap<Integer, Integer>();
 	}
 	
 	public void quit(){
@@ -46,25 +51,24 @@ public class DpTrafficPuller implements Runnable{
 				e.printStackTrace();
 			}
 	        BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
+	        
+	        
+	        this.socket.send("DATA", ZMQ.SNDMORE);
+	        this.socket.send(new Integer(this.pullInterval).toString(), ZMQ.SNDMORE);
 	        String line = null;
 	        
-	        //this.socket.send("DATA", ZMQ.SNDMORE);
-	        //this.socket.send(new Integer(this.pullInterval).toString(), ZMQ.SNDMORE);
-	        HashMap<Integer, String> map = new HashMap<Integer, String>();
 	        while (true) {
 	            try {
 					line = r.readLine();
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+	            
 	            if (line == null){ 
 	            	break; 
 	            }
 	            else{
 	            	if(line.indexOf("ip,nw_dst=")!=-1){
-	            		 System.out.println(line);
-	            		 
 	            		 int startPos = line.indexOf("ip,nw_dst=");
 	            		 startPos += 10;
 	            		 int endPos = line.indexOf("actions=");
@@ -79,18 +83,19 @@ public class DpTrafficPuller implements Runnable{
 	            		 int byteEnd   = line.indexOf(", idle_age");
 	            		 String n_bytes = line.substring(byteStart, byteEnd);
 	            		 
-	            		 System.out.println(srcDstTag+" "+dstDcIndex+" "+n_bytes);
-	            		 map.put(Integer.parseInt(dstDcIndex), n_bytes);
+	            		 map.put(Integer.parseInt(dstDcIndex), Integer.parseInt(n_bytes));
 	            	}
 	            }
 	        }
 	        String statMat = "";
 	        for(int i=0; i<map.size(); i++){
-	        	statMat = statMat + map.get(i) + " ";
+	        	int speed = map.get(i) - ((previousMap.containsKey(i))?previousMap.get(i):0);
+	        	statMat = statMat + new Integer(speed).toString() + " ";
+	        	previousMap.put(i, map.get(i));
 	        }
-	        System.out.println(statMat);
-	        //this.socket.send("",0);
+
+	        this.socket.send(statMat,0);
+	        map.clear();
 		}
 	}
-	
 }
