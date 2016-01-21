@@ -217,7 +217,11 @@ public class VmAllocator extends MessageProcessor {
 			try{
 				hostAgent.connect();
 				hostAgent.addFlowDstMac(chainConfig.bridges.get(0), hostServer.patchPort, hostServer.gatewayPort, hostServer.gatewayMac);
-				hostAgent.addStatFlow("stat-br", hostServer.statInPort, hostServer.statOutPort, srcIndex, dstIndex);
+				for(String key : req.localcIndexMap.keySet()){
+					int srcDcIndex = req.localcIndexMap.get(srcIp).intValue();
+					int dstDcIndex = req.localcIndexMap.get(key).intValue();
+					hostAgent.addStatFlow("stat-br", hostServer.statInPort, hostServer.statOutPort, srcDcIndex, dstDcIndex);
+				}
 				hostAgent.disconnect();
 			}
 			catch(Exception e){
