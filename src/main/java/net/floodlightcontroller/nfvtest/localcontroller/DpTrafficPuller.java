@@ -12,16 +12,16 @@ public class DpTrafficPuller implements Runnable{
 	private volatile boolean quit;
 	private Context context;
 	private Socket socket;
-	private HashMap<Integer, Integer> map;
-    private HashMap<Integer, Integer> previousMap;
+	private HashMap<Long, Long> map;
+    private HashMap<Long, Long> previousMap;
 	
 	
 	public DpTrafficPuller(int pullInterval, Context context){
 		this.pullInterval = pullInterval;
 		this.quit = false;
 		this.socket = context.socket(ZMQ.PUSH);
-		this.map = new HashMap<Integer, Integer>();
-		this.previousMap = new HashMap<Integer, Integer>();
+		this.map = new HashMap<Long, Long>();
+		this.previousMap = new HashMap<Long, Long>();
 	}
 	
 	public void quit(){
@@ -83,14 +83,14 @@ public class DpTrafficPuller implements Runnable{
 	            		 int byteEnd   = line.indexOf(", idle_age");
 	            		 String n_bytes = line.substring(byteStart, byteEnd);
 	            		 
-	            		 map.put(Integer.parseInt(dstDcIndex), Integer.parseInt(n_bytes));
+	            		 map.put(Long.parseLong(dstDcIndex), Long.parseLong(n_bytes));
 	            	}
 	            }
 	        }
 	        String statMat = "";
-	        for(int i=0; i<map.size(); i++){
-	        	int speed = map.get(i) - ((previousMap.containsKey(i))?previousMap.get(i):0);
-	        	statMat = statMat + new Integer(speed).toString() + " ";
+	        for(long i=0; i<map.size(); i++){
+	        	long speed = map.get(i) - ((previousMap.containsKey(i))?previousMap.get(i):0);
+	        	statMat = statMat + new Long(speed).toString() + " ";
 	        	previousMap.put(i, map.get(i));
 	        }
 

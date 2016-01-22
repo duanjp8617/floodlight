@@ -69,6 +69,8 @@ public class LocalController implements Runnable{
 	
 	private ServiceChainHandler      chainHandler;
 	
+	private ArrayList<Integer> cpStatArray;
+	
 	public LocalController(String globalIp, int publishPort, int syncPort, int pullPort, int repPort, int pcscfPort,
 			String localIp, boolean hasScscf, int delayPollInterval, int dpCapacity[], MessageHub mh, Context context,
 			String entryIp, ServiceChainHandler chainHandler){
@@ -110,6 +112,8 @@ public class LocalController implements Runnable{
 		this.chainHandler = chainHandler;
 		
 		this.dpTrafficPuller = new DpTrafficPuller(2000, context);
+		
+		this.cpStatArray = new ArrayList<Integer>();
 	}
 	
 	public int getCurrentDcIndex(){
@@ -201,7 +205,9 @@ public class LocalController implements Runnable{
 		
 		Thread dpTrafficPullerThread = new Thread(dpTrafficPuller);
 		dpTrafficPullerThread.start();
-		
+		for(int i=0; i<localcIndexMap.size(); i++){
+			cpStatArray.add(0);
+		}
 		localLoop();
 	}
 	
@@ -239,6 +245,7 @@ public class LocalController implements Runnable{
 			//It's time to check for delay and report delay.
 			if((System.currentTimeMillis()-delayPollTime)>delayPollInterval){
 				processDelayPoll();
+				processCpStatPoll(delayPollInterval);
 				delayPollTime = System.currentTimeMillis();
 			}
 		}
@@ -307,7 +314,7 @@ public class LocalController implements Runnable{
 			String regIp = chainHandler.getRegIp();
 			socket.send(regIp, 0);
 		}
-		else{
+		else if(initMsg.equals("CLOSE")){
 			String pcscfIpPort      = pcscfPuller.recvStr();
 			String entryFlowSrcAddr = pcscfPuller.recvStr();
 			String exitFlowSrcAddr  = pcscfPuller.recvStr();
@@ -333,6 +340,14 @@ public class LocalController implements Runnable{
 			socket.send("REPLY", ZMQ.SNDMORE);
 			socket.send(entryFlowSrcAddr, ZMQ.SNDMORE);
 			socket.send(" ", 0);
+		}
+		else{
+			String statMat = pcscfPuller.recvStr();
+			String[] statArray = statMat.split("\\s+");
+			for(int i=0; i<statArray.length; i++){
+				int val = cpStatArray.get(i);
+				cpStatArray.set(i, val+Integer.parseInt(statArray[i]));
+			}
 		}
 		
 	}
@@ -513,9 +528,6 @@ public class LocalController implements Runnable{
 		if(whichPlane.equals("DATA")){
 			processDpStatPoll(interval, statMat);
 		}
-		else{
-			processCpStatPoll(interval, statMat);
-		}
 	}
 	
 	private void processDpStatPoll(String interval, String statMat){
@@ -562,26 +574,23 @@ public class LocalController implements Runnable{
 		logger.info("{}", print);
 	}
 	
-	private void processCpStatPoll(String interval, String statMat){
+	private void processCpStatPoll(int interval){
 		
-		String statArray[] = statMat.split("\\s+");
-		if(statArray.length != localcIndexMap.size()*localcIndexMap.size()){
-			for(int i=0; i<localcIndexMap.size(); i++){
-				sendZero(i, interval);
-			}
+		String statArray[] = new String[cpStatArray.size()];
+		for(int i=0; i<cpStatArray.size(); i++){
+			statArray[i] = cpStatArray.get(i).toString();
+			cpStatArray.set(i, 0);
 		}
-		else{
-			for(int i=0; i<localcIndexMap.size(); i++){
-				sendCpStat(i, interval, statArray, i*localcIndexMap.size(), i*localcIndexMap.size()+localcIndexMap.size()-1 );
-			}
-		}
+		int srcIndex = localcIndexMap.get(localIp);
+		sendCpStat(srcIndex, interval, statArray, 0, statArray.length );
+
 	}
 	
-	private void sendCpStat(int srcIndex, String interval, String[] statArray, int start, int end){		
+	private void sendCpStat(int srcIndex, int interval, String[] statArray, int start, int end){		
 		pusher.send("STATREPORT", ZMQ.SNDMORE);
 		pusher.send("CONTROL", ZMQ.SNDMORE);
 		pusher.send(Integer.toString(srcIndex), ZMQ.SNDMORE);
-		pusher.send(interval, ZMQ.SNDMORE);
+		pusher.send(Integer.toString(interval), ZMQ.SNDMORE);
 		
 		for(int i=start; i<end; i++){
 			if(i == end-1){
