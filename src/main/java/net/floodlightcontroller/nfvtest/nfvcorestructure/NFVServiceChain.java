@@ -16,6 +16,7 @@ public class NFVServiceChain {
 	
 	public final ServiceChainConfig serviceChainConfig;
 	private final Map<String, NFVNode> managementIpNodeMap;
+	public final List<Map<String, NFVNode>> nodeMap;
 
 	private final boolean[] scaleIndicators;
 	
@@ -35,15 +36,19 @@ public class NFVServiceChain {
 	NFVServiceChain(ServiceChainConfig serviceChainConfig){
 		this.serviceChainConfig = serviceChainConfig;
 		this.managementIpNodeMap = new HashMap<String, NFVNode>();
+		this.nodeMap = new ArrayList<Map<String, NFVNode>>();
 		
 		this.workingNodeMaps = new ArrayList<Map<String, NFVNode>>();
 		this.bufferNodeQueues = new ArrayList<Deque<NFVNode>>();
 		for(int i=0; i<this.serviceChainConfig.stages.size(); i++){
-			Map<String, NFVNode> nodeMap = new HashMap<String, NFVNode>();
-			this.workingNodeMaps.add(nodeMap);
+			Map<String, NFVNode> workingNodeMap = new HashMap<String, NFVNode>();
+			this.workingNodeMaps.add(workingNodeMap);
 			
 			Deque<NFVNode> bufferNodeQueue = new LinkedList<NFVNode>();
 			this.bufferNodeQueues.add(bufferNodeQueue);
+			
+			Map<String, NFVNode> totalNodeMap = new HashMap<String, NFVNode>();
+			this.nodeMap.add(totalNodeMap);
 		}
 		
 		destroyNodeMap = new HashMap<String, NFVNode>();
@@ -81,6 +86,10 @@ public class NFVServiceChain {
 		if(this.serviceChainConfig.nVmInterface == 3){
 			this.nextDpPaths = nextDpPaths;
 		}
+	}
+	
+	public int[][][] getDpPaths(){
+		return this.nextDpPaths;
 	}
 	
 	public synchronized void addScalingInterval(){
@@ -171,6 +180,7 @@ public class NFVServiceChain {
 	public synchronized void addToServiceChain(NFVNode node){
 		if(!this.managementIpNodeMap.containsKey(node.getManagementIp())){
 			this.managementIpNodeMap.put(node.getManagementIp(), node);
+			this.nodeMap.get(node.vmInstance.stageIndex).put(node.getManagementIp(), node);
 			
 			if(this.serviceChainConfig.nVmInterface == 3){
 				DatapathId exitSwitchDpid = DatapathId.of(node.getBridgeDpid(1));
@@ -191,6 +201,7 @@ public class NFVServiceChain {
 		
 		if(this.managementIpNodeMap.containsKey(node.getManagementIp())){
 			this.managementIpNodeMap.remove(node.getManagementIp());
+			this.nodeMap.get(node.vmInstance.stageIndex).remove(node.getManagementIp());
 			
 			if(this.serviceChainConfig.nVmInterface == 3){
 				DatapathId exitSwitchDpid = DatapathId.of(node.getBridgeDpid(1));

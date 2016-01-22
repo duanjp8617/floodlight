@@ -2,6 +2,7 @@ package net.floodlightcontroller.nfvtest.nfvslaveservice;
 
 import java.util.concurrent.LinkedBlockingQueue;
 
+import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.nfvtest.localcontroller.LocalController;
 import net.floodlightcontroller.nfvtest.message.Message;
@@ -15,12 +16,28 @@ import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.zeromq.ZMQ.Socket;
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActions;
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IpEcn;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZMQ;
@@ -39,8 +56,11 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	protected IOFSwitchService switchService;
 	
-	private final HashMap<String, HostServer> hostServerMap;
+	private final ArrayList<HostServer> hostServerList;
 	private final HashMap<DatapathId, HostServer> dpidHostServerMap;
+	public final HashMap<DatapathId, Integer> dpidStageIndexMap;
+	
+	private List<Map<Integer, Integer>> indexMap = null;
 	
 	private final Logger logger =  LoggerFactory.getLogger(ServiceChainHandler.class);
 
@@ -58,16 +78,18 @@ public class ServiceChainHandler extends MessageProcessor {
 		
 		this.switchService = switchService;
 		
-		this.hostServerMap = new HashMap<String, HostServer>();
+		this.hostServerList = new ArrayList<HostServer>();
 		this.dpidHostServerMap = new HashMap<DatapathId, HostServer> ();
+		this.dpidStageIndexMap = new HashMap<DatapathId, Integer>();
 	}
 	
 	public void addHostServer(HostServer hostServer){
-		this.hostServerMap.put(hostServer.hostServerConfig.managementIp, hostServer);
+		this.hostServerList.add(hostServer);
 		for(String chainName : hostServer.serviceChainDpidMap.keySet()){
 			List<String> dpidList = hostServer.serviceChainDpidMap.get(chainName);
 			for(int i=0; i<dpidList.size(); i++){
 				this.dpidHostServerMap.put(DatapathId.of(dpidList.get(i)), hostServer);
+				this.dpidStageIndexMap.put(DatapathId.of(dpidList.get(i)), i);
 			}
 		}
 	}
@@ -88,6 +110,32 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	public void addServiceChain(NFVServiceChain serviceChain){
 		this.serviceChainMap.put(serviceChain.serviceChainConfig.name, serviceChain);
+		if(serviceChain.serviceChainConfig.name.equals("DATA")){
+			this.indexMap = new ArrayList<Map<Integer, Integer>>();
+			for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
+				this.indexMap.add(new HashMap<Integer, Integer>());
+			}
+		}
+	}
+	
+	private int searchIndexMap(int left, int right, Map<Integer, Integer> map){
+		if(left>right){
+			return -1;
+		}
+		else{
+			if(!map.containsKey((left+right)/2)){
+				return (left+right)/2;
+			}
+			else{
+				int returnVal = searchIndexMap((left+right)/2+1, right, map);
+				if(returnVal != -1){
+					return returnVal;
+				}
+				else{
+					return searchIndexMap(left, (left+right)/2-1, map);
+				}
+			}
+		}
 	}
 	
 	@Override
@@ -327,6 +375,11 @@ public class ServiceChainHandler extends MessageProcessor {
 		handleProactiveProvision(cpServiceChain, newCpProvision);
 		
 		if(pendingMap.size() == 0){
+			synchronized(dpServiceChain){
+				int scalingInterval = dpServiceChain.getScalingInterval();
+				updateFlowRule(dpServiceChain, dcIndex, dcNum, scalingInterval+1);
+			}
+			
 			Socket requester = context.socket(ZMQ.REQ);
 			requester.connect("inproc://schSync");
 			requester.send("COMPLETE", 0);
@@ -353,6 +406,180 @@ public class ServiceChainHandler extends MessageProcessor {
 		}
 	}
 	
+	private void updateFlowRule(NFVServiceChain dpServiceChain, int srcDcIndex, int dcNum,
+			int currentScalingInterval){
+		
+		for(int stageIndex=1; stageIndex<dpServiceChain.nodeMap.size(); stageIndex++){
+			Map<String, NFVNode> dpNodeMap = dpServiceChain.nodeMap.get(stageIndex);
+			
+			for(int hostServerIndex=0; hostServerIndex<hostServerList.size(); hostServerIndex++){
+				HostServer hostServer = hostServerList.get(hostServerIndex);
+				
+				DatapathId hitSwitchDpid = DatapathId.of(hostServer.serviceChainDpidMap.get("DATA").get(stageIndex));
+				for(String mIp : dpNodeMap.keySet()){
+					NFVNode currentNode = dpNodeMap.get(mIp);
+					DatapathId nodeSwitchDpid = DatapathId.of(currentNode.getBridgeDpid(0));
+					
+					if(hitSwitchDpid.equals(nodeSwitchDpid)){
+						IOFSwitch hitSwitch = switchService.getSwitch(hitSwitchDpid);
+						installStaticRule(hitSwitch, currentScalingInterval, stageIndex, currentNode.getIndex(), 
+								currentNode.getPort(0), currentNode.getMacAddress(0));
+					}
+					else{
+						IOFSwitch hitSwitch = switchService.getSwitch(hitSwitchDpid);
+						IOFSwitch nodeSwitch = switchService.getSwitch(nodeSwitchDpid);
+						
+						HostServer remoteHostServer = dpidHostServerMap.get(nodeSwitchDpid);
+						String remoteServerIp = remoteHostServer.hostServerConfig.managementIp;
+						int localPort = hostServer.tunnelPortMap.get(remoteServerIp).intValue();
+						
+						installStaticRuleWithoutMac(hitSwitch, currentScalingInterval, stageIndex, currentNode.getIndex(),
+								localPort);
+						
+						installStaticRule(nodeSwitch, currentScalingInterval, stageIndex, currentNode.getIndex(),
+								currentNode.getPort(0), currentNode.getMacAddress(0));
+					}
+				}
+				
+				//currently we only supports 8 datacenters at most
+				for(int dstDcIndex=0; dstDcIndex<dcNum; dstDcIndex++){
+					if(dstDcIndex!=srcDcIndex){
+						int interDcPort = hostServer.dcIndexPortMap.get(dstDcIndex);
+						IOFSwitch hitSwitch = switchService.getSwitch(hitSwitchDpid);
+						installStaticRuleWithoutMac(hitSwitch, currentScalingInterval, stageIndex, dstDcIndex,
+								interDcPort);
+					}
+				}
+			}
+		}
+		
+		for(int hostServerIndex=0; hostServerIndex<hostServerList.size(); hostServerIndex++){
+			HostServer hostServer = hostServerList.get(hostServerIndex);
+			DatapathId lastSwitchDpid = DatapathId.of(hostServer.serviceChainDpidMap.get("DATA").
+					get(hostServer.serviceChainDpidMap.get("DATA").size()-1));
+			IOFSwitch lastSwitch = switchService.getSwitch(lastSwitchDpid);
+			installFullMatchRule(lastSwitch, currentScalingInterval, hostServer.patchPort);
+		}
+	}
+	
+	private void installStaticRule(IOFSwitch sw, int scalingInterval, int stageIndex, int index, int outPort, String macAddr){
+		Match.Builder mb = sw.getOFFactory().buildMatch();
+		byte ecn = (byte)(scalingInterval%4);
+		
+		byte newDstAddr[] = new byte[4];
+		byte mask[] = new byte[4];
+		for(int i=0; i<4; i++){
+			if((i+1)==stageIndex){
+				newDstAddr[i] = (byte)index;
+				mask[i] = ((byte)255);
+			}
+			else{
+				newDstAddr[i] = 0;
+				mask[i] = ((byte)0);
+			}
+		}
+		
+		mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+        .setExact(MatchField.IP_ECN, IpEcn.of(ecn))
+        .setMasked(MatchField.IPV4_DST, IPv4Address.of(newDstAddr), IPv4Address.of(mask));
+		Match flowMatch = mb.build();
+		
+		List<OFAction> actionList = new ArrayList<OFAction>();	
+		OFActions actions = sw.getOFFactory().actions();
+		OFOxms oxms = sw.getOFFactory().oxms();
+		actionList.add(actions.setField(oxms.ethDst(MacAddress.of(macAddr))));
+		actionList.add(actions.output(OFPort.of(outPort), Integer.MAX_VALUE));
+		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+		fmb.setHardTimeout(0);
+		fmb.setIdleTimeout(2*100);
+		fmb.setBufferId(OFBufferId.NO_BUFFER);
+		fmb.setCookie(U64.of(8617));
+		fmb.setPriority(5);
+		fmb.setOutPort(OFPort.of(outPort));
+		fmb.setActions(actionList);
+		fmb.setMatch(flowMatch);
+		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
+		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
+		fmb.setFlags(sfmf);
+		OFFlowMod flowMod = fmb.build();
+		
+		sw.write(flowMod);
+		sw.flush();
+	}
+	
+	private void installStaticRuleWithoutMac(IOFSwitch sw, int scalingInterval, int stageIndex, int index, int outPort){
+		Match.Builder mb = sw.getOFFactory().buildMatch();
+		byte ecn = (byte)(scalingInterval%4);
+		
+		byte newDstAddr[] = new byte[4];
+		byte mask[] = new byte[4];
+		for(int i=0; i<4; i++){
+			if((i+1)==stageIndex){
+				newDstAddr[i] = (byte)index;
+				mask[i] = ((byte)255);
+			}
+			else{
+				newDstAddr[i] = 0;
+				mask[i] = ((byte)0);
+			}
+		}
+		
+		mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+        .setExact(MatchField.IP_ECN, IpEcn.of(ecn))
+        .setMasked(MatchField.IPV4_DST, IPv4Address.of(newDstAddr), IPv4Address.of(mask));
+		Match flowMatch = mb.build();
+		
+		List<OFAction> actionList = new ArrayList<OFAction>();	
+		OFActions actions = sw.getOFFactory().actions();
+		actionList.add(actions.output(OFPort.of(outPort), Integer.MAX_VALUE));
+		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+		fmb.setHardTimeout(0);
+		fmb.setIdleTimeout(2*100);
+		fmb.setBufferId(OFBufferId.NO_BUFFER);
+		fmb.setCookie(U64.of(8617));
+		fmb.setPriority(5);
+		fmb.setOutPort(OFPort.of(outPort));
+		fmb.setActions(actionList);
+		fmb.setMatch(flowMatch);
+		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
+		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
+		fmb.setFlags(sfmf);
+		OFFlowMod flowMod = fmb.build();
+		
+		sw.write(flowMod);
+		sw.flush();
+	}
+	
+	private void installFullMatchRule(IOFSwitch sw, int scalingInterval, int outPort){
+		Match.Builder mb = sw.getOFFactory().buildMatch();
+		byte ecn = (byte)(scalingInterval%4);
+		
+		mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+        .setExact(MatchField.IP_ECN, IpEcn.of(ecn))
+        .setMasked(MatchField.IPV4_DST, IPv4Address.of("10.10.10.10"), IPv4Address.of("0.0.0.0"));
+		Match flowMatch = mb.build();
+		
+		List<OFAction> actionList = new ArrayList<OFAction>();	
+		OFActions actions = sw.getOFFactory().actions();
+		actionList.add(actions.output(OFPort.of(outPort), Integer.MAX_VALUE));
+		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+		fmb.setHardTimeout(0);
+		fmb.setIdleTimeout(2*100);
+		fmb.setBufferId(OFBufferId.NO_BUFFER);
+		fmb.setCookie(U64.of(8617));
+		fmb.setPriority(5);
+		fmb.setOutPort(OFPort.of(outPort));
+		fmb.setActions(actionList);
+		fmb.setMatch(flowMatch);
+		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
+		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
+		fmb.setFlags(sfmf);
+		OFFlowMod flowMod = fmb.build();
+		
+		sw.write(flowMod);
+		sw.flush();
+	}
+	
 	private void addToServiceChain(NFVServiceChain serviceChain, NFVNode node, UUID uuid){
 		synchronized(serviceChain){
 			if(pendingMap.containsKey(uuid)){
@@ -375,6 +602,12 @@ public class ServiceChainHandler extends MessageProcessor {
 				
 				pendingMap.remove(uuid);
 				if(pendingMap.size() == 0){
+					if(serviceChain.serviceChainConfig.nVmInterface==3){
+						int scalingInterval = serviceChain.getScalingInterval();
+						updateFlowRule(serviceChain, dcIndex, dcNum, scalingInterval+1);
+					}
+					
+					
 					Socket requester = context.socket(ZMQ.REQ);
 					requester.connect("inproc://schSync");
 					requester.send("COMPLETE", 0);
@@ -434,6 +667,15 @@ public class ServiceChainHandler extends MessageProcessor {
 			Socket subscriber2 = reply.getSubscriber2();
 			//this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 			//this.poller.register(new Pair<String, Socket>(managementIp+":2", subscriber2));
+		}
+		
+		if(node.vmInstance.serviceChainConfig.nVmInterface == 3){
+			//This a dataplane node, assign a unique identifier to it.
+			int newIndex = searchIndexMap(8, 255, indexMap.get(node.vmInstance.stageIndex));
+			if(newIndex!=-1){
+				indexMap.get(node.vmInstance.stageIndex).put(newIndex, 0);
+			}
+			node.setIndex(newIndex);
 		}
 		
 		addToServiceChain(serviceChain, node, originalMessage.getUUID());
@@ -540,6 +782,12 @@ public class ServiceChainHandler extends MessageProcessor {
 					ArrayList<String> list = new ArrayList<String>();
 					for(String key : chain.destroyNodeMap.keySet()){
 						NFVNode destroyNode = chain.destroyNodeMap.get(key);
+						if(destroyNode.vmInstance.serviceChainConfig.nVmInterface==3){
+							//This is a dataplane node, we need to remove its index from indexmap
+							int index = destroyNode.getIndex();
+							this.indexMap.get(destroyNode.vmInstance.stageIndex).remove(index);
+						}
+						
 						chain.removeFromServiceChain(destroyNode);
 						if(chain.serviceChainConfig.nVmInterface == 3){
 							this.poller.unregister(destroyNode.getManagementIp()+":1");

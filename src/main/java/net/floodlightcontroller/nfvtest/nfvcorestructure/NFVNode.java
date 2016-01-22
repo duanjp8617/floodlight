@@ -368,6 +368,8 @@ public class NFVNode {
 	private static Logger logger;
 	private int scalingInterval;
 	
+	private int index;
+	
 	//node state: idel, normal, overload
 	public static final int IDLE = 1;
 	public static final int NORMAL = 2;
@@ -381,6 +383,14 @@ public class NFVNode {
 		this.activeFlows = 0;
 		logger = LoggerFactory.getLogger(NFVNode.class);
 		this.scalingInterval = -1;
+	}
+	
+	public void setIndex(int index){
+		this.index = index;
+	}
+	
+	public int getIndex(){
+		return this.index;
 	}
 	
 	//scalingInterval is used to record at which interval 
