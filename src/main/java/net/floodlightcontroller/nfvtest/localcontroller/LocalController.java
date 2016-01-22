@@ -605,29 +605,7 @@ public class LocalController implements Runnable{
 		for(int i=start; i<end; i++){
 			print = print+" "+statArray[i];
 		}
-		//logger.info("{}", print);
-	}
-	
-	private void sendZero(int srcIndex, String interval){
-		pusher.send("STATREPORT", ZMQ.SNDMORE);
-		pusher.send("CONTROL", ZMQ.SNDMORE);
-		pusher.send(Integer.toString(srcIndex), ZMQ.SNDMORE);
-		pusher.send(interval, ZMQ.SNDMORE);
-		
-		for(int i=0; i<localcIndexMap.size(); i++){
-			if(i == localcIndexMap.size()-1){
-				pusher.send(Integer.toString(0), 0);
-			}
-			else{
-				pusher.send(Integer.toString(0), ZMQ.SNDMORE);
-			}
-		}
-		
-		String print = "control plane traffic stat for dc "+Integer.toString(srcIndex)+": ";
-		for(int i=0; i<localcIndexMap.size(); i++){
-			print = print+" 0";
-		}
-		//logger.info("{}", print);
+		logger.info("{}", print);
 	}
 	
 	public int[] getSrcDstPair(String srcAddr){
