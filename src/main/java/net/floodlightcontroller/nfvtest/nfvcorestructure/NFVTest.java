@@ -320,7 +320,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
                 byte[] packetData = arpReply.serialize();
                 pob.setData(packetData);
                 sw.write(pob.build());
-                sw.flush();
+                //sw.flush();
     		}
     	}
     	else{
@@ -358,7 +358,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	            byte[] packetData = arpReply.serialize();
 	            pob.setData(packetData);
 	            sw.write(pob.build());
-	            sw.flush();
+	            //sw.flush();
 			}
     	}
     }
@@ -466,7 +466,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			Match flowMatch = createMatch(sw, initialInPort, srcIp, transportProtocol, srcPort);
 			OFFlowMod flowMod = createFlowModWithNoMac(sw, flowMatch, OFPort.of(toThisPort));
 			sw.write(flowMod);
-			sw.flush();
+			//sw.flush();
 			hitSwitch = this.switchService.getSwitch(
 					DatapathId.of(inputHostServer.serviceChainDpidMap.get("DATA").get(stageList.get(0))));
 			inPort = OFPort.of(inputHostServer.dcIndexPortMap.get(incomingDcIndex));
@@ -483,14 +483,14 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 					OFFlowMod flowMod = createEntryFlowMod(hitSwitch, flowMatch, MacAddress.of(currentNode.getMacAddress(0)), 
 							OFPort.of(inputHostServer.statInPort), srcDstPair[0], srcDstPair[1], scalingInterval, "udp");
 					hitSwitch.write(flowMod);
-					hitSwitch.flush();
+					//hitSwitch.flush();
 					
 					flowMatch = createMatch(hitSwitch, OFPort.of(inputHostServer.statOutPort), srcIp, transportProtocol, srcPort);
 					flowMod = createFlowMod(hitSwitch, flowMatch, 
 					                          MacAddress.of(currentNode.getMacAddress(0)),
 											  OFPort.of(currentNode.getPort(0)));
 					hitSwitch.write(flowMod);
-					hitSwitch.flush();
+					//hitSwitch.flush();
 					
 				}
 				else{
@@ -499,7 +499,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	                          MacAddress.of(currentNode.getMacAddress(0)),
 							  OFPort.of(currentNode.getPort(0)));
 					hitSwitch.write(flowMod);
-					hitSwitch.flush();
+					//hitSwitch.flush();
 				}
 			}
 			else{
@@ -527,7 +527,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 							  OFPort.of(localPort));
 				}
 				hitSwitch.write(flowMod);
-				hitSwitch.flush();
+				//hitSwitch.flush();
 				
 				flowMatch = createMatch(nodeSwitch, OFPort.of(remotePort), srcIp,
 	  					                transportProtocol, srcPort);
@@ -535,7 +535,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 					                    MacAddress.of(currentNode.getMacAddress(0)),
 					                    OFPort.of(currentNode.getPort(0)));
 				nodeSwitch.write(flowMod);
-				nodeSwitch.flush();
+				//nodeSwitch.flush();
 			}
 			
 			currentNode.addActiveFlow();
@@ -577,7 +577,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			OFFlowMod flowMod = createExitFlowMod(exitSwitch, flowMatch, MacAddress.of(inputHostServer.gatewayMac), 
 					OFPort.of(inputHostServer.patchPort), exitFlowSrcIp, exitFlowDstip, Integer.parseInt(exitFlowDstPort), "udp");
 			exitSwitch.write(flowMod);
-			exitSwitch.flush();
+			//exitSwitch.flush();
 			
 			//we need to add a flow rule here!
 			//localHostServer = vmAllocator.dpidHostServerMap.get(sw.getId());
@@ -601,7 +601,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 					OFPort.of(interDcPort));
 			
 			exitSwitch.write(flowMod);
-			exitSwitch.flush();
+			//exitSwitch.flush();
 		}
     }
     
