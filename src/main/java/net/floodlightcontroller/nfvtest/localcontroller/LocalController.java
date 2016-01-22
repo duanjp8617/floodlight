@@ -249,7 +249,7 @@ public class LocalController implements Runnable{
 			}
 			
 			if((System.currentTimeMillis()-cpStatPollTime)>5000){
-				processCpStatPoll(5000);
+				processCpStatPoll(6000);
 				cpStatPollTime = System.currentTimeMillis();
 			}
 		}
