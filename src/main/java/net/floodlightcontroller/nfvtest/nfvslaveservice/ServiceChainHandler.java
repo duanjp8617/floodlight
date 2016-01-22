@@ -422,22 +422,27 @@ public class ServiceChainHandler extends MessageProcessor {
 					
 					if(hitSwitchDpid.equals(nodeSwitchDpid)){
 						IOFSwitch hitSwitch = switchService.getSwitch(hitSwitchDpid);
-						installStaticRule(hitSwitch, currentScalingInterval, stageIndex, currentNode.getIndex(), 
-								currentNode.getPort(0), currentNode.getMacAddress(0));
+						
+						if(currentNode.getIndex()!=-1){
+							installStaticRule(hitSwitch, currentScalingInterval, stageIndex, currentNode.getIndex(), 
+									currentNode.getPort(0), currentNode.getMacAddress(0));
+						}
 					}
 					else{
 						IOFSwitch hitSwitch = switchService.getSwitch(hitSwitchDpid);
 						IOFSwitch nodeSwitch = switchService.getSwitch(nodeSwitchDpid);
 						
-						HostServer remoteHostServer = dpidHostServerMap.get(nodeSwitchDpid);
-						String remoteServerIp = remoteHostServer.hostServerConfig.managementIp;
-						int localPort = hostServer.tunnelPortMap.get(remoteServerIp).intValue();
-						
-						installStaticRuleWithoutMac(hitSwitch, currentScalingInterval, stageIndex, currentNode.getIndex(),
-								localPort);
-						
-						installStaticRule(nodeSwitch, currentScalingInterval, stageIndex, currentNode.getIndex(),
-								currentNode.getPort(0), currentNode.getMacAddress(0));
+						if(currentNode.getIndex()!=-1){
+							HostServer remoteHostServer = dpidHostServerMap.get(nodeSwitchDpid);
+							String remoteServerIp = remoteHostServer.hostServerConfig.managementIp;
+							int localPort = hostServer.tunnelPortMap.get(remoteServerIp).intValue();
+							
+							installStaticRuleWithoutMac(hitSwitch, currentScalingInterval, stageIndex, currentNode.getIndex(),
+									localPort);
+							
+							installStaticRule(nodeSwitch, currentScalingInterval, stageIndex, currentNode.getIndex(),
+									currentNode.getPort(0), currentNode.getMacAddress(0));
+						}
 					}
 				}
 				

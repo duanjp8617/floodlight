@@ -88,10 +88,6 @@ public class NFVServiceChain {
 		}
 	}
 	
-	public int[][][] getDpPaths(){
-		return this.nextDpPaths;
-	}
-	
 	public synchronized void addScalingInterval(){
 		if(this.serviceChainConfig.nVmInterface == 3){
 			this.scalingInterval += 1;
