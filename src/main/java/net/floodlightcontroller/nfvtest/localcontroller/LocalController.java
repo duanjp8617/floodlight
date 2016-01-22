@@ -219,7 +219,7 @@ public class LocalController implements Runnable{
 		items.register(pcscfPuller, ZMQ.Poller.POLLIN);
 		
 		long delayPollTime = System.currentTimeMillis();
-
+		long cpStatPollTime = System.currentTimeMillis();
 		
 		while (!Thread.currentThread ().isInterrupted ()) {
 			items.poll(100);
@@ -245,8 +245,12 @@ public class LocalController implements Runnable{
 			//It's time to check for delay and report delay.
 			if((System.currentTimeMillis()-delayPollTime)>delayPollInterval){
 				processDelayPoll();
-				processCpStatPoll(delayPollInterval);
 				delayPollTime = System.currentTimeMillis();
+			}
+			
+			if((System.currentTimeMillis()-cpStatPollTime)>5000){
+				processCpStatPoll(5000);
+				cpStatPollTime = System.currentTimeMillis();
 			}
 		}
 	}
