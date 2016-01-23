@@ -708,12 +708,11 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     private OFFlowMod createEntryFlowMod(IOFSwitch sw, Match flowMatch, MacAddress dstMac, OFPort outPort, 
     		int srcDcIndex, int dstDcIndex, int scalingInterval, IPv4Address dstAddr){
     	byte ecn = (byte)(scalingInterval%4);
-    	byte dscp = (byte)(((srcDcIndex&0x07)<<5)+((dstDcIndex&0x07)<<2));
+    	byte dscp = (byte)(((srcDcIndex&0x07)<<3)+((dstDcIndex&0x07)));
     	
     	List<OFAction> actionList = new ArrayList<OFAction>();	
 		OFActions actions = sw.getOFFactory().actions();
 		OFOxms oxms = sw.getOFFactory().oxms();
-		
 		actionList.add(actions.setField(oxms.ethDst(dstMac)));
 		actionList.add(actions.setField(oxms.ipEcn(IpEcn.of(ecn))));
 		actionList.add(actions.setField(oxms.ipDscp(IpDscp.of(dscp))));
