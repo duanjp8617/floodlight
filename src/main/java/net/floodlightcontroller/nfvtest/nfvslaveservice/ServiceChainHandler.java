@@ -409,7 +409,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	private void updateFlowRule(NFVServiceChain dpServiceChain, int srcDcIndex, int dcNum,
 			int currentScalingInterval){
 		
-		for(int stageIndex=1; stageIndex<dpServiceChain.nodeMap.size(); stageIndex++){
+		for(int stageIndex=0; stageIndex<dpServiceChain.nodeMap.size(); stageIndex++){
 			Map<String, NFVNode> dpNodeMap = dpServiceChain.nodeMap.get(stageIndex);
 			
 			for(int hostServerIndex=0; hostServerIndex<hostServerList.size(); hostServerIndex++){
@@ -474,7 +474,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		byte newDstAddr[] = new byte[4];
 		byte mask[] = new byte[4];
 		for(int i=0; i<4; i++){
-			if((i+1)==stageIndex){
+			if((i)==stageIndex){
 				newDstAddr[i] = (byte)index;
 				mask[i] = ((byte)255);
 			}
@@ -519,7 +519,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		byte newDstAddr[] = new byte[4];
 		byte mask[] = new byte[4];
 		for(int i=0; i<4; i++){
-			if((i+1)==stageIndex){
+			if((i)==stageIndex){
 				newDstAddr[i] = (byte)index;
 				mask[i] = ((byte)255);
 			}
@@ -607,11 +607,11 @@ public class ServiceChainHandler extends MessageProcessor {
 				
 				pendingMap.remove(uuid);
 				if(pendingMap.size() == 0){
-					if(serviceChain.serviceChainConfig.nVmInterface==3){
-						int scalingInterval = serviceChain.getScalingInterval();
-						updateFlowRule(serviceChain, dcIndex, dcNum, scalingInterval+1);
+					NFVServiceChain dpServiceChain = this.serviceChainMap.get("DATA");
+					synchronized(dpServiceChain){
+						int scalingInterval = dpServiceChain.getScalingInterval();
+						updateFlowRule(dpServiceChain, dcIndex, dcNum, scalingInterval+1);
 					}
-					
 					
 					Socket requester = context.socket(ZMQ.REQ);
 					requester.connect("inproc://schSync");

@@ -460,19 +460,13 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 				needDynamicRule = true;
 			}
 			
-			if(stageList.get(i)==0){
-				//we got a new flow, do the fraking tagging on the header
-				continue;
-			}
-			else{
-				newDstAddr[stageList.get(i)-1] = (byte)nodeIndex;
-			}
+			newDstAddr[stageList.get(i)] = (byte)nodeIndex;
 		}
 		
 		if(stageList.get(stageList.size()-1).intValue() != dpPaths.length-1){
 			int lastStage = stageList.get(stageList.size()-1);
 			int nextDcIndex = dpPaths[lastStage+1];
-			newDstAddr[lastStage+1-1] = (byte)nextDcIndex;
+			newDstAddr[lastStage+1] = (byte)nextDcIndex;
 		}
 		
 		IOFSwitch hitSwitch = sw;
@@ -506,10 +500,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			Match flowMatch = createMatch(hitSwitch, inPort, srcIp, transportProtocol, srcPort);
 			OFFlowMod flowMod = createEntryFlowMod(hitSwitch, flowMatch, MacAddress.of(routeList.get(0).getMacAddress(0)), 
 					OFPort.of(inputHostServer.statInPort), srcDstPair[0], srcDstPair[1], scalingInterval, IPv4Address.of(newDstAddr));
-			hitSwitch.write(flowMod);
-			
-			flowMatch = createMatch(hitSwitch, OFPort.of(inputHostServer.statOutPort), srcIp, transportProtocol, srcPort);
-			flowMod = createFlowModWithoutMac(hitSwitch, flowMatch, OFPort.of(routeList.get(0).getPort(0)));
 			hitSwitch.write(flowMod);
 			hitSwitch.flush();
 		}
@@ -756,12 +746,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		actionList.add(actions.setField(oxms.ethDst(dstMac)));
 		actionList.add(actions.setField(oxms.ipv4Src(IPv4Address.of(srcIp))));
 		actionList.add(actions.setField(oxms.ipv4Dst(IPv4Address.of(dstIp))));
-		if(udpOrTcp.equals("udp")){
-			actionList.add(actions.setField(oxms.udpDst(TransportPort.of(dstPort))));
-		}
-		else{
-			actionList.add(actions.setField(oxms.tcpDst(TransportPort.of(dstPort))));
-		}
 		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
 		
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
