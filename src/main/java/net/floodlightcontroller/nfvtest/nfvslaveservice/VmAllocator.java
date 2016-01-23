@@ -212,11 +212,11 @@ public class VmAllocator extends MessageProcessor {
 		
 		for(int i=0; i<hostServerList.size(); i++){
 			HostServer hostServer = hostServerList.get(i);
-			ServiceChainConfig chainConfig = hostServer.serviceChainConfigMap.get("DATA");
+			//ServiceChainConfig chainConfig = hostServer.serviceChainConfigMap.get("DATA");
 			HostAgent hostAgent = new HostAgent(hostServer.hostServerConfig);
 			try{
 				hostAgent.connect();
-				hostAgent.addFlowDstMac(chainConfig.bridges.get(0), hostServer.patchPort, hostServer.gatewayPort, hostServer.gatewayMac);
+				//hostAgent.addFlowDstMac(chainConfig.bridges.get(0), hostServer.patchPort, hostServer.gatewayPort, hostServer.gatewayMac);
 				for(String key : req.localcIndexMap.keySet()){
 					int srcDcIndex = req.localcIndexMap.get(srcIp).intValue();
 					int dstDcIndex = req.localcIndexMap.get(key).intValue();
