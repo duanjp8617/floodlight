@@ -269,9 +269,19 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         if(pkt instanceof IPv4){
         	int switchStageIndex = vmAllocator.dpidStageIndexMap.get(sw.getId());
        	 	if( switchStageIndex == 0 ){
-       	 		serviceChainLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT),
-       	 				vmAllocator.dpidHostServerMap.get(sw.getId()));
-       	 		return Command.STOP;
+       	 		int inputPort = pi.getMatch().get(MatchField.IN_PORT).getPortNumber();
+       	 		//the input port is either the gateway port, or the inter-dc tunnel port, we
+       	 		//don't process input traffic comming from other port
+       	 		HostServer inputHostServer = vmAllocator.dpidHostServerMap.get(sw.getId());
+       	 		if((inputPort==inputHostServer.gatewayPort)||(inputHostServer.portDcIndexMap.containsKey(inputPort))){
+       	 		
+	       	 		serviceChainLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT),
+	       	 				vmAllocator.dpidHostServerMap.get(sw.getId()));
+	       	 		return Command.STOP;
+       	 		}
+       	 		else{
+       	 			return Command.STOP;
+       	 		}
        	 	}
         }
         
