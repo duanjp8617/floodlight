@@ -500,6 +500,25 @@ public class HostAgent{
 		}
 	}
 	
+	public boolean addTailFlow(String bridgeName, int outPort)throws
+		IOException, UserAuthException, TransportException{
+		
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo ovs-ofctl add-flow "+bridgeName+
+				" ip,nw_dst=1.1.1.1/0.0.0.0,actions=mod_nw_dst:1.1.1.1,output:"+Integer.toString(outPort));
+		command.join(60, TimeUnit.SECONDS);
+	
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+	
+		}
+	}
+	
 	public boolean addFlow(String bridgeName, int inPort, int outPort)throws
 		IOException, UserAuthException, TransportException{
 	

@@ -8,8 +8,11 @@ import net.floodlightcontroller.nfvtest.nfvutils.HostAgent;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.*;
+import net.schmizz.sshj.transport.TransportException;
+import net.schmizz.sshj.userauth.UserAuthException;
 import net.floodlightcontroller.nfvtest.message.Pending;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -284,6 +287,12 @@ public class VmAllocator extends MessageProcessor {
 			patchPortList.set(i, new Integer(tunnelPortNum));
 			tunnelPortNum += 1;
 		}
+		String tailBridge = dpBridgeList.get(dpBridgeList.size()-1);
+		try {
+			edgeServerAgent.addTailFlow(tailBridge, edgeServer.patchPort);
+		} catch  (Exception e1) {
+			e1.printStackTrace();
+		}
 		edgeServer.dcIndexPatchPortListMap.put(new Integer(req.dstDcIndex), patchPortList);
 		
 		for(int i=1; i<this.hostServerList.size(); i++){
@@ -329,6 +338,13 @@ public class VmAllocator extends MessageProcessor {
 				}
 				tunnelPortNum += 1;
 				baseVniIndex += 1;
+			}
+			
+			tailBridge = dpBridgeList.get(dpBridgeList.size()-1);
+			try {
+				workingServerAgent.addTailFlow(tailBridge, workingServer.patchPort);
+			} catch  (Exception e1) {
+				e1.printStackTrace();
 			}
 			
 			try {
