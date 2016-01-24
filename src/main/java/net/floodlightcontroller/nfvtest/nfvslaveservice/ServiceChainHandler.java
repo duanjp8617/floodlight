@@ -447,12 +447,14 @@ public class ServiceChainHandler extends MessageProcessor {
 				}
 				
 				//currently we only supports 8 datacenters at most
-				for(int dstDcIndex=0; dstDcIndex<dcNum; dstDcIndex++){
-					if(dstDcIndex!=srcDcIndex){
-						int interDcPort = hostServer.dcIndexPortMap.get(dstDcIndex);
-						IOFSwitch hitSwitch = switchService.getSwitch(hitSwitchDpid);
-						installStaticRuleWithoutMac(hitSwitch, currentScalingInterval, stageIndex, dstDcIndex,
-								interDcPort);
+				if(stageIndex!=0){
+					for(int dstDcIndex=0; dstDcIndex<dcNum; dstDcIndex++){
+						if(dstDcIndex!=srcDcIndex){
+							int interDcPort = hostServer.dcIndexPortMap.get(dstDcIndex);
+							IOFSwitch hitSwitch = switchService.getSwitch(hitSwitchDpid);
+							installStaticRuleWithoutMac(hitSwitch, currentScalingInterval, stageIndex, dstDcIndex,
+									interDcPort);
+						}
 					}
 				}
 			}
@@ -536,6 +538,10 @@ public class ServiceChainHandler extends MessageProcessor {
 		
 		List<OFAction> actionList = new ArrayList<OFAction>();	
 		OFActions actions = sw.getOFFactory().actions();
+		if(stageIndex<8){
+			OFOxms oxms = sw.getOFFactory().oxms();
+			actionList.add(actions.setField(oxms.ipv4Dst(IPv4Address.of("1.1.1.1"))));
+		}
 		actionList.add(actions.output(OFPort.of(outPort), Integer.MAX_VALUE));
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
 		fmb.setHardTimeout(0);
