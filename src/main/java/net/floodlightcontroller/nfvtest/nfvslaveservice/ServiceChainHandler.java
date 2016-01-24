@@ -409,7 +409,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	private void updateFlowRule(NFVServiceChain dpServiceChain, int srcDcIndex, int dcNum,
 			int currentScalingInterval){
 		
-		for(int stageIndex=1; stageIndex<dpServiceChain.nodeMap.size(); stageIndex++){
+		for(int stageIndex=0; stageIndex<dpServiceChain.nodeMap.size(); stageIndex++){
 			Map<String, NFVNode> dpNodeMap = dpServiceChain.nodeMap.get(stageIndex);
 			
 			for(int hostServerIndex=0; hostServerIndex<hostServerList.size(); hostServerIndex++){

@@ -491,16 +491,12 @@ public class HostAgent{
 	public boolean addStatFlow(String bridgeName, int inPort, int outPort, int srcDcIndex, int dstDcIndex)throws
 		IOException, UserAuthException, TransportException{
 	
-		byte newDstAddr[] = new byte[4];
-		newDstAddr[0] = (byte)(dstDcIndex & 0x000000FF);
-		newDstAddr[1] = (byte)(srcDcIndex & 0x000000FF);
-		newDstAddr[2] = 0;
-		newDstAddr[3] = 0;
+		int tos = ((srcDcIndex&0x7)<<5)+((dstDcIndex&07)<<2);
 		
 		final Session session = sshClient.startSession();
 		
 		final Session.Command command = session.exec("sudo ovs-ofctl add-flow "+bridgeName+
-				" ip,nw_dst="+IPv4Address.of(newDstAddr).toString()
+				" ip,nw_tos="+new Integer(tos).toString()
 				+",actions=output:"+Integer.toString(outPort));
 		command.join(60, TimeUnit.SECONDS);
 	

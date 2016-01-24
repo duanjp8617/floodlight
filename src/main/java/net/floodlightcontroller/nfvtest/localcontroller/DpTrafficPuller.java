@@ -68,22 +68,22 @@ public class DpTrafficPuller implements Runnable{
 	            	break; 
 	            }
 	            else{
-	            	if(line.indexOf("ip,nw_dst=")!=-1){
-	            		 int startPos = line.indexOf("ip,nw_dst=");
+	            	if(line.indexOf("ip,nw_tos=")!=-1){
+	            		 int startPos = line.indexOf("ip,nw_tos=");
 	            		 startPos += 10;
 	            		 int endPos = line.indexOf("actions=");
 	            		 endPos -= 1;
 	            		 String srcDstTag = line.substring(startPos, endPos);
 	     
-	            		 int firstDotPos = srcDstTag.indexOf(".");
-	            		 String dstDcIndex = srcDstTag.substring(0, firstDotPos);
+	            		 int srcDstVal = Integer.parseInt(srcDstTag);
+	            		 long dstDcIndex = (long)((srcDstVal>>2)&(0x00000007));
 	            		 
 	            		 int byteStart = line.indexOf("n_bytes=");
 	            		 byteStart += 8;
 	            		 int byteEnd   = line.indexOf(", idle_age");
 	            		 String n_bytes = line.substring(byteStart, byteEnd);
 	            		 
-	            		 map.put(Long.parseLong(dstDcIndex), Long.parseLong(n_bytes));
+	            		 map.put(dstDcIndex, Long.parseLong(n_bytes));
 	            	}
 	            }
 	        }

@@ -509,7 +509,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		else{
 			Match flowMatch = createMatch(hitSwitch, inPort, srcIp, transportProtocol, srcPort);
 			OFFlowMod flowMod = createEntryFlowMod(hitSwitch, flowMatch, MacAddress.of(routeList.get(0).getMacAddress(0)), 
-					OFPort.of(routeList.get(0).getPort(0)), srcDstPair[0], srcDstPair[1], scalingInterval, IPv4Address.of(newDstAddr));
+					OFPort.of(inputHostServer.statInPort), srcDstPair[0], srcDstPair[1], scalingInterval, IPv4Address.of(newDstAddr));
 			hitSwitch.write(flowMod);
 			hitSwitch.flush();
 		}
