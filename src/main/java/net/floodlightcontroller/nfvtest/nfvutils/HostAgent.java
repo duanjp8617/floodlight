@@ -27,13 +27,11 @@ public class HostAgent{
 	final String managementIp;
 	final String userName;
 	final String passWord;
-	final SSHClient sshClient;
 	
 	public HostAgent(HostServerConfig hostConfig){
 		this.managementIp = hostConfig.managementIp;
 		this.userName = hostConfig.userName;
 		this.passWord = hostConfig.passWord;
-		sshClient = new SSHClient();
 	}
 	
 	public void connect() throws
