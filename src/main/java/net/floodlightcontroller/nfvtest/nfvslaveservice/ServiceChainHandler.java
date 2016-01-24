@@ -557,7 +557,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			}
 		}
 		
-		/*synchronized(dpServiceChain){
+		synchronized(dpServiceChain){
 			ArrayList<String> list = new ArrayList<String>();
 			for(String key : dpServiceChain.destroyNodeMap.keySet()){
 				destroyNode = dpServiceChain.destroyNodeMap.get(key);
@@ -583,7 +583,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			for(int i=0; i<list.size(); i++){
 				dpServiceChain.destroyNodeMap.remove(list.get(i));
 			}
-		}*/
+		}
 	}
 	
 	private void statUpdate(StatUpdateRequest request){
