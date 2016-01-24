@@ -20,6 +20,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class VmAllocator extends MessageProcessor {
@@ -28,6 +30,7 @@ public class VmAllocator extends MessageProcessor {
 	private int vni;
 	public final HashMap<DatapathId, HostServer> dpidHostServerMap;
 	public final HashMap<DatapathId, Integer> dpidStageIndexMap;
+	private final Logger logger =  LoggerFactory.getLogger(VmAllocator.class);
 
 	public VmAllocator(String id, int baseVni){
 		this.id = id;
@@ -99,6 +102,7 @@ public class VmAllocator extends MessageProcessor {
 				continue;
 			}
 			else{
+				logger.info("send CreateVmRequest to vmWorker");
 				CreateVmRequest newRequest = new CreateVmRequest(this.getId(), vmInstance);
 				Pending pending = new Pending(1, originalRequest);
 				this.pendingMap.put(newRequest.getUUID(), pending);
@@ -118,6 +122,7 @@ public class VmAllocator extends MessageProcessor {
 		
 		if(newReply.getSuccessful()){
 			//start to reply to AllocateVmRequest
+			logger.info("got CreateVmReply from vmWorker");
 			AllocateVmRequest originalRequest = (AllocateVmRequest)pending.getCachedMessage();
 			AllocateVmReply originalReply = new AllocateVmReply(this.getId(), 
 					                                newReply.getRequest().getVmInstance(), originalRequest);
