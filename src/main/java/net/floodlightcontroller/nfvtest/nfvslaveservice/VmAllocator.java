@@ -95,20 +95,28 @@ public class VmAllocator extends MessageProcessor {
 	//then create a CreateVmRequest to create the vm on that host
 	//server
 	private void allocateVm(AllocateVmRequest originalRequest){
+		VmInstance vmInstance = null;
 		for(HostServer hostServer : this.hostServerList){
-			VmInstance vmInstance = 
-					hostServer.allocateVmInstance(originalRequest.getChainName(), originalRequest.getStageIndex());
+			vmInstance = hostServer.allocateVmInstance(originalRequest.getChainName(), originalRequest.getStageIndex());
 			if(vmInstance == null){
 				continue;
 			}
 			else{
-				logger.info("send CreateVmRequest to vmWorker");
-				CreateVmRequest newRequest = new CreateVmRequest(this.getId(), vmInstance);
-				Pending pending = new Pending(1, originalRequest);
-				this.pendingMap.put(newRequest.getUUID(), pending);
-				this.mh.sendTo("vmWorker", newRequest);
 				break;
 			}
+		}
+		
+		if(vmInstance!=null){
+			logger.info("send CreateVmRequest to vmWorker");
+			CreateVmRequest newRequest = new CreateVmRequest(this.getId(), vmInstance);
+			Pending pending = new Pending(1, originalRequest);
+			this.pendingMap.put(newRequest.getUUID(), pending);
+			this.mh.sendTo("vmWorker", newRequest);
+		}
+		else{
+			logger.info("can't allocate more vmInstance, reply to ServiceChainHandler");
+			AllocateVmReply originalReply = new AllocateVmReply(this.getId(), null, originalRequest);
+			this.mh.sendTo(originalReply.getAllocateVmRequest().getSourceId(), originalReply);
 		}
 	}
 	
@@ -126,7 +134,6 @@ public class VmAllocator extends MessageProcessor {
 			AllocateVmRequest originalRequest = (AllocateVmRequest)pending.getCachedMessage();
 			AllocateVmReply originalReply = new AllocateVmReply(this.getId(), 
 					                                newReply.getRequest().getVmInstance(), originalRequest);
-			//System.out.println("Sending AllocateVmReply to: "+originalReply.getAllocateVmRequest().getSourceId());
 			this.mh.sendTo(originalReply.getAllocateVmRequest().getSourceId(), originalReply);
 		}
 		this.pendingMap.remove(newRequest.getUUID());

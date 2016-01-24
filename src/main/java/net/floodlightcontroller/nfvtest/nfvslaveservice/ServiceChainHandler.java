@@ -390,14 +390,37 @@ public class ServiceChainHandler extends MessageProcessor {
 		AllocateVmRequest originalRequest = reply.getAllocateVmRequest();
 		VmInstance vmInstance = reply.getVmInstance();
 		
-		logger.info("receive AllocateVmReply for "+vmInstance.serviceChainConfig.name+" and stage "+
-		Integer.toString(vmInstance.stageIndex));
-		
-		String serviceChainName = vmInstance.serviceChainConfig.name;
-		if(this.serviceChainMap.containsKey(serviceChainName)){
-			SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
-					"7776", "7775", vmInstance, originalRequest);
-			this.mh.sendTo("subscriberConnector", request);
+		if(vmInstance!=null){
+			logger.info("receive AllocateVmReply for "+vmInstance.serviceChainConfig.name+" and stage "+
+			Integer.toString(vmInstance.stageIndex));
+			
+			String serviceChainName = vmInstance.serviceChainConfig.name;
+			if(this.serviceChainMap.containsKey(serviceChainName)){
+				SubConnRequest request = new SubConnRequest(this.getId(),vmInstance.managementIp,
+						"7776", "7775", vmInstance, originalRequest);
+				this.mh.sendTo("subscriberConnector", request);
+			}
+		}
+		else{
+			if(pendingMap.containsKey(originalRequest.getUUID())){
+				//This is an unallocated proactive scaling result
+				pendingMap.remove(originalRequest.getUUID());
+				if(pendingMap.size() == 0){
+					Socket requester = context.socket(ZMQ.REQ);
+					requester.connect("inproc://schSync");
+					requester.send("COMPLETE", 0);
+					requester.recv(0);
+					requester.close();
+					enableReactive();
+					logger.info("service chain handler finishes executing proactive scaling decision");
+				}
+			}
+			else{
+				NFVServiceChain serviceChain = serviceChainMap.get(originalRequest.getChainName());
+				synchronized(serviceChain){
+					serviceChain.setScaleIndicator(originalRequest.getStageIndex(), false);
+				}
+			}
 		}
 	}
 	
@@ -533,6 +556,34 @@ public class ServiceChainHandler extends MessageProcessor {
 				}
 			}
 		}
+		
+		/*synchronized(dpServiceChain){
+			ArrayList<String> list = new ArrayList<String>();
+			for(String key : dpServiceChain.destroyNodeMap.keySet()){
+				destroyNode = dpServiceChain.destroyNodeMap.get(key);
+				if(destroyNode.vmInstance.serviceChainConfig.nVmInterface==3){
+					//This is a dataplane node, we need to remove its index from indexmap
+					deleteStaticFlowRule(destroyNode);
+					int index = destroyNode.getIndex();
+					this.indexMap.get(destroyNode.vmInstance.stageIndex).remove(index);
+				}
+				
+				if(dpServiceChain.serviceChainConfig.nVmInterface == 3){
+					//this.poller.unregister(destroyNode.getManagementIp()+":1");
+				}
+				else{
+					//this.poller.unregister(destroyNode.getManagementIp()+":1");
+					//this.poller.unregister(destroyNode.getManagementIp()+":2");
+				}
+				DeallocateVmRequest deallocationRequest = 
+						new DeallocateVmRequest(this.getId(), destroyNode.vmInstance);
+				this.mh.sendTo("vmAllocator", deallocationRequest);
+				list.add(key);
+			}
+			for(int i=0; i<list.size(); i++){
+				dpServiceChain.destroyNodeMap.remove(list.get(i));
+			}
+		}*/
 	}
 	
 	private void statUpdate(StatUpdateRequest request){

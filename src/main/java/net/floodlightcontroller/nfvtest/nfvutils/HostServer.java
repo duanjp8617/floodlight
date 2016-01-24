@@ -228,7 +228,7 @@ public class HostServer {
 			
 			if(chainConfig.nVmInterface == 2){
 				FakeDhcpAllocator oDhcpAllocator = new FakeDhcpAllocator(this.macAllocator,
-														ipAllocator.allocateIp()+2, 32);
+														ipAllocator.allocateIp()+2, 220);
 				this.serviceChainONetworkMap.put(chainName, oDhcpAllocator);
 			}
 			else{
