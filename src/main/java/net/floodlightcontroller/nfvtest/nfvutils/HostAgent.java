@@ -467,6 +467,39 @@ public class HostAgent{
 		}
 	}
 	
+	public boolean addDpFlow(String bridgeName, int outPort, int dstDcIndex, int stageIndex)throws
+		IOException, UserAuthException, TransportException{
+		
+		byte newDstAddr[] = new byte[4];
+		byte mask[] = new byte[4];
+		for(int i=0; i<4; i++){
+			if((i)==stageIndex){
+				newDstAddr[i] = (byte)dstDcIndex;
+				mask[i] = ((byte)255);
+			}
+			else{
+				newDstAddr[i] = 0;
+				mask[i] = ((byte)0);
+			}
+		}
+		
+		final Session session = sshClient.startSession();
+		final Session.Command command = session.exec("sudo ovs-ofctl add-flow "+bridgeName+
+				" ip, nw_dst="+IPv4Address.of(newDstAddr).toString()+"/"+IPv4Address.of(mask).toString()
+				+",actions=output:"+Integer.toString(outPort));
+		command.join(60, TimeUnit.SECONDS);
+	
+		if(command.getExitStatus().intValue()==0){
+			session.close();
+			return true;
+		}
+		else{
+			session.close();
+			return false;
+	
+		}
+	}
+	
 	public boolean addFlow(String bridgeName, int inPort, int outPort)throws
 		IOException, UserAuthException, TransportException{
 	

@@ -275,6 +275,7 @@ public class VmAllocator extends MessageProcessor {
 			}
 			
 			try {
+				edgeServerAgent.addDpFlow(bridge, req.tunnelPortNum, req.dstDcIndex, i);
 				edgeServerAgent.addFlow(edgeBridge, tunnelPortNum, req.tunnelPortNum);
 			} catch(Exception e){
 				e.printStackTrace();
@@ -306,6 +307,7 @@ public class VmAllocator extends MessageProcessor {
 					String portName = "wd"+Integer.toString(req.dstDcIndex)+"vni"+Integer.toString(baseVniIndex);
 					workingServerAgent.createTunnelPort(portName, workingBridge, edgeServer.hostServerConfig.internalIp, 
 							req.tunnelPortNum, baseVniIndex);
+					workingServerAgent.addDpFlow(workingBridge, req.tunnelPortNum, req.dstDcIndex, j);
 				} catch(Exception e){
 					e.printStackTrace();
 				}
