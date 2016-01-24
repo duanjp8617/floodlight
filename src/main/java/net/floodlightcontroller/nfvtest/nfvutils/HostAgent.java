@@ -486,7 +486,7 @@ public class HostAgent{
 		final Session session = sshClient.startSession();
 		final Session.Command command = session.exec("sudo ovs-ofctl add-flow "+bridgeName+
 				" ip, nw_dst="+IPv4Address.of(newDstAddr).toString()+"/"+IPv4Address.of(mask).toString()
-				+",actions=output:"+Integer.toString(outPort));
+				+",actions=mod_nw_dst:1.1.1.1,output:"+Integer.toString(outPort));
 		command.join(60, TimeUnit.SECONDS);
 	
 		if(command.getExitStatus().intValue()==0){
