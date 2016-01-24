@@ -575,7 +575,7 @@ public class LocalController implements Runnable{
 				print = print+" "+statArray[i];
 			}
 		}
-		logger.info("{}", print);
+		//logger.info("{}", print);
 	}
 	
 	private void processCpStatPoll(int interval){
@@ -609,7 +609,7 @@ public class LocalController implements Runnable{
 		for(int i=start; i<end; i++){
 			print = print+" "+statArray[i];
 		}
-		logger.info("{}", print);
+		//logger.info("{}", print);
 	}
 	
 	public int[] getSrcDstPair(String srcAddr){
