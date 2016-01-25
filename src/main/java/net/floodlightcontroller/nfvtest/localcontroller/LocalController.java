@@ -320,24 +320,60 @@ public class LocalController implements Runnable{
 		}
 		else if(initMsg.equals("CLOSE")){
 			String pcscfIpPort      = pcscfPuller.recvStr();
+			
 			String entryFlowSrcAddr = pcscfPuller.recvStr();
-			String exitFlowSrcAddr  = pcscfPuller.recvStr();
 			
 			String split[] = entryFlowSrcAddr.split(":");
 			String entryMinorFlowSrcAddr = split[0]+":"+new Integer(Integer.parseInt(split[1])+1).toString();
 			
+			String entryFlowDstDc   = pcscfPuller.recvStr();
+			
+			String exitFlowSrcAddr  = pcscfPuller.recvStr();
+			
 			split = exitFlowSrcAddr.split(":");
 			String exitMinorFlowSrcAddr = split[0]+":"+new Integer(Integer.parseInt(split[1])+1).toString();
 			
+			String exitFlowDstAddr  = pcscfPuller.recvStr();
+			
+			split = exitFlowDstAddr.split(":");
+			String exitMinorFlowDstAddr = split[0]+":"+new Integer(Integer.parseInt(split[1])+1).toString();
+			
+			String exitFlowSrcIp    = pcscfPuller.recvStr();
+			
 			synchronized(this){
-				this.entryFlowDstDcMap.remove(entryFlowSrcAddr);
-				this.entryFlowDstDcMap.remove(entryMinorFlowSrcAddr);
+				if(this.entryFlowDstDcMap.containsKey(entryFlowSrcAddr)){
+					if(this.entryFlowDstDcMap.get(entryFlowSrcAddr).intValue()==Integer.parseInt(entryFlowDstDc)){
+						this.entryFlowDstDcMap.remove(entryFlowSrcAddr);
+					}
+				}
+				if(this.entryFlowDstDcMap.containsKey(entryMinorFlowSrcAddr)){
+					if(this.entryFlowDstDcMap.get(entryMinorFlowSrcAddr).intValue()==Integer.parseInt(entryFlowDstDc)){
+						this.entryFlowDstDcMap.remove(entryMinorFlowSrcAddr);
+					}
+				}
 				
-				this.exitFLowDstAddrMap.remove(exitFlowSrcAddr);
-				this.exitFLowDstAddrMap.remove(exitMinorFlowSrcAddr);
+				if(this.exitFLowDstAddrMap.containsKey(exitFlowSrcAddr)){
+					if(this.exitFLowDstAddrMap.get(exitFlowSrcAddr).equals(exitFlowDstAddr)){
+						this.exitFLowDstAddrMap.remove(exitFlowSrcAddr);
+					}
+				}
+				if(this.exitFLowDstAddrMap.containsKey(exitMinorFlowSrcAddr)){
+					if(this.exitFLowDstAddrMap.get(exitMinorFlowSrcAddr).equals(exitMinorFlowDstAddr)){
+						this.exitFLowDstAddrMap.remove(exitMinorFlowSrcAddr);
+					}
+				}
 				
-				this.exitFlowSrcIpMap.remove(exitFlowSrcAddr);
-				this.exitFlowSrcIpMap.remove(exitMinorFlowSrcAddr);
+				if(this.exitFlowSrcIpMap.containsKey(exitFlowSrcAddr)){
+					if(this.exitFlowSrcIpMap.get(exitFlowSrcAddr).equals(exitFlowSrcIp)){
+						this.exitFlowSrcIpMap.remove(exitFlowSrcAddr);
+					}
+				}
+				if(this.exitFlowSrcIpMap.containsKey(exitMinorFlowSrcAddr)){
+					if(this.exitFlowSrcIpMap.get(exitMinorFlowSrcAddr).equals(exitFlowSrcIp)){
+						this.exitFlowSrcIpMap.remove(exitMinorFlowSrcAddr);
+					}
+				}
+				
 			}
 			
 			Socket socket = this.pcscfPusherMap.get(pcscfIpPort);
