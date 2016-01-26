@@ -90,10 +90,10 @@ public class VmWorker extends MessageProcessor{
 			//dirs do not exist. If dirs exist, 
 			//we remove previous uploaded xml files
 			agent.connect();
-			//agent.createDir(hostServer.hostServerConfig.homeDir);
-			//agent.createDir(hostServer.hostServerConfig.xmlDir);
-			//agent.createDir(hostServer.hostServerConfig.imgDir);
-			//agent.removeFilesFromDir(hostServer.hostServerConfig.xmlDir);
+			agent.createDir(hostServer.hostServerConfig.homeDir);
+			agent.createDir(hostServer.hostServerConfig.xmlDir);
+			agent.createDir(hostServer.hostServerConfig.imgDir);
+			agent.removeFilesFromDir(hostServer.hostServerConfig.xmlDir);
 			
 			//The following loop initialize the runtime environment in host server.
 			//All used service chains will be initialized in turns.
@@ -141,17 +141,17 @@ public class VmWorker extends MessageProcessor{
 				}
 				
 				//upload base vm image files
-				/*for(int i=0; i<chainConfig.stages.size(); i++){
+				for(int i=0; i<chainConfig.stages.size(); i++){
 					baseImgList.add(chainConfig.getImgNameForStage(i));
 					if(!agent.fileExistInDir(hostServer.hostServerConfig.imgDir, chainConfig.getImgNameForStage(i))){
 						String imgPath = hostServer.controllerConfig.imgDir+"/"+chainConfig.getImgNameForStage(i);
 						String remotePath = hostServer.hostServerConfig.imgDir+"/"+chainConfig.getImgNameForStage(i);
 						agent.uploadFile(imgPath, remotePath);
 					}
-				}*/
+				}
 				
 				//create management network
-				/*if(agent.networkExist(chainConfig.getManagementNetwork())){
+				if(agent.networkExist(chainConfig.getManagementNetwork())){
 					agent.deleteNetwork(chainConfig.getManagementNetwork());
 				}
 				String localMNetXMLFile = constructNetworkXmlFile(hostServer.controllerConfig,
@@ -160,10 +160,10 @@ public class VmWorker extends MessageProcessor{
 				String remoteMNetXMLFile = hostServer.hostServerConfig.xmlDir+"/"+
 										   chainConfig.getManagementNetwork();
 				agent.uploadFile(localMNetXMLFile, remoteMNetXMLFile);
-				agent.createNetworkFromXml(remoteMNetXMLFile);*/
+				agent.createNetworkFromXml(remoteMNetXMLFile);
 				
 				//create operational network if it's control plane
-				/*if(chainConfig.getOperationNetwork()!="nil"){
+				if(chainConfig.getOperationNetwork()!="nil"){
 					if(agent.networkExist(chainConfig.getOperationNetwork())){
 						agent.deleteNetwork(chainConfig.getOperationNetwork());
 					}
@@ -174,14 +174,14 @@ public class VmWorker extends MessageProcessor{
 											   chainConfig.getOperationNetwork();
 					agent.uploadFile(localMNetXMLFilz, remoteMNetXMLFilz);
 					agent.createNetworkFromXml(remoteMNetXMLFilz);
-				}*/
+				}
 			}
 			agent.createRouteToGateway(hostServer.entryIp, hostServer.gatewayIp, "gateway");
-			/*//remove previous generated vm images
+			//remove previous generated vm images
 			String[] unusedImgArray = agent.createSelectedRemoveList(hostServer.hostServerConfig.imgDir, baseImgList);
 			for(int i=0; i<unusedImgArray.length; i++){
 				agent.removeFile(hostServer.hostServerConfig.imgDir+"/"+unusedImgArray[i]);
-			}*/
+			}
 			
 			agent.disconnect();
 		}
@@ -217,54 +217,30 @@ public class VmWorker extends MessageProcessor{
 			//reply to the actor that sends the CreateVmRequest
 			logger.info("start creating node "+vmInstance.managementIp);
 			agent.connect();
-			//agent.uploadFile(localXmlFile, remoteXmlFile);
-			//agent.copyFile(remoteBaseImgFile, remoteImgFile);
-			//Thread.sleep(1000);
-			//for(int i=0; i<10; i++){
-			//	boolean successful = agent.createVMFromXml(remoteXmlFile);
-			//	if(successful == true){
-			//		logger.info("the node "+vmInstance.managementIp+" is successfully created");
-			//		break;
-			//	}
-			//}
+			agent.uploadFile(localXmlFile, remoteXmlFile);
+			agent.copyFile(remoteBaseImgFile, remoteImgFile);
+			Thread.sleep(1000);
+			for(int i=0; i<10; i++){
+				boolean successful = agent.createVMFromXml(remoteXmlFile);
+				if(successful == true){
+					logger.info("the node "+vmInstance.managementIp+" is successfully created");
+					break;
+				}
+			}
 			int[] portList = new int[vmInstance.macList.size()];
-			if(vmInstance.serviceChainConfig.nVmInterface == 3){
-				int stageIndex = vmInstance.stageIndex;
-				String entryBridgeName = vmInstance.serviceChainConfig.bridges.get(stageIndex);
-				String exitBridgeName  = vmInstance.serviceChainConfig.bridges.get(stageIndex+1);
-				
-				int entryPortNum  = this.basePortNum;
-				this.basePortNum  += 1;
-				String entryPortName = Integer.toString(entryPortNum);
-				
-				int exitPortNum   = this.basePortNum;
-				this.basePortNum  += 1;
-				String exitPortName = Integer.toString(exitPortNum);
-				
-				
-				agent.addPatchPort(entryBridgeName, entryPortName, entryPortNum, exitPortName);
-				agent.addPatchPort(exitBridgeName , exitPortName,  exitPortNum,  entryPortName);
-				portList[0] = entryPortNum;
-				portList[1] = exitPortNum;
-				vmInstance.setPort(portList);
+			for(int i=0; i<vmInstance.macList.size(); i++){
+				String mac = vmInstance.macList.get(i);
+				String portMac = "fe:"+mac.substring(3);
+				int portNum = agent.getPort(vmInstance.macBridgeMap.get(mac), 
+						                    portMac);
+				portList[i] = portNum;
 			}
-			else{
-				vmInstance.setPort(portList);
-			}
-			//int[] portList = new int[vmInstance.macList.size()];
-			//for(int i=0; i<vmInstance.macList.size(); i++){
-			//	String mac = vmInstance.macList.get(i);
-			//	String portMac = "fe:"+mac.substring(3);
-			//	int portNum = agent.getPort(vmInstance.macBridgeMap.get(mac), 
-			//			                    portMac);
-			//	portList[i] = portNum;
-			//}
-			//vmInstance.setPort(portList);
+			vmInstance.setPort(portList);
 			agent.disconnect();
 			logger.info("finish creating node "+vmInstance.managementIp);
 			CreateVmReply reply = new CreateVmReply(this.getId(), request, true);
 			this.mh.sendTo(reply.getRequest().getSourceId(), reply);
-			//Thread.sleep(5*1000);
+			Thread.sleep(5*1000);
 		}
 		catch (Exception e){
 			e.printStackTrace();
@@ -483,22 +459,9 @@ public class VmWorker extends MessageProcessor{
 		HostAgent agent = new HostAgent(vmInstance.hostServerConfig);
 		try{
 			agent.connect();
-			//agent.destroyVm(vmInstance.vmName);
-			//agent.removeFile(remoteXmlPath);
-			//agent.removeFile(remoteImgPath);
-			if(vmInstance.serviceChainConfig.nVmInterface == 3){
-				int stageIndex = vmInstance.stageIndex;
-				
-				int entryPort = vmInstance.getPort(0);
-				String entryPortName = Integer.toString(entryPort);
-				String entryBridgeName = vmInstance.serviceChainConfig.bridges.get(stageIndex);
-				agent.removePort(entryBridgeName, entryPortName);
-				
-				int exitPort = vmInstance.getPort(1);
-				String exitPortName = Integer.toString(exitPort);
-				String exitBridgeName  = vmInstance.serviceChainConfig.bridges.get(stageIndex+1);
-				agent.removePort(exitBridgeName, exitPortName);
-			}
+			agent.destroyVm(vmInstance.vmName);
+			agent.removeFile(remoteXmlPath);
+			agent.removeFile(remoteImgPath);
 			agent.disconnect();
 			DestroyVmReply reply = new DestroyVmReply(this.getId(), request, true);
 			this.mh.sendTo(request.getSourceId(), reply);
