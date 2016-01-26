@@ -178,10 +178,10 @@ public class VmWorker extends MessageProcessor{
 			}
 			agent.createRouteToGateway(hostServer.entryIp, hostServer.gatewayIp, "gateway");
 			//remove previous generated vm images
-			String[] unusedImgArray = agent.createSelectedRemoveList(hostServer.hostServerConfig.imgDir, baseImgList);
+			/*String[] unusedImgArray = agent.createSelectedRemoveList(hostServer.hostServerConfig.imgDir, baseImgList);
 			for(int i=0; i<unusedImgArray.length; i++){
 				agent.removeFile(hostServer.hostServerConfig.imgDir+"/"+unusedImgArray[i]);
-			}
+			}*/
 			
 			agent.disconnect();
 		}
