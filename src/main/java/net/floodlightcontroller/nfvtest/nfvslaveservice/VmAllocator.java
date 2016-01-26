@@ -185,6 +185,12 @@ public class VmAllocator extends MessageProcessor {
 		}
 	}
 	
+	//We assume that we have a bridge called edgeBridge.
+	//eth2 of each server will connected on edge bridge
+	//For each tunnel, we create an interface on edgeBridge, bring it up with a 
+	//fixed ip address. Then we install a patch port on edgeBridge, and another 
+	//patch port on bridge 1
+	
 	private void createInterDcTunnelMash(CreateInterDcTunnelMash req){
 		String srcIp = req.srcIp;
 		Map<String, Integer> localcIndexMap = req.localcIndexMap;
@@ -219,7 +225,7 @@ public class VmAllocator extends MessageProcessor {
 				}
 				
 				int newVniPort[] = createInterDcPort(new CreateInterDcTunnelRequest("this", srcIndex, srcIp, dstIndex, dstIp, 
-						interDcVniIndex, basePort, baseVni));
+						interDcVniIndex, basePort, baseVni, localcIndexMap.size()));
 				basePort = newVniPort[0];
 				baseVni = newVniPort[1];
 			}
@@ -252,21 +258,40 @@ public class VmAllocator extends MessageProcessor {
 		String edgeBridge  = edgeServer.serviceChainConfigMap.get("DATA").bridges.get(0);
 		HostAgent edgeServerAgent = new HostAgent(edgeServer.hostServerConfig);
 		
+		String hostEdgeBridge = "edgeBridge";
+		int shift = 10;
+		String ipBase = "10.66.6.";
+		
 		try{
 			edgeServerAgent.connect();
 		} catch(Exception e){
 			e.printStackTrace();
 		}
 		
+		int tunnelPortNum = req.tunnelPortNum+1;
+		int baseVniIndex = req.baseVniIndex;
+		
 		try {
-			String portName = "s"+Integer.toString(req.srcDcIndex)+"d"+Integer.toString(req.dstDcIndex);
-			edgeServerAgent.createTunnelPort(portName, edgeBridge, req.dstIp, req.tunnelPortNum, req.interDcVniIndex);
+			String portNameA = "s"+Integer.toString(req.srcDcIndex)+"d"+Integer.toString(req.dstDcIndex)+"a";
+			String portNameB = "s"+Integer.toString(req.srcDcIndex)+"d"+Integer.toString(req.dstDcIndex)+"b";
+			String portName  = "s"+Integer.toString(req.srcDcIndex)+"d"+Integer.toString(req.dstDcIndex);
+			
+			edgeServerAgent.addPatchPort(edgeBridge, portNameA, req.tunnelPortNum, portNameB);
+			edgeServerAgent.addPatchPort(hostEdgeBridge, portNameB, req.tunnelPortNum, portNameA);
+			
+			edgeServerAgent.addPort(hostEdgeBridge, "p"+new Integer(req.dstDcIndex).toString(), tunnelPortNum);
+			edgeServerAgent.upPort("p"+new Integer(req.dstDcIndex).toString(), 
+					ipBase+new Integer(req.srcDcIndex*req.dcNum+req.dstDcIndex+shift).toString());
+			tunnelPortNum+=1;
+			
+			edgeServerAgent.createTunnelPort(portName, hostEdgeBridge,
+					ipBase+new Integer(req.dstDcIndex*req.dcNum+req.srcDcIndex+shift).toString(), tunnelPortNum, 400);
+			edgeServerAgent.addFlow(hostEdgeBridge, tunnelPortNum, req.tunnelPortNum);
+			edgeServerAgent.addFlow(hostEdgeBridge, req.tunnelPortNum, tunnelPortNum);
+			tunnelPortNum += 1;
 		} catch(Exception e){
 			e.printStackTrace();
 		}
-		
-		int tunnelPortNum = req.tunnelPortNum+1;
-		int baseVniIndex = req.baseVniIndex;
 		
 		edgeServer.dcIndexPortMap.put(new Integer(req.dstDcIndex), new Integer(req.tunnelPortNum));
 		edgeServer.portDcIndexMap.put(new Integer(req.tunnelPortNum), new Integer(req.dstDcIndex));

@@ -470,8 +470,10 @@ public class ConcreteMessage {
 		public final int tunnelPortNum;
 		public final int baseVniIndex;
 		
+		public final int dcNum;
+		
 		public CreateInterDcTunnelRequest(String sourceId, int srcDcIndex, String srcIp,
-				int dstDcIndex, String dstIp, int interDcVniIndex, int tunnelPortNum, int baseVniIndex){
+				int dstDcIndex, String dstIp, int interDcVniIndex, int tunnelPortNum, int baseVniIndex, int dcNum){
 			this.sourceId = sourceId;
 			this.srcDcIndex = srcDcIndex;
 			this.srcIp = srcIp;
@@ -480,6 +482,7 @@ public class ConcreteMessage {
 			this.interDcVniIndex = interDcVniIndex;
 			this.tunnelPortNum = tunnelPortNum; 
 			this.baseVniIndex = baseVniIndex;
+			this.dcNum = dcNum;
 		}
 	}
 	
