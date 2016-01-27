@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.floodlightcontroller.nfvtest.nfvslaveservice.ServiceChainHandler;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.VmInstance;
 
 
@@ -115,189 +116,90 @@ public class NFVNode {
 		public int getIndex(){
 			return this.index;
 		}
+		
+		public E peekLatestVal(){
+			return this.list.get((this.index+this.size-1)%this.size);
+		}
 	}
 	
 	public class NFVNodeProperty{
 		private final SimpleSM cpuState;
-		private final SimpleSM memState;
+		private final SimpleSM recvBdwState;
+		private final SimpleSM recvPktState;
 		
-		private final SimpleSM eth0RecvState;
-		private final SimpleSM eth0SendState;
-		private final SimpleSM eth1RecvState;
-		private final SimpleSM eth1SendState;
-		
-		private final SimpleSM tranState;
+		private final int cpuThresh;
+		private final long recvBdwThresh;
+		private final long recvPktThresh;
 	
 		public final CircularList<Float> cpuUsage;
-		public final CircularList<Float> memUsage; 
-		
-		public final CircularList<Integer> eth0RecvInt;
-		public final CircularList<Long>    eth0RecvPkt;
-		public final CircularList<Integer> eth0SendInt;
-	
-		public final CircularList<Integer> eth1RecvInt;
-		public final CircularList<Long>    eth1RecvPkt;
-		public final CircularList<Integer> eth1SendInt;
-		
-		public final CircularList<Integer> goodTran;
-		public final CircularList<Integer> badTran;
-		public final CircularList<Integer> srdSt250ms;
-		public final CircularList<Integer> srdLt250ms;
+		public final CircularList<Long> recvBdw;
+		public final CircularList<Long> recvPkt;
 		 
-		public NFVNodeProperty(int listSize){
+		public NFVNodeProperty(int listSize, int cpuThresh, long recvBdwThresh, long recvPktThresh){
 			cpuUsage = new CircularList<Float>(listSize, new Float(0));
-			memUsage = new CircularList<Float>(listSize, new Float(0));
-			
-			eth0RecvInt = new CircularList<Integer>(listSize, new Integer(0));
-			eth0RecvPkt = new CircularList<Long>(listSize, new Long(0));
-			eth0SendInt = new CircularList<Integer>(listSize, new Integer(0));
-			
-			eth1RecvInt = new CircularList<Integer>(listSize, new Integer(0));
-			eth1RecvPkt = new CircularList<Long>(listSize, new Long(0));
-			eth1SendInt = new CircularList<Integer>(listSize, new Integer(0));
+			recvBdw = new CircularList<Long>(listSize, new Long(0));
+			recvPkt = new CircularList<Long>(listSize, new Long(0));
 			
 			cpuState = new SimpleSM(listSize);
-			memState = new SimpleSM(listSize);
+			recvBdwState = new SimpleSM(listSize);
+			recvPktState = new SimpleSM(listSize);
 			
-			eth0RecvState = new SimpleSM(listSize);
-			eth0SendState = new SimpleSM(listSize);
-			eth1RecvState = new SimpleSM(listSize);
-			eth1SendState = new SimpleSM(listSize);
-			
-			goodTran = new CircularList<Integer>(6, new Integer(0));
-			badTran = new CircularList<Integer>(6, new Integer(0));
-			srdSt250ms = new CircularList<Integer>(6, new Integer(0));
-			srdLt250ms = new CircularList<Integer>(6, new Integer(0));
-			
-			tranState = new SimpleSM(6);
+			this.cpuThresh = cpuThresh;
+			this.recvBdwThresh = recvBdwThresh;
+			this.recvPktThresh = recvPktThresh;
 		}
 		
-		public void updateTranProperty(Integer goodTran, Integer badTran,
-				                       Integer srdSt250ms, Integer srdLt250ms){
-			this.goodTran.add(goodTran);
-			this.badTran.add(badTran);
-			this.srdSt250ms.add(srdSt250ms);
-			this.srdLt250ms.add(srdLt250ms);
-		}
-		
-		public int getTranState(){
-			if(goodTran.getFilledUp()&&badTran.getFilledUp()&&srdSt250ms.getFilledUp()
-			   &&srdLt250ms.getFilledUp()){
-				tranState.updateTransientState(checkTranStatus(goodTran.getCircularList(),
-															   badTran.getCircularList(),
-															   srdSt250ms.getCircularList(),
-															   srdLt250ms.getCircularList()));
-				return tranState.getState();
+		public boolean checkIdle(){
+			int state = checkStatus(recvPkt.getCircularList(), new Long(10), new Long(20));
+			if(state == NFVNode.IDLE){
+				return true;
 			}
 			else{
-				return NFVNode.NORMAL;
+				return false;
 			}
-			
 		}
 		
-		public void updateNodeProperty(Float cpuUsage, Float memUsage, 
-				   Integer eth0RecvInt, Long eth0RecvPkt, Integer eth0SendInt,
-				   Integer eth1RecvInt, Long eth1RecvPkt, Integer eth1SendInt){
+		public void updateNodeProperty(Float cpuUsage, Long recvBdw, Long recvPkt){
 				this.cpuUsage.add(cpuUsage);
-				this.memUsage.add(memUsage);
-
-				this.eth0RecvInt.add(eth0RecvInt);
-				this.eth0RecvPkt.add(eth0RecvPkt);
-				this.eth0SendInt.add(eth0SendInt);
-
-				this.eth1RecvInt.add(eth1RecvInt);
-				this.eth1RecvPkt.add(eth1RecvPkt);
-				this.eth1SendInt.add(eth1SendInt);
+				this.recvBdw.add(recvBdw);
+				this.recvPkt.add(recvPkt);		
 		}
 		
 		public int getNodeState(){
-			if(cpuUsage.getFilledUp()){
+			if(cpuUsage.getFilledUp()&&(cpuThresh!=-1)){
 				cpuState.updateTransientState(checkStatus(cpuUsage.getCircularList(), 
-														  new Float(30.0),
-														  new Float(85.0)));
+														  new Float(cpuThresh/2),
+														  new Float(cpuThresh)));
 			}
-			if(memUsage.getFilledUp()){
-				memState.updateTransientState(checkStatus(memUsage.getCircularList(),
-														  new Float(30.0),
-														  new Float(70.0)));
+			if(recvPkt.getFilledUp()&&(recvPktThresh!=-1)){
+				recvPktState.updateTransientState(checkStatus(recvPkt.getCircularList(), 
+														  new Long(recvPktThresh/2),
+														  new Long(recvPktThresh)));
 			}
-			if(eth0SendInt.getFilledUp()){
-				eth0SendState.updateTransientState(checkStatus(eth0SendInt.getCircularList(),
-															   new Integer(10),
-															   new Integer(20)));
-			}
-			if(eth1SendInt.getFilledUp()){
-				eth1SendState.updateTransientState(checkStatus(eth1SendInt.getCircularList(),
-															   new Integer(10),
-															   new Integer(20)));
-			}
-			if(eth0RecvInt.getFilledUp()&&eth0RecvPkt.getFilledUp()){
-				eth0RecvState.updateTransientState(checkRecvStatus(eth0RecvInt.getCircularList(),
-																   eth0RecvPkt.getCircularList(),
-																   (float)18));
-			}
-			if(eth1RecvInt.getFilledUp()&&eth1RecvPkt.getFilledUp()){
-				eth1RecvState.updateTransientState(checkRecvStatus(eth1RecvInt.getCircularList(),
-						   									       eth1RecvPkt.getCircularList(),
-						   									       (float)18));
+			if(recvBdw.getFilledUp()&&(recvBdwThresh!=-1)){
+				recvBdwState.updateTransientState(checkStatus(recvBdw.getCircularList(), 
+														  new Long(recvBdwThresh/2),
+														  new Long(recvBdwThresh)));
 			}
 			
-			int[] stateList = new int[6];
+			int[] stateList = new int[3];
 			stateList[0] = cpuState.getState();
-			stateList[1] = memState.getState();
-			stateList[2] = eth0RecvState.getState();
-			stateList[3] = eth0SendState.getState();
-			stateList[4] = eth1RecvState.getState();
-			stateList[5] = eth1SendState.getState();
+			stateList[1] = recvPktState.getState();
+			stateList[2] = recvBdwState.getState();
 			
-			int nNormal = 0;
-			int nIdle = 0;
+			int nOverload = 0;
 			
-			for(int i=0; i<6; i++){
+			for(int i=0; i<3; i++){
 				if(stateList[i] == NFVNode.OVERLOAD){
-					return NFVNode.OVERLOAD;
-				}
-				else if(stateList[i] == NFVNode.NORMAL){
-					nNormal += 1;
-				}
-				else if(stateList[i] == NFVNode.IDLE){
-					nIdle += 1;
+					nOverload+=1;
 				}
 			}
 			
-			if(nIdle == 6){
-				return NFVNode.IDLE;
-			}
-			else{
-				return NFVNode.NORMAL;
-			}
-		}
-		
-		private int checkTranStatus(ArrayList<Integer> goodTranList, ArrayList<Integer> badTranList,
-									ArrayList<Integer> srdSt250List, ArrayList<Integer> srdLt250List){
-			float totalGoodTran = 0;
-			float totalBadTran = 0;
-			float totalSrdSt250 = 0;
-			float totalSrdLt250 = 0;
-			
-			for(int i=0; i<goodTranList.size(); i++){
-				totalGoodTran += goodTranList.get(i).floatValue();
-				totalBadTran += badTranList.get(i).floatValue();
-				totalSrdSt250 += srdSt250List.get(i).floatValue();
-				totalSrdLt250 += srdLt250List.get(i).floatValue();
-			}
-			
-			float tranRatio = ((totalGoodTran+totalBadTran)==0)?1:
-				                                  (totalGoodTran/(totalGoodTran+totalBadTran));
-			float srdRatio = ((totalSrdSt250+totalSrdLt250)==0)?1:
-                                                  (totalSrdSt250/(totalSrdSt250+totalSrdLt250));
-				                                  
-			
-			if( (tranRatio>=0.99) && (srdRatio>=0.95) ){
-				return NFVNode.NORMAL;
-			}
-			else{
+			if(nOverload > 1){
 				return NFVNode.OVERLOAD;
+			}
+			else{
+				return NFVNode.NORMAL;
 			}
 		}
 		
@@ -335,39 +237,14 @@ public class NFVNode {
 			
 			return returnVal;
 		}
-		
-		private int checkRecvStatus(ArrayList<Integer> intList, ArrayList<Long> pktList, float t){
-			int nOverload = 0;
-			int nIdle = 0;
-			
-			for(int i=0; i<intList.size(); i++){
-				float val = pktList.get(i).floatValue()/intList.get(i).floatValue();
-				if(val>=t){
-					nOverload+=1;
-				}
-				else{
-					nIdle+=1;
-				}
-			}
-		
-			if(nOverload>=nIdle){
-				return NFVNode.OVERLOAD;
-			}
-			else{
-				return NFVNode.IDLE;
-			}
-		}
 	}
 	//immutable field.
 	public final VmInstance vmInstance;
 	
 	private NFVNodeProperty property;
 	private int state;
-	private int tranState;
-	private int activeFlows;
-	private static Logger logger;
 	private int scalingInterval;
-	
+	private final Logger logger =  LoggerFactory.getLogger(NFVNode.class);
 	private int index;
 	
 	//node state: idel, normal, overload
@@ -377,11 +254,10 @@ public class NFVNode {
 	
 	public NFVNode(VmInstance vmInstance){
 		this.vmInstance = vmInstance;
-		this.property = new NFVNodeProperty(4);
+		this.property = new NFVNodeProperty(15, vmInstance.serviceChainConfig.getStageVmInfo(vmInstance.stageIndex).cpuThreshold,
+				vmInstance.serviceChainConfig.getStageVmInfo(vmInstance.stageIndex).inputBandwidth, 
+				vmInstance.serviceChainConfig.getStageVmInfo(vmInstance.stageIndex).inputPktNum);
 		this.state = NFVNode.IDLE;
-		this.tranState = NFVNode.NORMAL;
-		this.activeFlows = 0;
-		logger = LoggerFactory.getLogger(NFVNode.class);
 		this.scalingInterval = -1;
 	}
 	
@@ -446,76 +322,36 @@ public class NFVNode {
 		return this.vmInstance.managementMac;
 	}
 	
-	public void updateNodeProperty(Float cpuUsage, Float memUsage, 
-								   Integer eth0RecvInt, Long eth0RecvPkt, Integer eth0SendInt, Long eth0SendPkt,
-								   Integer eth1RecvInt, Long eth1RecvPkt, Integer eth1SendInt, Long eth1SendPkt){
-		String stat = cpuUsage.toString()+" "+memUsage.toString()+" "+eth0RecvInt.toString()+" "+
-					  eth0RecvPkt.toString()+" "+eth0SendInt.toString()+" "+eth0SendPkt.toString()+" "+eth1RecvInt.toString()
-					  +" "+eth1RecvPkt.toString()+" "+eth1SendInt.toString()+" "+eth1SendPkt.toString();
-		float recvPkt = eth0RecvPkt.floatValue();
-		float recvInt = eth0RecvInt.floatValue();
-		stat = stat+" "+new Float(recvPkt/recvInt).toString();
+	public void updateNodeProperty(Float cpuUsage, Long recvBdw, Long recvPkt){
+		String stat = cpuUsage.toString()+" "+recvBdw.toString()+" "+recvPkt.toString();
 		
-		this.property.updateNodeProperty(cpuUsage, memUsage, eth0RecvInt, eth0RecvPkt, 
-										 eth0SendInt, eth1RecvInt, eth1RecvPkt, eth1SendInt);
+		this.property.updateNodeProperty(cpuUsage, recvBdw, recvPkt);
 		this.state = this.property.getNodeState();
 		
 		//if(this.vmInstance.stageIndex == 0){
 		if(this.state == NFVNode.IDLE){
 			String output = "Node-"+this.getManagementIp()+" is IDLE : "+stat;
-			//logger.info("{}", output);
+			logger.info("{}", output);
 		}
 		if(this.state == NFVNode.NORMAL){
 			String output = "Node-"+this.getManagementIp()+" is NORMAL : "+stat;
-			//logger.info("{}", output);
+			logger.info("{}", output);
 		}
 		if(this.state == NFVNode.OVERLOAD){
 			String output = "Node-"+this.getManagementIp()+" is OVERLOAD : "+stat;
-			//logger.info("{}", output);
+			logger.info("{}", output);
 		}
-	}
-	
-	public void updateTranProperty(Integer goodTran, Integer badTran, Integer srdSt250ms, Integer srdLt250ms){
-		String stat = goodTran.toString()+" "+badTran.toString()+" "+srdSt250ms.toString()+" "+srdLt250ms.toString()+" ";
-		float p1 = goodTran.floatValue()/(goodTran.floatValue()+badTran.floatValue());
-		float p2 = srdSt250ms.floatValue()/(srdSt250ms.floatValue()+srdLt250ms.floatValue());
-		stat = stat + new Float(p1).toString() + " " + new Float(p2).toString();
-		
-		this.property.updateTranProperty(goodTran, badTran, srdSt250ms, srdLt250ms);
-		this.tranState = this.property.getTranState();
-		
-		if(this.tranState == NFVNode.IDLE){
-			String output = "Tran Node-"+this.getManagementIp()+" is IDLE : "+stat;
-			//logger.info("{}", output);
-		}
-		if(this.tranState == NFVNode.NORMAL){
-			String output = "Tran Node-"+this.getManagementIp()+" is NORMAL : "+stat;
-			//logger.info("{}", output);
-		}
-		if(this.tranState == NFVNode.OVERLOAD){
-			String output = "Tran Node-"+this.getManagementIp()+" is OVERLOAD : "+stat;
-			//logger.info("{}", output);
-		}
-		
 	}
 	
 	public int getState(){
 		return this.state;
 	}
 	
-	public int getTranState(){
-		return this.tranState;
+	public long getCurrentRecvPkt(){
+		return this.property.recvPkt.peekLatestVal().longValue();
 	}
 	
-	public void addActiveFlow(){
-		this.activeFlows += 1;
-	}
-	
-	public void deleteActiveFlow(){
-		this.activeFlows -= 1;
-	}
-	
-	public int getActiveFlows(){
-		return this.activeFlows;
+	public boolean checkIdle(){
+		return this.property.checkIdle();
 	}
 }

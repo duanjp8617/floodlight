@@ -80,7 +80,7 @@ public class SubscriberConnector extends MessageProcessor{
 			String ipAddress = this.request.getManagementIp();
 			
 			String port1 = this.request.getPort1();
-			String port2 = this.request.getPort2();
+			//String port2 = this.request.getPort2();
 			Socket subscriber1 = null;
 			
 			logger.info("trying to connect subscriber1 for node "+ipAddress);
@@ -108,42 +108,8 @@ public class SubscriberConnector extends MessageProcessor{
 			}
 			
 			logger.info("finish connecting subscriber1 for node "+ipAddress);
-			
-			if(this.request.getVmInstance().serviceChainConfig.nVmInterface == 3){
-				SubConnReply reply = new SubConnReply("hehe", this.request, subscriber1, null);
-        		mh.sendTo(this.request.getSourceId(), reply);
-        		return;
-			}
-			
-			Socket subscriber2 = null;
-			
-			logger.info("trying to connect subscriber2 for node "+ipAddress);
-			
-			for(int i=0; i<1000; i++){
-				subscriber2 = zmqContext.socket(ZMQ.SUB);
-				subscriber2.monitor("inproc://monitor"+ipAddress, ZMQ.EVENT_CONNECTED);
-			
-				Socket monitor = zmqContext.socket(ZMQ.PAIR);
-				monitor.setReceiveTimeOut(10000);
-				monitor.connect("inproc://monitor"+ipAddress);
-				ZMQ.Event event;
-			
-				subscriber2.connect("tcp://"+ipAddress+":"+port2);
-	        	event = ZMQ.Event.recv(monitor);
-	        	
-	        	if((event != null)&&(event.getEvent() == ZMQ.EVENT_CONNECTED)){
-	        		subscriber2.subscribe("".getBytes());  		
-	        		break;
-	        	}
-	        	else{
-	        		monitor.close();
-	        		subscriber2.close();
-	        	}
-			}
-			
-			logger.info("finish connecting subscriber2 for node "+ipAddress);
-			
-			SubConnReply reply = new SubConnReply("hehe", this.request, subscriber1, subscriber2);
+	
+			SubConnReply reply = new SubConnReply("hehe", this.request, subscriber1, null);
     		mh.sendTo(this.request.getSourceId(), reply);
     		return;
 		}

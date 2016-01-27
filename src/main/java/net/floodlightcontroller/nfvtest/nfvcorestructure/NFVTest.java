@@ -168,17 +168,17 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		
 		//create service chain configuration for control plane
-		StageVmInfo bonoInfo = new StageVmInfo(1,2*1024,2*1024,"bono.img");
-		StageVmInfo sproutInfo = new StageVmInfo(1,2*1024,2*1024,"sprout.img");
+		StageVmInfo bonoInfo = new StageVmInfo(1,2*1024,2*1024,"bono.img", 90, 20, -1);
+		StageVmInfo sproutInfo = new StageVmInfo(1,2*1024,2*1024,"sprout.img", 90, 20, -1);
 		ArrayList<StageVmInfo> cpList = new ArrayList<StageVmInfo>();
 		cpList.add(bonoInfo);
 		cpList.add(sproutInfo);
 		ServiceChainConfig cpServiceChainConfig = new ServiceChainConfig("CONTROL", 2, cpList);
 		
 		//create data plane service chain configuration
-		StageVmInfo firewallInfo = new StageVmInfo(1, 2*1024, 2*1024, "firewall_mini.img");
-		//StageVmInfo ipsInfo = new StageVmInfo(1, 2*1024, 2*1024, "snort_mini.img");
-		StageVmInfo transcoderInfo = new StageVmInfo(1, 2*1024, 2*1024, "transcoder_mini.img");
+		StageVmInfo firewallInfo = new StageVmInfo(1, 2*1024, 2*1024, "firewall_mini.img", 95, -1, 200000);
+		//StageVmInfo ipsInfo = new StageVmInfo(1, 2*1024, 2*1024, "snort_mini.img", 95, -1, 100000);
+		StageVmInfo transcoderInfo = new StageVmInfo(1, 2*1024, 2*1024, "transcoder_mini.img", 95, -1, 100000);
 		ArrayList<StageVmInfo> dpList = new ArrayList<StageVmInfo>();
 		dpList.add(firewallInfo);
 		//dpList.add(ipsInfo);

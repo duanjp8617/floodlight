@@ -246,11 +246,11 @@ public class NFVServiceChain {
 				String[] nonScaleDownArray = nonScaleDownSet.toArray(new String[nonScaleDownSet.size()]);
 				String managementIp = nonScaleDownArray[0];
 				
-				int smallestFlowNum = stageMap.get(managementIp).getActiveFlows();
+				long smallestFlowNum = stageMap.get(managementIp).getCurrentRecvPkt();
 				
 				for(int j=0; j<nonScaleDownArray.length; j++){
 					String tmp = nonScaleDownArray[j];
-					int flowNum = stageMap.get(tmp).getActiveFlows();
+					long flowNum = stageMap.get(tmp).getCurrentRecvPkt();
 					if( (flowNum<smallestFlowNum) ){
 						smallestFlowNum = flowNum;
 						managementIp = tmp;
@@ -280,28 +280,12 @@ public class NFVServiceChain {
 			float memUsage = Float.parseFloat(memStatArray[1])*100/Float.parseFloat(memStatArray[0]);
 			memUsage = 100-memUsage;
 			
-			String interrupt = statList.get(6);
-			String[] intStatArray = interrupt.trim().split("\\s+");
-			int eth0RecvInt = Integer.parseInt(intStatArray[0]);
-			int eth0SendInt = Integer.parseInt(intStatArray[1]);
-			int eth1RecvInt = Integer.parseInt(intStatArray[2]);
-			int eth1SendInt = Integer.parseInt(intStatArray[3]);
-			
 			String eth0 = statList.get(8);
 			String[] eth0StatArray = eth0.trim().split("\\s+");
 			long eth0RecvPkt = Long.parseLong(eth0StatArray[1]);
-			long eth0SendPkt = Long.parseLong(eth0StatArray[9]);
+			long eth0RecvBdw = Long.parseLong(eth0StatArray[0]);
 			
-			String eth1 = statList.get(10);
-			String[] eth1StatArray = eth1.trim().split("\\s+");
-			long eth1RecvPkt = Long.parseLong(eth1StatArray[1]);
-			long eth1SendPkt = Long.parseLong(eth1StatArray[9]);
-			
-			node.updateNodeProperty(new Float(cpuUsage), new Float(memUsage), 
-									new Integer(eth0RecvInt), new Long(eth0RecvPkt), 
-									new Integer(eth0SendInt), new Long(eth0SendPkt),
-									new Integer(eth1RecvInt), new Long(eth1RecvPkt), 
-									new Integer(eth1SendInt), new Long(eth1SendPkt));
+			node.updateNodeProperty(new Float(cpuUsage), new Long(eth0RecvBdw), new Long(eth0RecvPkt));
 		}
 	}
 	
@@ -323,35 +307,13 @@ public class NFVServiceChain {
 				String[] memStatArray = mem.trim().split("\\s+");
 				float memUsage = Float.parseFloat(memStatArray[1])*100/Float.parseFloat(memStatArray[0]);
 				memUsage = 100-memUsage;
-			
-				String interrupt = statList.get(6);
-				String[] intStatArray = interrupt.trim().split("\\s+");
-				int eth0RecvInt = Integer.parseInt(intStatArray[0]);
-				int eth0SendInt = Integer.parseInt(intStatArray[1]);
 				
 				String eth0 = statList.get(8);
 				String[] eth0StatArray = eth0.trim().split("\\s+");
 				long eth0RecvPkt = Long.parseLong(eth0StatArray[1]);
-				long eth0SendPkt = Long.parseLong(eth0StatArray[9]);
-			
-				node.updateNodeProperty(new Float(cpuUsage), new Float(memUsage), 
-									    new Integer(eth0RecvInt), new Long(eth0RecvPkt), 
-									    new Integer(eth0SendInt), new Long(eth0SendPkt),
-									    new Integer(1), new Long(0), 
-								 	    new Integer(0), new Long(0));
-			}
-			else if(statList.get(1).equals("transaction_counter")){
+				long eth0RecvBdw = Long.parseLong(eth0StatArray[0]);
 				
-				int goodTran = Integer.parseInt(statList.get(3));
-				int badTran = Integer.parseInt(statList.get(4));
-				int srdSt250ms = Integer.parseInt(statList.get(6));
-				int srdLt250ms = Integer.parseInt(statList.get(5))+
-								 Integer.parseInt(statList.get(7));
-				
-				node.updateTranProperty(new Integer(goodTran), 
-									    new Integer(badTran), 
-									    new Integer(srdSt250ms), 
-									    new Integer(srdLt250ms));
+				node.updateNodeProperty(new Float(cpuUsage), new Long(eth0RecvBdw), new Long(eth0RecvPkt));
 			}
 		}
 	}
