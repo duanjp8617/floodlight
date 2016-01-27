@@ -727,6 +727,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		actionList.add(actions.setField(oxms.ipEcn(IpEcn.of(ecn))));
 		actionList.add(actions.setField(oxms.ipDscp(IpDscp.of(dscp))));
 		actionList.add(actions.setField(oxms.ipv4Dst(dstAddr)));
+		actionList.add(actions.setField(oxms.udpDst(TransportPort.of(7777))));
 		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
 		
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
@@ -755,6 +756,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		actionList.add(actions.setField(oxms.ethDst(dstMac)));
 		actionList.add(actions.setField(oxms.ipv4Src(IPv4Address.of(srcIp))));
 		actionList.add(actions.setField(oxms.ipv4Dst(IPv4Address.of(dstIp))));
+		actionList.add(actions.setField(oxms.udpDst(TransportPort.of(dstPort))));
 		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
 		
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
