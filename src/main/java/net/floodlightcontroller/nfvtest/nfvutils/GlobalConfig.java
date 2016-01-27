@@ -74,11 +74,19 @@ public class GlobalConfig {
 		public final int storage; //in MB
 		public final String imageName;
 		
-		public StageVmInfo(int cpu, int mem, int storage, String imageName){
+		public final int cpuThreshold; // in %
+		public final long inputBandwidth; //in Mbits/s
+		public final long inputPktNum; //in pkt/s
+		
+		public StageVmInfo(int cpu, int mem, int storage, String imageName, int cpuThreshold, 
+				long inputBandwidth, long inputPktNum){
 			this.cpu = cpu;
 			this.mem = mem;
 			this.storage = storage;
 			this.imageName = imageName;
+			this.cpuThreshold = cpuThreshold;
+			this.inputBandwidth = inputBandwidth;
+			this.inputPktNum = inputPktNum;
 		}
 	}
 	
@@ -126,5 +134,4 @@ public class GlobalConfig {
 			return stages.get(stageIndex).imageName;
 		}
 	}
-	
 }
