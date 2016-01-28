@@ -293,13 +293,13 @@ public class LocalController implements Runnable{
 			
 			String exitFlowSrcIp    = pcscfPuller.recvStr();
 			
-			System.out.println("entryFlowSrcAddr: "+entryFlowSrcAddr+" entryFlowDstDc: "+entryFlowDstDc
-					+" exitFlowSrcAddr: "+exitFlowSrcAddr+" exitFlowDstAddr"+exitFlowDstAddr
-					+" exitFlowSrcIp "+exitFlowSrcIp);
+			//System.out.println("entryFlowSrcAddr: "+entryFlowSrcAddr+" entryFlowDstDc: "+entryFlowDstDc
+			//		+" exitFlowSrcAddr: "+exitFlowSrcAddr+" exitFlowDstAddr"+exitFlowDstAddr
+			//		+" exitFlowSrcIp "+exitFlowSrcIp);
 			
-			System.out.println("entryMinorFlowSrcAddr: "+entryMinorFlowSrcAddr+" entryFlowDstDc: "+entryFlowDstDc
-					+" exitMinorFlowSrcAddr: "+exitMinorFlowSrcAddr+" exitMinorFlowDstAddr"+exitMinorFlowDstAddr
-					+" exitFlowSrcIp "+exitFlowSrcIp);
+			//System.out.println("entryMinorFlowSrcAddr: "+entryMinorFlowSrcAddr+" entryFlowDstDc: "+entryFlowDstDc
+			//		+" exitMinorFlowSrcAddr: "+exitMinorFlowSrcAddr+" exitMinorFlowDstAddr"+exitMinorFlowDstAddr
+			//		+" exitFlowSrcIp "+exitFlowSrcIp);
 			
 			synchronized(this){
 				this.entryFlowDstDcMap.put(entryFlowSrcAddr, Integer.parseInt(entryFlowDstDc));
