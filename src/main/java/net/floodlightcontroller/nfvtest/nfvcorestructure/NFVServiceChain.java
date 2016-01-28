@@ -284,8 +284,13 @@ public class NFVServiceChain {
 			String[] eth0StatArray = eth0.trim().split("\\s+");
 			long eth0RecvPkt = Long.parseLong(eth0StatArray[1]);
 			long eth0RecvBdw = Long.parseLong(eth0StatArray[0]);
+			eth0RecvBdw = (eth0RecvBdw/(1024*1024))*8;
 			
-			node.updateNodeProperty(new Float(cpuUsage), new Long(eth0RecvBdw), new Long(eth0RecvPkt));
+			String eth1 = statList.get(10);
+			String[] eth1StatArray = eth1.trim().split("\\s+");
+			long eth1SendPkt = Long.parseLong(eth1StatArray[9]);
+			
+			node.updateNodeProperty(new Float(cpuUsage), new Long(eth0RecvBdw), new Long(eth0RecvPkt), new Long(eth1SendPkt));
 		}
 	}
 	
@@ -312,8 +317,9 @@ public class NFVServiceChain {
 				String[] eth0StatArray = eth0.trim().split("\\s+");
 				long eth0RecvPkt = Long.parseLong(eth0StatArray[1]);
 				long eth0RecvBdw = Long.parseLong(eth0StatArray[0]);
+				eth0RecvBdw = (eth0RecvBdw/(1024*1024))*8;
 				
-				node.updateNodeProperty(new Float(cpuUsage), new Long(eth0RecvBdw), new Long(eth0RecvPkt));
+				node.updateNodeProperty(new Float(cpuUsage), new Long(eth0RecvBdw), new Long(eth0RecvPkt), new Long(0));
 			}
 		}
 	}

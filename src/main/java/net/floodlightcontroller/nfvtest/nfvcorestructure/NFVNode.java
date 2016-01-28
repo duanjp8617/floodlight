@@ -322,8 +322,8 @@ public class NFVNode {
 		return this.vmInstance.managementMac;
 	}
 	
-	public void updateNodeProperty(Float cpuUsage, Long recvBdw, Long recvPkt){
-		String stat = cpuUsage.toString()+" "+recvBdw.toString()+" "+recvPkt.toString();
+	public void updateNodeProperty(Float cpuUsage, Long recvBdw, Long recvPkt, Long sendPkt){
+		String stat = cpuUsage.toString()+" "+recvBdw.toString()+" "+recvPkt.toString()+" "+sendPkt.toString();
 		
 		this.property.updateNodeProperty(cpuUsage, recvBdw, recvPkt);
 		this.state = this.property.getNodeState();

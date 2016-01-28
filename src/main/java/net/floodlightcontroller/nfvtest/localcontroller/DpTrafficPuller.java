@@ -78,12 +78,12 @@ public class DpTrafficPuller implements Runnable{
 	            		 int srcDstVal = Integer.parseInt(srcDstTag);
 	            		 long dstDcIndex = (long)((srcDstVal>>2)&(0x00000007));
 	            		 
-	            		 int byteStart = line.indexOf("n_bytes=");
-	            		 byteStart += 8;
-	            		 int byteEnd   = line.indexOf(", idle_age");
+	            		 int byteStart = line.indexOf("n_packets=");
+	            		 byteStart += 10;
+	            		 int byteEnd   = line.indexOf(", n_bytes");
 	            		 String n_bytes = line.substring(byteStart, byteEnd);
 	            		 
-	            		 map.put(dstDcIndex, Long.parseLong(n_bytes));
+	            		 map.put(dstDcIndex, Long.parseLong(n_bytes));//This is actually n_packets
 	            	}
 	            }
 	        }

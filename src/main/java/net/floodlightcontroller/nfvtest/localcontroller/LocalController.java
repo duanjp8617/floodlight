@@ -248,7 +248,7 @@ public class LocalController implements Runnable{
 				delayPollTime = System.currentTimeMillis();
 			}
 			
-			if((System.currentTimeMillis()-cpStatPollTime)>5000){
+			if((System.currentTimeMillis()-cpStatPollTime)>6000){
 				processCpStatPoll(6000);
 				cpStatPollTime = System.currentTimeMillis();
 			}
