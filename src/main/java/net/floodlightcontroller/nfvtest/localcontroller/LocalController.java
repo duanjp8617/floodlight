@@ -651,7 +651,7 @@ public class LocalController implements Runnable{
 	public int[] getSrcDstPair(String srcAddr){
 		int srcDst[] = new int[2];
 		synchronized(this){
-			System.out.println("the entryFlow addr is:"+srcAddr);
+			//System.out.println("the entryFlow addr is:"+srcAddr);
 			int dstDcIndex = entryFlowDstDcMap.get(srcAddr).intValue();
 			int srcDcIndex = localcIndexMap.get(localIp).intValue();
 			srcDst[0] = srcDcIndex;
