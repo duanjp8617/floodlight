@@ -428,6 +428,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		synchronized(serviceChain){
 			if(pendingMap.containsKey(uuid)){
 				//one of the proactive scaling requests is finished.
+				logger.info("node:"+node.vmInstance.managementIp+"is created by proactive scaling");
 				serviceChain.addToServiceChain(node);
 				serviceChain.addWorkingNode(node);
 				
@@ -443,7 +444,6 @@ public class ServiceChainHandler extends MessageProcessor {
 					//		node.vmInstance.operationIp, "add");
 					//this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 				}
-				
 				pendingMap.remove(uuid);
 				if(pendingMap.size() == 0){
 					Socket requester = context.socket(ZMQ.REQ);
@@ -457,6 +457,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			}
 			else{
 				//a reactive scaling request is finished
+				logger.info("node:"+node.vmInstance.managementIp+"is created by reactive scaling");
 				serviceChain.addToServiceChain(node);
 				if(this.reactiveStart == true){
 					//reactive scaling is enabled, we add the node to working node
