@@ -51,6 +51,7 @@ public class NFVZmqPoller implements Runnable{
 				while(!this.unregisterQueue.isEmpty()){
 					String managementIp = this.unregisterQueue.removeFirst();
 					if(this.socketMap.containsKey(managementIp)){
+						this.socketMap.get(managementIp).close();
 						this.socketMap.remove(managementIp);
 					}
 				}
