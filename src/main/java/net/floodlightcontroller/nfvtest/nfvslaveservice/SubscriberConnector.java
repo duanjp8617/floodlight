@@ -82,28 +82,28 @@ public class SubscriberConnector extends MessageProcessor{
 			String port1 = this.request.getPort1();
 			//String port2 = this.request.getPort2();
 			Socket subscriber1 = null;
+			subscriber1 = zmqContext.socket(ZMQ.SUB);
+			subscriber1.monitor("inproc://monitor"+ipAddress, ZMQ.EVENT_CONNECTED);
+			Socket monitor = zmqContext.socket(ZMQ.PAIR);
+			monitor.setReceiveTimeOut(5000);
 			
-			logger.info("trying to connect subscriber1 for node "+ipAddress);
+			ZMQ.Event event;
 			
 			for(int i=0; i<1000; i++){
-				subscriber1 = zmqContext.socket(ZMQ.SUB);
-				subscriber1.monitor("inproc://monitor"+ipAddress, ZMQ.EVENT_CONNECTED);
-			
-				Socket monitor = zmqContext.socket(ZMQ.PAIR);
-				monitor.setReceiveTimeOut(5000);
+				logger.info("trying to connect subscriber1 for node "+ipAddress);
 				monitor.connect("inproc://monitor"+ipAddress);
-				ZMQ.Event event;
-			
 				subscriber1.connect("tcp://"+ipAddress+":"+port1);
 	        	event = ZMQ.Event.recv(monitor);
 	        	
 	        	if((event != null)&&(event.getEvent() == ZMQ.EVENT_CONNECTED)){
+	        		monitor.close();
 	        		subscriber1.subscribe("".getBytes());
 	        		break;
 	        	}
 	        	else{
-	        		monitor.close();
-	        		subscriber1.close();
+	        		logger.info("failed to connect to :"+ipAddress+", trying again!");
+	        		monitor.disconnect("inproc://monitor"+ipAddress);
+	        		subscriber1.disconnect("tcp://"+ipAddress+":"+port1);
 	        	}
 			}
 			
