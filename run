@@ -1,0 +1,8 @@
+#boost up the file capacity
+ulimit -Hn 70000
+ulimit -Sn 70000
+
+#command start from here
+java -jar target/floodlight.jar
+
+exit 0
