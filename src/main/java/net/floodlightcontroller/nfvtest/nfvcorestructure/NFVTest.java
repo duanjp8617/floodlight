@@ -155,7 +155,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		ControllerConfig controllerConfig = 
 				new ControllerConfig(mIp, "/home/net/base-env", "basexml.xml", "networkxml.xml");
 		HostServerConfig hostServerConfig = 
-				new HostServerConfig(mIp, iIp, pIp, 24, 48*1024, 100*1024, 1, userName, password, "/home/net/nfvenv");
+				new HostServerConfig(mIp, iIp, pIp, 48, 80*1024, 100*1024, 1, userName, password, "/home/net/nfvenv");
 		byte[] prefix = new byte[3];
 		prefix[0] = 0x52;
 		prefix[1] = 0x54;
@@ -176,9 +176,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		ServiceChainConfig cpServiceChainConfig = new ServiceChainConfig("CONTROL", 2, cpList);
 		
 		//create data plane service chain configuration
-		StageVmInfo firewallInfo = new StageVmInfo(1, 2*1024, 2*1024, "firewall_mini.img", 95, -1, 200000);
-		StageVmInfo ipsInfo = new StageVmInfo(1, 2*1024, 2*1024, "snort_mini.img", 90, -1, 24000);
-		StageVmInfo transcoderInfo = new StageVmInfo(1, 2*1024, 2*1024, "transcoder_mini.img", 90, -1, 13000);
+		StageVmInfo firewallInfo = new StageVmInfo(2, 2*1024, 2*1024, "firewall_mini.img", 90, -1, 50000);
+		StageVmInfo ipsInfo = new StageVmInfo(2, 2*1024, 2*1024, "snort_mini.img", 90, -1, 24000);
+		StageVmInfo transcoderInfo = new StageVmInfo(2, 2*1024, 2*1024, "transcoder_mini.img", 90, -1, 13000);
 		ArrayList<StageVmInfo> dpList = new ArrayList<StageVmInfo>();
 		dpList.add(firewallInfo);
 		dpList.add(ipsInfo);

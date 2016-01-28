@@ -25,7 +25,7 @@ public class NFVServiceChain {
 	public final Map<String, NFVNode> destroyNodeMap;
 	
 	private int scalingInterval;
-	private int maximumBufferingInterval = 5;
+	private int maximumBufferingInterval = 2;
 	
 	private int dpPaths[][][];
 	private int previousDpPaths[][][];
