@@ -150,7 +150,7 @@ public class NFVNode {
 		}
 		
 		public boolean checkIdle(){
-			int state = checkStatus(recvPkt.getCircularList(), new Long(10), new Long(20));
+			int state = checkStatus(recvPkt.getCircularList(), new Long(100), new Long(120));
 			if(state == NFVNode.IDLE){
 				return true;
 			}
