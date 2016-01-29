@@ -353,6 +353,7 @@ public class HostAgent{
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			return false;
 		}
 		
         if(returnVal==0)

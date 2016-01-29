@@ -218,7 +218,14 @@ public class VmWorker extends MessageProcessor{
 			logger.info("start creating node "+vmInstance.managementIp);
 			agent.connect();
 			agent.uploadFile(localXmlFile, remoteXmlFile);
-			agent.copyFile(remoteBaseImgFile, remoteImgFile);
+			for(int i=0; i<10; i++){
+				boolean successful = agent.copyFile(remoteBaseImgFile, remoteImgFile);
+				if(successful == true){
+					logger.info("the node "+vmInstance.managementIp+" is successfully created");
+					break;
+				}
+			}
+			
 			Thread.sleep(1000);
 			for(int i=0; i<10; i++){
 				boolean successful = agent.createVMFromXml(remoteXmlFile);
