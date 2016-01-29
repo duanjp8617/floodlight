@@ -168,8 +168,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		
 		//create service chain configuration for control plane
-		StageVmInfo bonoInfo = new StageVmInfo(1,2*1024,2*1024,"bono.img", 90, 20, -1);
-		StageVmInfo sproutInfo = new StageVmInfo(1,2*1024,2*1024,"sprout.img", 90, 20, -1);
+		StageVmInfo bonoInfo = new StageVmInfo(1,2*1024,2*1024,"bono.img", 80, 2, -1);
+		StageVmInfo sproutInfo = new StageVmInfo(1,2*1024,2*1024,"sprout.img", 80, 2, -1);
 		ArrayList<StageVmInfo> cpList = new ArrayList<StageVmInfo>();
 		cpList.add(bonoInfo);
 		cpList.add(sproutInfo);
@@ -209,7 +209,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		dnsUpdator = new DNSUpdator("dnsUpdator", "192.168.126.123", "7773", zmqContext);
 		dnsUpdator.registerWithMessageHub(mh);
-		//dnsUpdator.connect();
+		dnsUpdator.connect();
 		
 		chainHandler = new ServiceChainHandler("chainHandler", zmqContext, this.switchService);
 		chainHandler.registerWithMessageHub(mh);

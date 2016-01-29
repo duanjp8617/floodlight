@@ -335,9 +335,9 @@ public class ServiceChainHandler extends MessageProcessor {
 									domainName = "sprout.cw.t";
 								}
 								
-								//DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-								//		workingNode.vmInstance.operationIp, "delete");
-								//this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+								DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+										workingNode.vmInstance.operationIp, "delete");
+								this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 							}
 						}
 					}
