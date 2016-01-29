@@ -215,11 +215,32 @@ public class HostAgent{
 	public boolean createNetworkFromXml(String remoteXmlFilePath) throws
 		IOException, UserAuthException, TransportException{
 		
-		String cmd = "virsh net-create "+ remoteXmlFilePath;
+		System.out.println("defining network");
+		
+		String cmd1 = "virsh net-define "+ remoteXmlFilePath;
+		ProcessBuilder builder1 = new ProcessBuilder("/bin/bash", "-c", cmd1);
+        builder1.redirectErrorStream(true);
+        Process p1 = null;
+        int returnVal = 0;
+		try {
+			p1 = builder1.start();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+        try {
+			returnVal = p1.waitFor();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+        System.out.println("starting network");
+        
+		String cmd = "virsh net-start "+ remoteXmlFilePath;
 		ProcessBuilder builder = new ProcessBuilder("/bin/bash", "-c", cmd);
         builder.redirectErrorStream(true);
         Process p = null;
-        int returnVal = 0;
 		try {
 			p = builder.start();
 		} catch (IOException e) {
