@@ -232,6 +232,23 @@ public class HostAgent{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+        
+        cmd = "virsh net-start "+ remoteXmlFilePath;
+		ProcessBuilder builder1 = new ProcessBuilder("/bin/bash", "-c", cmd);
+        builder1.redirectErrorStream(true);
+        Process p1 = null;
+		try {
+			p1 = builder1.start();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+        try {
+			returnVal = p1.waitFor();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
         if(returnVal==0)
         	return true;
