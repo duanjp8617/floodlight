@@ -90,6 +90,7 @@ public class DNSUpdator extends MessageProcessor{
 		this.requester.send(request.getDomainName(), ZMQ.SNDMORE);
 		this.requester.send(request.getIpAddress(), 0);
 		String recvResult = requester.recvStr();
+		System.out.println("DNS Updator receives: "+recvResult);
 	}
 	
 }
