@@ -6,6 +6,7 @@ import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Context;
 import org.zeromq.ZMQ.Socket;
 
+import ch.qos.logback.classic.Logger;
 import net.floodlightcontroller.nfvtest.message.Message;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
 import net.floodlightcontroller.nfvtest.message.MessageProcessor;
@@ -41,6 +42,11 @@ public class DNSUpdator extends MessageProcessor{
     	
     	if((event != null)&&(event.getEvent() == ZMQ.EVENT_CONNECTED)){
     		monitor.close();
+    		requester.send("add", ZMQ.SNDMORE);
+    		requester.send("bono.cw.t", ZMQ.SNDMORE);
+    		requester.send("192.164.65.33", 0);
+    		String recvResult = requester.recvStr();
+    		System.out.println("DNS Updator receives: "+recvResult);
     		return;
     	}
     	else{
