@@ -6,6 +6,8 @@ import java.util.Map;
 
 import org.projectfloodlight.openflow.types.DatapathId;
 
+import ch.qos.logback.classic.Logger;
+
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
@@ -113,6 +115,7 @@ public class NFVServiceChain {
 	}
 	
 	public synchronized void addToBqRear(NFVNode node){
+		System.out.println("A stage "+new Integer(node.vmInstance.stageIndex).toString()+" is put into buffer queue");
 		int stageIndex = node.vmInstance.stageIndex;
 		node.setScalingInterval(this.scalingInterval);
 		bufferNodeQueues.get(stageIndex).addLast(node);
@@ -129,11 +132,13 @@ public class NFVServiceChain {
 		NFVNode head = bufferNodeQueues.get(stageIndex).peek();
 		if(head != null){
 			if((scalingInterval-head.getScalingInterval())>maximumBufferingInterval){
+				System.out.println("got a buffer node from buffer head");
 				head = bufferNodeQueues.get(stageIndex).poll();
 				head.setScalingInterval(-1);
 				return head;
 			}
 			else{
+				System.out.println("the head has not lived for enough scaling intervals to be delted");
 				return null;
 			}
 		}

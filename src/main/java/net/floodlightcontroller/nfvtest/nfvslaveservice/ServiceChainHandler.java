@@ -99,7 +99,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	}
 	
 	private void enableReactive(){
-		this.reactiveStart = true;
+		this.reactiveStart = false;
 	}
 	
 	public void startPollerThread(){
