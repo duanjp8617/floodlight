@@ -71,15 +71,27 @@ public class NFVServiceChain {
 	}
 	
 	public synchronized int[] getPreviousDpPaths(int srcDcIndex, int dstDcIndex){
-		return this.previousDpPaths[srcDcIndex][dstDcIndex];
+		int returnPaths[] = new int[this.previousDpPaths[srcDcIndex][dstDcIndex].length];
+		for(int i=0; i<this.previousDpPaths[srcDcIndex][dstDcIndex].length; i++){
+			returnPaths[i] = this.previousDpPaths[srcDcIndex][dstDcIndex][i];
+		}
+		return returnPaths;
 	}
 	
 	public synchronized int[] getCurrentDpPaths(int srcDcIndex, int dstDcIndex){
-		return this.dpPaths[srcDcIndex][dstDcIndex];
+		int returnPaths[] = new int[this.dpPaths[srcDcIndex][dstDcIndex].length];
+		for(int i=0; i<this.dpPaths[srcDcIndex][dstDcIndex].length; i++){
+			returnPaths[i] = this.dpPaths[srcDcIndex][dstDcIndex][i];
+		}
+		return returnPaths;
 	}
 	
 	public synchronized int[] getNextDpPaths(int srcDcIndex, int dstDcIndex){
-		return this.nextDpPaths[srcDcIndex][dstDcIndex];
+		int returnPaths[] = new int[this.nextDpPaths[srcDcIndex][dstDcIndex].length];
+		for(int i=0; i<this.nextDpPaths[srcDcIndex][dstDcIndex].length; i++){
+			returnPaths[i] = this.nextDpPaths[srcDcIndex][dstDcIndex][i];
+		}
+		return returnPaths;
 	}
 	
 	public synchronized  void addNextDpPaths(int[][][] nextDpPaths){

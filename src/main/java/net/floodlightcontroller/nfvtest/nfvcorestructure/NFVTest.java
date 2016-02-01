@@ -405,47 +405,49 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     	int dpPaths[] = null;    //dpPaths of the current scaling interval
     	int currentDcIndex = localController.getCurrentDcIndex();
     	
-    	if(inPort.getPortNumber() == inputHostServer.gatewayPort){
-    		//This is the new flow, we need to query local controller to know where exactly this flow want
-    		//to go.
-    		String srcAddr = srcIp.toString()+":"+srcPort.toString();
-    		srcDstPair = localController.getSrcDstPair(srcAddr);
-    		scalingInterval = this.dpServiceChain.getScalingInterval();
-    		dpPaths = this.dpServiceChain.getCurrentDpPaths(srcDstPair[0], srcDstPair[1]);
-    	}
-    	else{
-    		//This is not a new flow, we need to check the tagging
-    		//The destination port contains scaling interval
-    		//the destination Ip address contains dp path src dst pair.
-    		//0x0000FF00>>8 is the dst dc index
-    		//0x000000FF is the src dc index
-    		int srcIndex = (int)((dscpEcn&0xE0)>>5);
-    		int dstIndex = (int)((dscpEcn&0x1C)>>2);
-    		srcDstPair = new int[2];
-    		srcDstPair[0] = srcIndex;
-    		srcDstPair[1] = dstIndex;
-    		
-    		scalingInterval = (int)(dscpEcn&0x03);
-    		int currentScalingInterval = this.dpServiceChain.getScalingInterval();
-    		
-    		
-    		//System.out.println("got a flow from another datacenter, src dc: "+new Integer(srcDstPair[0]).toString()+
-    		//		" dst dc: "+new Integer(srcDstPair[1]).toString() + " scalingInterval: "+new Integer(scalingInterval).toString());
-    		
-    		//the scaling interval loops through 0-3. 
-    		if(scalingInterval == currentScalingInterval){
-    			dpPaths = this.dpServiceChain.getCurrentDpPaths(srcDstPair[0], srcDstPair[1]);
-    		}
-    		else if(((scalingInterval+1)%4)==currentScalingInterval){
-    			dpPaths = this.dpServiceChain.getPreviousDpPaths(srcDstPair[0], srcDstPair[1]);
-    		}
-    		else if(((currentScalingInterval+1)%4)==scalingInterval){
-    			dpPaths = this.dpServiceChain.getNextDpPaths(srcDstPair[0], srcDstPair[1]);
-    		}
-    		else{
-    			logger.info("routing error");
-    			return;
-    		}
+    	synchronized(this.dpServiceChain){
+	    	if(inPort.getPortNumber() == inputHostServer.gatewayPort){
+	    		//This is the new flow, we need to query local controller to know where exactly this flow want
+	    		//to go.
+	    		String srcAddr = srcIp.toString()+":"+srcPort.toString();
+	    		srcDstPair = localController.getSrcDstPair(srcAddr);
+	    		scalingInterval = this.dpServiceChain.getScalingInterval();
+	    		dpPaths = this.dpServiceChain.getCurrentDpPaths(srcDstPair[0], srcDstPair[1]);
+	    	}
+	    	else{
+	    		//This is not a new flow, we need to check the tagging
+	    		//The destination port contains scaling interval
+	    		//the destination Ip address contains dp path src dst pair.
+	    		//0x0000FF00>>8 is the dst dc index
+	    		//0x000000FF is the src dc index
+	    		int srcIndex = (int)((dscpEcn&0xE0)>>5);
+	    		int dstIndex = (int)((dscpEcn&0x1C)>>2);
+	    		srcDstPair = new int[2];
+	    		srcDstPair[0] = srcIndex;
+	    		srcDstPair[1] = dstIndex;
+	    		
+	    		scalingInterval = (int)(dscpEcn&0x03);
+	    		int currentScalingInterval = this.dpServiceChain.getScalingInterval();
+	    		
+	    		
+	    		//System.out.println("got a flow from another datacenter, src dc: "+new Integer(srcDstPair[0]).toString()+
+	    		//		" dst dc: "+new Integer(srcDstPair[1]).toString() + " scalingInterval: "+new Integer(scalingInterval).toString());
+	    		
+	    		//the scaling interval loops through 0-3. 
+	    		if(scalingInterval == currentScalingInterval){
+	    			dpPaths = this.dpServiceChain.getCurrentDpPaths(srcDstPair[0], srcDstPair[1]);
+	    		}
+	    		else if(((scalingInterval+1)%4)==currentScalingInterval){
+	    			dpPaths = this.dpServiceChain.getPreviousDpPaths(srcDstPair[0], srcDstPair[1]);
+	    		}
+	    		else if(((currentScalingInterval+1)%4)==scalingInterval){
+	    			dpPaths = this.dpServiceChain.getNextDpPaths(srcDstPair[0], srcDstPair[1]);
+	    		}
+	    		else{
+	    			logger.info("routing error");
+	    			return;
+	    		}
+	    	}
     	}
 		
 		ArrayList<Integer> stageList = new ArrayList<Integer>();
