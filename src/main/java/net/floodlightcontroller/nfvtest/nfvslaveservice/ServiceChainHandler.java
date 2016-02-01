@@ -199,6 +199,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	private void handleLocalControllerNotification(LocalControllerNotification req){
 		this.dcIndex = req.getDcIndex();
 		this.dcNum = req.getDcNum();
+		this.serviceChainMap.get("DATA").initPathsArray(this.dcNum);
 	}
 	
 	private void relayCreateInterDcTunnelMash(CreateInterDcTunnelMash req){

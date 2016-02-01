@@ -66,6 +66,13 @@ public class NFVServiceChain {
 		this.nextDpPaths = null;
 	}
 	
+	public synchronized void initPathsArray(int dcNum){
+		int length = this.serviceChainConfig.stages.size();
+		this.dpPaths = new int[dcNum][dcNum][length];
+		this.previousDpPaths = new int[dcNum][dcNum][length];
+		this.nextDpPaths = new int[dcNum][dcNum][length];
+	}
+	
 	public synchronized int getScalingInterval(){
 		return (this.scalingInterval)%4;
 	}
@@ -96,7 +103,13 @@ public class NFVServiceChain {
 	
 	public synchronized  void addNextDpPaths(int[][][] nextDpPaths){
 		if(this.serviceChainConfig.nVmInterface == 3){
-			this.nextDpPaths = nextDpPaths;
+			for(int i=0; i<nextDpPaths.length; i++){
+				for(int j=0; j<nextDpPaths[i].length; j++){
+					for(int k=0; k<nextDpPaths[i][j].length; k++){
+						this.nextDpPaths[i][j][k] = nextDpPaths[i][j][k];
+					}
+				}
+			}
 		}
 	}
 	
@@ -127,9 +140,15 @@ public class NFVServiceChain {
 		}
 		
 		if(this.serviceChainConfig.nVmInterface == 3){
-			previousDpPaths = dpPaths;
-			dpPaths = nextDpPaths;
-			nextDpPaths = null;
+			for(int i=0; i<dpPaths.length; i++){
+				for(int j=0; j<dpPaths[i].length; j++){
+					for(int k=0; k<dpPaths[i][j].length; k++){
+						this.previousDpPaths[i][j][k] = this.dpPaths[i][j][k];
+						this.dpPaths[i][j][k] = this.nextDpPaths[i][j][k];
+						this.nextDpPaths[i][j][k] = 0;
+					}
+				}
+			}
 		}
 		
 		System.out.println("after updating, the previous path is: ");
