@@ -432,15 +432,18 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	    		
 	    		System.out.println("got a flow from another datacenter, src dc: "+new Integer(srcDstPair[0]).toString()+
 	    				" dst dc: "+new Integer(srcDstPair[1]).toString() + " scalingInterval: "+new Integer(scalingInterval).toString());
-	    		
+	    		System.out.println("The current scaling interval is: " + new Integer(currentScalingInterval).toString());
 	    		//the scaling interval loops through 0-3. 
 	    		if(scalingInterval == currentScalingInterval){
+	    			System.out.println("use current path");
 	    			dpPaths = this.dpServiceChain.getCurrentDpPaths(srcDstPair[0], srcDstPair[1]);
 	    		}
 	    		else if(((scalingInterval+1)%4)==currentScalingInterval){
+	    			System.out.println("use previous path");
 	    			dpPaths = this.dpServiceChain.getPreviousDpPaths(srcDstPair[0], srcDstPair[1]);
 	    		}
-	    		else if(((currentScalingInterval+1)%4)==scalingInterval){
+	    		else if(((scalingInterval+4-1)%4)==currentScalingInterval){
+	    			System.out.println("use next path");
 	    			dpPaths = this.dpServiceChain.getNextDpPaths(srcDstPair[0], srcDstPair[1]);
 	    		}
 	    		else{
