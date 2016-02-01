@@ -437,14 +437,29 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	    		if(scalingInterval == currentScalingInterval){
 	    			System.out.println("use current path");
 	    			dpPaths = this.dpServiceChain.getCurrentDpPaths(srcDstPair[0], srcDstPair[1]);
+	    			String pathOutput = "";
+	    			for(int i=0; i<dpPaths.length; i++){
+	    				pathOutput = pathOutput + new Integer(dpPaths[i]).toString() + " ";
+	    			}
+	    			System.out.println("The path is: "+pathOutput);
 	    		}
 	    		else if(((scalingInterval+1)%4)==currentScalingInterval){
 	    			System.out.println("use previous path");
 	    			dpPaths = this.dpServiceChain.getPreviousDpPaths(srcDstPair[0], srcDstPair[1]);
+	    			String pathOutput = "";
+	    			for(int i=0; i<dpPaths.length; i++){
+	    				pathOutput = pathOutput + new Integer(dpPaths[i]).toString() + " ";
+	    			}
+	    			System.out.println("The path is: "+pathOutput);
 	    		}
 	    		else if(((scalingInterval+4-1)%4)==currentScalingInterval){
 	    			System.out.println("use next path");
 	    			dpPaths = this.dpServiceChain.getNextDpPaths(srcDstPair[0], srcDstPair[1]);
+	    			String pathOutput = "";
+	    			for(int i=0; i<dpPaths.length; i++){
+	    				pathOutput = pathOutput + new Integer(dpPaths[i]).toString() + " ";
+	    			}
+	    			System.out.println("The path is: "+pathOutput);
 	    		}
 	    		else{
 	    			logger.info("routing error");
