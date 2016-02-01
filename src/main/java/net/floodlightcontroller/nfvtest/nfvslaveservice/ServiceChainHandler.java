@@ -495,9 +495,9 @@ public class ServiceChainHandler extends MessageProcessor {
 		logger.info("receive SubConnReply for "+vmInstance.serviceChainConfig.name+" and stage "+
 		Integer.toString(vmInstance.stageIndex));
 		
-		String managementIp = vmInstance.managementIp;
-		Socket subscriber1 = reply.getSubscriber1();
-		this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
+		//String managementIp = vmInstance.managementIp;
+		//Socket subscriber1 = reply.getSubscriber1();
+		//this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 		
 		if(node.vmInstance.serviceChainConfig.nVmInterface == 3){
 			//This a dataplane node, assign a unique identifier to it.
