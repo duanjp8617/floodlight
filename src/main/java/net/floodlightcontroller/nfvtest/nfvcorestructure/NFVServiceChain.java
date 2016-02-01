@@ -102,10 +102,57 @@ public class NFVServiceChain {
 	
 	public synchronized void addScalingInterval(){
 		this.scalingInterval += 1;
+		
+		System.out.println("before updating, the current path is: ");
+		for(int i=0; i<dpPaths.length; i++){
+			String print = "";
+			for(int j=0; j<dpPaths[i].length; j++){
+				for(int k=0; k<dpPaths[i][j].length; k++){
+					print = print + new Integer(dpPaths[i][j][k]).toString() + " ";
+				}
+				print = print + ": ";
+			}
+			System.out.println(print);
+		}
+		System.out.println("before updating, the next path is: ");
+		for(int i=0; i<nextDpPaths.length; i++){
+			String print = "";
+			for(int j=0; j<nextDpPaths[i].length; j++){
+				for(int k=0; k<nextDpPaths[i][j].length; k++){
+					print = print + new Integer(nextDpPaths[i][j][k]).toString() + " ";
+				}
+				print = print + ": ";
+			}
+			System.out.println(print);
+		}
+		
 		if(this.serviceChainConfig.nVmInterface == 3){
 			previousDpPaths = dpPaths;
 			dpPaths = nextDpPaths;
 			nextDpPaths = null;
+		}
+		
+		System.out.println("after updating, the previous path is: ");
+		for(int i=0; i<previousDpPaths.length; i++){
+			String print = "";
+			for(int j=0; j<previousDpPaths[i].length; j++){
+				for(int k=0; k<previousDpPaths[i][j].length; k++){
+					print = print + new Integer(previousDpPaths[i][j][k]).toString() + " ";
+				}
+				print = print + ": ";
+			}
+			System.out.println(print);
+		}
+		System.out.println("after updating, the current path is: ");
+		for(int i=0; i<dpPaths.length; i++){
+			String print = "";
+			for(int j=0; j<dpPaths[i].length; j++){
+				for(int k=0; k<dpPaths[i][j].length; k++){
+					print = print + new Integer(dpPaths[i][j][k]).toString() + " ";
+				}
+				print = print + ": ";
+			}
+			System.out.println(print);
 		}
 	}
 	
