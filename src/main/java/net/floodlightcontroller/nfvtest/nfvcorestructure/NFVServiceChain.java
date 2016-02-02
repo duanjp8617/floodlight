@@ -71,6 +71,16 @@ public class NFVServiceChain {
 		this.dpPaths = new int[dcNum][dcNum][length];
 		this.previousDpPaths = new int[dcNum][dcNum][length];
 		this.nextDpPaths = new int[dcNum][dcNum][length];
+		
+		for(int i=0; i<dcNum; i++){
+			for(int j=0; j<dcNum; j++){
+				for(int k=0; k<dcNum; k++){
+					this.dpPaths[i][j][k] = -1;
+					this.previousDpPaths[i][j][k] = -1;
+					this.nextDpPaths[i][j][k] = -1;
+				}
+			}
+		}
 	}
 	
 	public synchronized int getScalingInterval(){
@@ -145,7 +155,7 @@ public class NFVServiceChain {
 					for(int k=0; k<dpPaths[i][j].length; k++){
 						this.previousDpPaths[i][j][k] = this.dpPaths[i][j][k];
 						this.dpPaths[i][j][k] = this.nextDpPaths[i][j][k];
-						this.nextDpPaths[i][j][k] = 0;
+						this.nextDpPaths[i][j][k] = -1;
 					}
 				}
 			}

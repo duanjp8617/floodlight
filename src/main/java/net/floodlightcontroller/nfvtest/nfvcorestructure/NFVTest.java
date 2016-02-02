@@ -467,6 +467,12 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	    		}
 	    	}
     	}
+    	
+    	//Now let's verify whether the packet is a correct packet
+    	if((srcDstPair[0]!=dpPaths[0])||(srcDstPair[1]!=dpPaths[dpPaths.length-1])){
+    		System.out.println("we are getting an incorrect packet with unmatching service chain path");
+    		return;
+    	}
 		
 		ArrayList<Integer> stageList = new ArrayList<Integer>();
 		for(int i=0; i<dpPaths.length; i++){
@@ -474,6 +480,12 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 				stageList.add(new Integer(i));
 			}
 		}
+		
+		if(stageList.size() == 0){
+			System.out.println("the current datacenter is not on the service chain path");
+			return;
+		}
+		
 		List<NFVNode> routeList = this.dpServiceChain.forwardRoute(stageList.get(0).intValue(),
 				stageList.get(stageList.size()-1).intValue());
 		
@@ -554,6 +566,11 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			System.out.println(" exitFlowSrcAddr: "+exitFlowSrcAddr+" is going to access the map");
 			String exitFlowDstAddr = localController.getExitFlowDstAddr(exitFlowSrcAddr);
 			String exitFlowSrcIp   = localController.getExitFlowSrcIp(exitFlowSrcAddr);
+			
+			if(exitFlowDstAddr.equals("")||exitFlowSrcIp.equals("")){
+				return;
+			}
+			
 			String sArray[] = exitFlowDstAddr.split(":");
 			String exitFlowDstip = sArray[0];
 			String exitFlowDstPort = sArray[1];
@@ -664,7 +681,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         return mb.build();
     }
     
-    private OFFlowMod createFlowModWithoutMac(IOFSwitch sw, Match flowMatch, OFPort outPort){
+    /*private OFFlowMod createFlowModWithoutMac(IOFSwitch sw, Match flowMatch, OFPort outPort){
 		List<OFAction> actionList = new ArrayList<OFAction>();	
 		OFActions actions = sw.getOFFactory().actions();
 		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
@@ -684,9 +701,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		fmb.setFlags(sfmf);
 		
 		return fmb.build();
-    }
+    }*/
     
-    private OFFlowMod createFlowMod(IOFSwitch sw, Match flowMatch, MacAddress dstMac, OFPort outPort){
+    /*private OFFlowMod createFlowMod(IOFSwitch sw, Match flowMatch, MacAddress dstMac, OFPort outPort){
 		List<OFAction> actionList = new ArrayList<OFAction>();	
 		OFActions actions = sw.getOFFactory().actions();
 		OFOxms oxms = sw.getOFFactory().oxms();
@@ -709,7 +726,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		fmb.setFlags(sfmf);
 		
 		return fmb.build();
-    }
+    }*/
     
     private OFFlowMod createFlowModFromOtherDc(IOFSwitch sw, Match flowMatch, IPv4Address dstAddr, OFPort outPort){
 		List<OFAction> actionList = new ArrayList<OFAction>();	

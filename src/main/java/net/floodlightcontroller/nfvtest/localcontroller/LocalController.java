@@ -661,17 +661,21 @@ public class LocalController implements Runnable{
 	}
 	
 	public String getExitFlowDstAddr(String exitFlowSrcAddr){
-		String returnVal = null;
+		String returnVal = "";
 		synchronized(this){
-			returnVal = new String(this.exitFLowDstAddrMap.get(exitFlowSrcAddr));
+			if(this.exitFLowDstAddrMap.containsKey(exitFlowSrcAddr)){
+				returnVal = new String(this.exitFLowDstAddrMap.get(exitFlowSrcAddr));
+			}
 		}
 		return returnVal;
 	}
 	
 	public String getExitFlowSrcIp(String exitFlowSrcAddr){
-		String returnVal = null;
+		String returnVal = "";
 		synchronized(this){
-			returnVal = new String(this.exitFlowSrcIpMap.get(exitFlowSrcAddr));
+			if(this.exitFlowSrcIpMap.containsKey(exitFlowSrcAddr)){
+				returnVal = new String(this.exitFlowSrcIpMap.get(exitFlowSrcAddr));
+			}
 		}
 		return returnVal;
 	}
