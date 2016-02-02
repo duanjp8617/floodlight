@@ -74,7 +74,7 @@ public class NFVServiceChain {
 		
 		for(int i=0; i<dcNum; i++){
 			for(int j=0; j<dcNum; j++){
-				for(int k=0; k<dcNum; k++){
+				for(int k=0; k<length; k++){
 					this.dpPaths[i][j][k] = -1;
 					this.previousDpPaths[i][j][k] = -1;
 					this.nextDpPaths[i][j][k] = -1;
