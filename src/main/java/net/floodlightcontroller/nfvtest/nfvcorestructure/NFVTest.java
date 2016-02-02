@@ -1,5 +1,6 @@
 package net.floodlightcontroller.nfvtest.nfvcorestructure;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -275,19 +276,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
        	 		HostServer inputHostServer = vmAllocator.dpidHostServerMap.get(sw.getId());
        	 		if((inputPort==inputHostServer.gatewayPort)||(inputHostServer.portDcIndexMap.containsKey(inputPort))){
        	 		
-	       	 		boolean returnVal = serviceChainLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT),
+	       	 		serviceChainLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT),
 	       	 				vmAllocator.dpidHostServerMap.get(sw.getId()));
-	       	 		
-	       	 		if(returnVal == true){
-	       	 			//We need to generate a packet out to send the packet out
-	       	 			byte[] serializedData = eth.serialize();
-		       	 		OFPacketOut po = sw.getOFFactory().buildPacketOut() /* mySwitch is some IOFSwitch object */
-		       	 		    .setData(serializedData)
-		       	 		    .setInPort(OFPort.CONTROLLER)
-		       	 		    .build();
-		       	 		sw.write(po);
-		       	 		sw.flush();
-	       	 		}
 	       	 		return Command.STOP;
        	 		}
        	 		else{
@@ -415,6 +405,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     	int scalingInterval = 0; //the current scaling interval
     	int dpPaths[] = null;    //dpPaths of the current scaling interval
     	int currentDcIndex = localController.getCurrentDcIndex();
+    	int packetOutOPort = 0;
     	
     	synchronized(this.dpServiceChain){
 	    	if(inPort.getPortNumber() == inputHostServer.gatewayPort){
@@ -546,6 +537,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			OFFlowMod flowMod = createFlowModFromOtherDc(sw, flowMatch, IPv4Address.of(newDstAddr), OFPort.of(toThisPort));
 			sw.write(flowMod);
 			sw.flush();
+			packetOutOPort = toThisPort;
 
 			inPort = OFPort.of(inputHostServer.dcIndexPortMap.get(incomingDcIndex));
 		}
@@ -555,6 +547,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 					OFPort.of(inputHostServer.statInPort), srcDstPair[0], srcDstPair[1], scalingInterval, IPv4Address.of(newDstAddr));
 			hitSwitch.write(flowMod);
 			hitSwitch.flush();
+			packetOutOPort = inputHostServer.statInPort;
 		}
 		
 		if(stageList.get(stageList.size()-1).intValue() == dpPaths.length-1){
@@ -594,6 +587,16 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			sw.write(flowMod);
 			sw.flush();
 		}
+		
+		byte[] serializedData = eth.serialize();
+		OFPacketOut po = sw.getOFFactory().buildPacketOut() 
+					    .setData(serializedData)
+					    .setActions(Collections.singletonList((OFAction) sw.getOFFactory().actions().output(OFPort.of(packetOutOPort), 0xffFFffFF)))
+					    .setInPort(OFPort.CONTROLLER)
+					    .build();
+ 		sw.write(po);
+ 		sw.flush();
+
 		
 		/*if(needDynamicRule){
 			
