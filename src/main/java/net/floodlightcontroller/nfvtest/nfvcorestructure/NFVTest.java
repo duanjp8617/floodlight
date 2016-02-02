@@ -275,8 +275,19 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
        	 		HostServer inputHostServer = vmAllocator.dpidHostServerMap.get(sw.getId());
        	 		if((inputPort==inputHostServer.gatewayPort)||(inputHostServer.portDcIndexMap.containsKey(inputPort))){
        	 		
-	       	 		serviceChainLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT),
+	       	 		boolean returnVal = serviceChainLoadBalancing(sw, cntx, pi.getMatch().get(MatchField.IN_PORT),
 	       	 				vmAllocator.dpidHostServerMap.get(sw.getId()));
+	       	 		
+	       	 		if(returnVal == true){
+	       	 			//We need to generate a packet out to send the packet out
+	       	 			byte[] serializedData = eth.serialize();
+		       	 		OFPacketOut po = sw.getOFFactory().buildPacketOut() /* mySwitch is some IOFSwitch object */
+		       	 		    .setData(serializedData)
+		       	 		    .setInPort(OFPort.CONTROLLER)
+		       	 		    .build();
+		       	 		sw.write(po);
+		       	 		sw.flush();
+	       	 		}
 	       	 		return Command.STOP;
        	 		}
        	 		else{
@@ -375,7 +386,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     	}
     }
     
-    private void serviceChainLoadBalancing(IOFSwitch sw, FloodlightContext cntx, OFPort initialInPort, 
+    private boolean serviceChainLoadBalancing(IOFSwitch sw, FloodlightContext cntx, OFPort initialInPort, 
     		HostServer inputHostServer){
     	Ethernet eth =
                 IFloodlightProviderService.bcStore.get(cntx,
@@ -383,7 +394,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         IPv4 ip_pkt = (IPv4)eth.getPayload();
         if(!ip_pkt.getProtocol().equals(IpProtocol.UDP)){
         	// we only process udp packet
-        	return;
+        	return false;
         }
         
         IPv4Address srcIp = ip_pkt.getSourceAddress();
@@ -463,7 +474,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	    		}
 	    		else{
 	    			logger.info("routing error");
-	    			return;
+	    			return false;
 	    		}
 	    	}
     	}
@@ -471,7 +482,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     	//Now let's verify whether the packet is a correct packet
     	if((srcDstPair[0]!=dpPaths[0])||(srcDstPair[1]!=dpPaths[dpPaths.length-1])){
     		System.out.println("we are getting an incorrect packet with unmatching service chain path");
-    		return;
+    		return false;
     	}
 		
 		ArrayList<Integer> stageList = new ArrayList<Integer>();
@@ -483,7 +494,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		if(stageList.size() == 0){
 			System.out.println("the current datacenter is not on the service chain path");
-			return;
+			return false;
 		}
 		
 		List<NFVNode> routeList = this.dpServiceChain.forwardRoute(stageList.get(0).intValue(),
@@ -568,7 +579,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			String exitFlowSrcIp   = localController.getExitFlowSrcIp(exitFlowSrcAddr);
 			
 			if(exitFlowDstAddr.equals("")||exitFlowSrcIp.equals("")){
-				return;
+				return false;
 			}
 			
 			String sArray[] = exitFlowDstAddr.split(":");
@@ -658,6 +669,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 				localHostServer = currentNode.vmInstance.hostServer;
 			}
 		}*/
+		return true;
     }
     
     private Match createMatch(IOFSwitch sw, OFPort inPort, 
