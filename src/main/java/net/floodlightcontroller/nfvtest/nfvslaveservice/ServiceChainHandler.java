@@ -200,6 +200,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		this.dcIndex = req.getDcIndex();
 		this.dcNum = req.getDcNum();
 		this.serviceChainMap.get("DATA").initPathsArray(this.dcNum);
+		this.serviceChainMap.get("CONTROL").initPathsArray(this.dcNum);
 	}
 	
 	private void relayCreateInterDcTunnelMash(CreateInterDcTunnelMash req){
