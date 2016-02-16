@@ -395,8 +395,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     	TransportPort srcPort = udp_pkt.getSourcePort();
     	TransportPort dstPort = udp_pkt.getDestinationPort();
     	
-    	System.out.println("sdn controller receives flow srcIp:"+srcIp.toString()+" srcPort:"+srcPort.toString()
-    	+" dstIp:"+dstIp.toString()+" dstPort:"+dstPort.toString());
+    	//System.out.println("sdn controller receives flow srcIp:"+srcIp.toString()+" srcPort:"+srcPort.toString()
+    	//+" dstIp:"+dstIp.toString()+" dstPort:"+dstPort.toString());
 
         OFPort inPort = initialInPort;
         	
@@ -430,36 +430,36 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	    		int currentScalingInterval = this.dpServiceChain.getScalingInterval();
 	    		
 	    		
-	    		System.out.println("got a flow from another datacenter, src dc: "+new Integer(srcDstPair[0]).toString()+
-	    				" dst dc: "+new Integer(srcDstPair[1]).toString() + " scalingInterval: "+new Integer(scalingInterval).toString());
-	    		System.out.println("The current scaling interval is: " + new Integer(currentScalingInterval).toString());
+	    		//System.out.println("got a flow from another datacenter, src dc: "+new Integer(srcDstPair[0]).toString()+
+	    		//		" dst dc: "+new Integer(srcDstPair[1]).toString() + " scalingInterval: "+new Integer(scalingInterval).toString());
+	    		//System.out.println("The current scaling interval is: " + new Integer(currentScalingInterval).toString());
 	    		//the scaling interval loops through 0-3. 
 	    		if(scalingInterval == currentScalingInterval){
-	    			System.out.println("use current path");
+	    			//System.out.println("use current path");
 	    			dpPaths = this.dpServiceChain.getCurrentDpPaths(srcDstPair[0], srcDstPair[1]);
 	    			String pathOutput = "";
 	    			for(int i=0; i<dpPaths.length; i++){
 	    				pathOutput = pathOutput + new Integer(dpPaths[i]).toString() + " ";
 	    			}
-	    			System.out.println("The path is: "+pathOutput);
+	    			//System.out.println("The path is: "+pathOutput);
 	    		}
 	    		else if(((scalingInterval+1)%4)==currentScalingInterval){
-	    			System.out.println("use previous path");
+	    			//System.out.println("use previous path");
 	    			dpPaths = this.dpServiceChain.getPreviousDpPaths(srcDstPair[0], srcDstPair[1]);
 	    			String pathOutput = "";
 	    			for(int i=0; i<dpPaths.length; i++){
 	    				pathOutput = pathOutput + new Integer(dpPaths[i]).toString() + " ";
 	    			}
-	    			System.out.println("The path is: "+pathOutput);
+	    			//System.out.println("The path is: "+pathOutput);
 	    		}
 	    		else if(((scalingInterval+4-1)%4)==currentScalingInterval){
-	    			System.out.println("use next path");
+	    			//System.out.println("use next path");
 	    			dpPaths = this.dpServiceChain.getNextDpPaths(srcDstPair[0], srcDstPair[1]);
 	    			String pathOutput = "";
 	    			for(int i=0; i<dpPaths.length; i++){
 	    				pathOutput = pathOutput + new Integer(dpPaths[i]).toString() + " ";
 	    			}
-	    			System.out.println("The path is: "+pathOutput);
+	    			//System.out.println("The path is: "+pathOutput);
 	    		}
 	    		else{
 	    			logger.info("routing error");
@@ -470,7 +470,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     	
     	//Now let's verify whether the packet is a correct packet
     	if((srcDstPair[0]!=dpPaths[0])||(srcDstPair[1]!=dpPaths[dpPaths.length-1])){
-    		System.out.println("we are getting an incorrect packet with unmatching service chain path");
+    		//System.out.println("we are getting an incorrect packet with unmatching service chain path");
     		return;
     	}
 		
@@ -482,7 +482,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		}
 		
 		if(stageList.size() == 0){
-			System.out.println("the current datacenter is not on the service chain path");
+			//System.out.println("the current datacenter is not on the service chain path");
 			return;
 		}
 		
@@ -520,15 +520,15 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			int incomingDcIndex = inputHostServer.portDcIndexMap.get(new Integer(initialInPort.getPortNumber()));
 			int toThisPort = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
 			
-			System.out.println("got a flow comming from datacenter: "+new Integer(incomingDcIndex).toString());
+			//System.out.println("got a flow comming from datacenter: "+new Integer(incomingDcIndex).toString());
 			String printSth = "the patch port list is :";
 			ArrayList<Integer> array = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex));
 			for(int i=0; i<array.size(); i++){
 				printSth = printSth+array.get(i).toString()+" ";
 			}
-			System.out.println(printSth);
-			System.out.println("The flow comes from datacenter: "+new Integer(incomingDcIndex).toString());
-			System.out.println("The flow will be sent to this port: "+new Integer(toThisPort).toString());
+			//System.out.println(printSth);
+			//System.out.println("The flow comes from datacenter: "+new Integer(incomingDcIndex).toString());
+			//System.out.println("The flow will be sent to this port: "+new Integer(toThisPort).toString());
 			
 			
 			Match flowMatch = createMatch(sw, initialInPort, srcIp, transportProtocol, srcPort);
@@ -552,18 +552,18 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			for(int i=0; i<stageList.size(); i++){
 				print  = print + stageList.get(i).toString()+" ";
 			}
-			System.out.println(print);
-			System.out.println(" the src is: "+new Integer(srcDstPair[0]).toString()+" the dst is: "+new Integer(srcDstPair[1]).toString());
+			//System.out.println(print);
+			//System.out.println(" the src is: "+new Integer(srcDstPair[0]).toString()+" the dst is: "+new Integer(srcDstPair[1]).toString());
 			print = "the path is: ";
 			for(int i=0; i<dpPaths.length; i++){
 				print = print + new Integer(dpPaths[i])+" ";
 			}
-			System.out.println(print);
+			//System.out.println(print);
 					
 			
 			
 			String exitFlowSrcAddr = srcIp.toString()+":"+srcPort.toString();
-			System.out.println(" exitFlowSrcAddr: "+exitFlowSrcAddr+" is going to access the map");
+			//System.out.println(" exitFlowSrcAddr: "+exitFlowSrcAddr+" is going to access the map");
 			String exitFlowDstAddr = localController.getExitFlowDstAddr(exitFlowSrcAddr);
 			String exitFlowSrcIp   = localController.getExitFlowSrcIp(exitFlowSrcAddr);
 			
