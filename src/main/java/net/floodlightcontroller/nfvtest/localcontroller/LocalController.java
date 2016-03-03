@@ -54,6 +54,7 @@ public class LocalController implements Runnable{
 	private int cpProvision[][];
 	private int dpProvision[][];
 	private int dpPaths[][][];
+	private ArrayList<ArrayList<ArrayList<Integer>>> dpDcPath;
 	
 	private final Logger logger =  LoggerFactory.getLogger(LocalController.class);
 	
@@ -179,6 +180,16 @@ public class LocalController implements Runnable{
 		cpProvision = new int[localcIndexMap.size()][2];
 		dpProvision = new int[localcIndexMap.size()][dpCapacity.length];
 		dpPaths = new int[localcIndexMap.size()][localcIndexMap.size()][dpCapacity.length];
+		
+		dpDcPath = new ArrayList<ArrayList<ArrayList<Integer>>>();
+		for(int i=0; i<localcIndexMap.size(); i++){
+			ArrayList<ArrayList<Integer>> list = new ArrayList<ArrayList<Integer>>();
+			for(int j=0; j<localcIndexMap.size(); j++){
+				ArrayList<Integer> p = new ArrayList<Integer>();
+				list.add(p);
+			}
+			dpDcPath.add(list);
+		}
 		
 		//initialize measure here
 		//The measure class will measure delay, data plane stat
@@ -481,7 +492,7 @@ public class LocalController implements Runnable{
 			while(hasMore){
 				String result = subscriber.recvStr();
 				//logger.info(result);
-				if(!result.equals("HEHE")){
+				if((!result.equals("HEHE"))&&(!result.equals("END"))){
 					list.add(result);
 				}
 				hasMore = subscriber.hasReceiveMore();
@@ -493,6 +504,8 @@ public class LocalController implements Runnable{
 			int dpStart = cpEnd+1;
 			int dpEnd = dpStart+localcIndexMap.size()*dpCapacity.length-1;
 			int dpPathStart = dpEnd+1;
+			int dpPathEnd = dpPathStart + localcIndexMap.size()*localcIndexMap.size()*dpCapacity.length-1;
+			int dpDcPathStart = dpPathEnd+1;
 			
 			//print and see if we are correct
 			int dcNum = localcIndexMap.size();
@@ -514,6 +527,25 @@ public class LocalController implements Runnable{
 					}
 				}
 			}
+			int pos = 0;
+			int row = pos/localcIndexMap.size();
+			int col = pos%localcIndexMap.size();
+			dpDcPath.get(row).get(col).clear();
+			for(int i=dpDcPathStart; i<list.size(); i++){
+				if(!list.get(i).equals("delimiter")){
+					dpDcPath.get(row).get(col).add(Integer.parseInt(list.get(i)));
+				}
+				else{
+					pos+=1;
+					row = pos/localcIndexMap.size();
+					col = pos%localcIndexMap.size();
+					dpDcPath.get(row).get(col).clear();
+				}
+			}
+			
+			if(pos!=localcIndexMap.size()*localcIndexMap.size()){
+				logger.error("the protocol has a bug!!!!!!!!!!!");
+			}
 
 			int srcIndex = localcIndexMap.get(localIp).intValue();
 			int localCpProvision[] = new int[2];
@@ -525,7 +557,8 @@ public class LocalController implements Runnable{
 				localDpProvision[i] = dpProvision[srcIndex][i];
 			}
 			
-			ProactiveScalingRequest m = new ProactiveScalingRequest("lc", localCpProvision, localDpProvision, dpPaths);
+			ProactiveScalingRequest m = new ProactiveScalingRequest("lc", localCpProvision, localDpProvision, dpPaths, 
+					this.dpDcPath);
 			this.mh.sendTo("chainHandler", m);
 		}
 		else if(curState.equals("waitNewInterval")){

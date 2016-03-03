@@ -356,6 +356,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		
 		int newDpProvision[] = req.getLocalDpProvision();
 		int newDpPaths[][][] = req.getDpPaths();
+		ArrayList<ArrayList<ArrayList<Integer>>> newDpDcPath = req.getDpDcPath();
 		
 		for(int i=0; i<newDpPaths.length; i++){
 			String print = "";
@@ -369,7 +370,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		}
 		
 		NFVServiceChain dpServiceChain = serviceChainMap.get("DATA");
-		dpServiceChain.addNextDpPaths(newDpPaths);
+		dpServiceChain.addNextDpPaths(newDpPaths, newDpDcPath);
 		handleProactiveProvision(dpServiceChain, newDpProvision);
 		
 		int newCpProvision[] = req.getLocalCpProvision();
