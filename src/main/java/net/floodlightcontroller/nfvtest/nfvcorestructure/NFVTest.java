@@ -387,13 +387,11 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         }
         
         IPv4Address srcIp = ip_pkt.getSourceAddress();
-        IPv4Address dstIp = ip_pkt.getDestinationAddress();
         byte dscpEcn = ip_pkt.getDiffServ();
         
     	UDP udp_pkt = (UDP)ip_pkt.getPayload();
     	IpProtocol transportProtocol = IpProtocol.UDP;
     	TransportPort srcPort = udp_pkt.getSourcePort();
-    	TransportPort dstPort = udp_pkt.getDestinationPort();
     	
     	//System.out.println("sdn controller receives flow srcIp:"+srcIp.toString()+" srcPort:"+srcPort.toString()
     	//+" dstIp:"+dstIp.toString()+" dstPort:"+dstPort.toString());
@@ -506,7 +504,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		else{
 			routeList = new ArrayList<NFVNode>();
 		}
-		boolean needDynamicRule = false;
 		byte[] newDstAddr = new byte[4];
 		newDstAddr[0] = 0;
 		newDstAddr[1] = 0;
@@ -515,10 +512,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		for(int i=0; i<routeList.size(); i++){
 			NFVNode currentNode = routeList.get(i);
 			int nodeIndex = currentNode.getIndex();
-			if(nodeIndex==-1){
-				needDynamicRule = true;
-			}
-			
 			newDstAddr[stageList.get(i)] = (byte)nodeIndex;
 		}
 		if(pos!=dpDcPath.size()-1){
@@ -533,7 +526,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		}
     	
 		IOFSwitch hitSwitch = sw;
-		HostServer localHostServer = vmAllocator.dpidHostServerMap.get(hitSwitch.getId());
 		
     	if(pos == 0){
     		//routing on entry datacenter
@@ -627,154 +619,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 
 			//inPort = OFPort.of(inputHostServer.dcIndexPortMap.get(incomingDcIndex));
     	}
-		
-		/*IOFSwitch hitSwitch = sw;
-		HostServer localHostServer = vmAllocator.dpidHostServerMap.get(hitSwitch.getId());
-		
-		if(stageList.get(0).intValue()!=0){
-			//we got a flow coming from another datacenter, let's route the flow to 
-			//proper location
-			int incomingDcIndex = inputHostServer.portDcIndexMap.get(new Integer(initialInPort.getPortNumber()));
-			int toThisPort = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
-			
-			//System.out.println("got a flow comming from datacenter: "+new Integer(incomingDcIndex).toString());
-			String printSth = "the patch port list is :";
-			ArrayList<Integer> array = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex));
-			for(int i=0; i<array.size(); i++){
-				printSth = printSth+array.get(i).toString()+" ";
-			}
-			//System.out.println(printSth);
-			//System.out.println("The flow comes from datacenter: "+new Integer(incomingDcIndex).toString());
-			//System.out.println("The flow will be sent to this port: "+new Integer(toThisPort).toString());
-			
-			
-			Match flowMatch = createMatch(sw, initialInPort, srcIp, transportProtocol, srcPort);
-			OFFlowMod flowMod = createFlowModFromOtherDc(sw, flowMatch, IPv4Address.of(newDstAddr), OFPort.of(toThisPort));
-			sw.write(flowMod);
-			sw.flush();
-
-			inPort = OFPort.of(inputHostServer.dcIndexPortMap.get(incomingDcIndex));
-		}
-		else{
-			Match flowMatch = createMatch(hitSwitch, inPort, srcIp, transportProtocol, srcPort);
-			OFFlowMod flowMod = createEntryFlowMod(hitSwitch, flowMatch, MacAddress.of(routeList.get(0).getMacAddress(0)), 
-					OFPort.of(inputHostServer.statInPort), srcDstPair[0], srcDstPair[1], scalingInterval, IPv4Address.of(newDstAddr));
-			hitSwitch.write(flowMod);
-			hitSwitch.flush();
-		}
-		
-		if(stageList.get(stageList.size()-1).intValue() == dpPaths.length-1){
-			//This is the last stage
-			String print="the stage list is: ";
-			for(int i=0; i<stageList.size(); i++){
-				print  = print + stageList.get(i).toString()+" ";
-			}
-			//System.out.println(print);
-			//System.out.println(" the src is: "+new Integer(srcDstPair[0]).toString()+" the dst is: "+new Integer(srcDstPair[1]).toString());
-			print = "the path is: ";
-			for(int i=0; i<dpPaths.length; i++){
-				print = print + new Integer(dpPaths[i])+" ";
-			}
-			//System.out.println(print);
-					
-			
-			
-			String exitFlowSrcAddr = srcIp.toString()+":"+srcPort.toString();
-			//System.out.println(" exitFlowSrcAddr: "+exitFlowSrcAddr+" is going to access the map");
-			String exitFlowDstAddr = localController.getExitFlowDstAddr(exitFlowSrcAddr);
-			String exitFlowSrcIp   = localController.getExitFlowSrcIp(exitFlowSrcAddr);
-			
-			if(exitFlowDstAddr.equals("")||exitFlowSrcIp.equals("")){
-				return;
-			}
-			
-			String sArray[] = exitFlowDstAddr.split(":");
-			String exitFlowDstip = sArray[0];
-			String exitFlowDstPort = sArray[1];
-			
-			OFPort exitPort = OFPort.of(inputHostServer.patchPort);
-			Match flowMatch = createMatch(sw, exitPort, srcIp,transportProtocol, srcPort);
-			
-			OFFlowMod flowMod = createExitFlowMod(sw, flowMatch, MacAddress.of(inputHostServer.gatewayMac), 
-					OFPort.of(inputHostServer.gatewayPort), exitFlowSrcIp, exitFlowDstip, Integer.parseInt(exitFlowDstPort), "udp");
-			sw.write(flowMod);
-			sw.flush();
-		}*/
-		
-		/*if(needDynamicRule){
-			
-			for(int i=0; i<routeList.size(); i++){
-				NFVNode currentNode = routeList.get(i);
-				IOFSwitch nodeSwitch = this.switchService.getSwitch(DatapathId.of(currentNode.getBridgeDpid(0)));
-				//create flow rules to route the flow from hitSwitch to nodeSwitch.
-				
-				if(hitSwitch.getId().getLong() == nodeSwitch.getId().getLong()){
-					if(stageList.get(i).intValue() == 0){
-						Match flowMatch = createMatch(hitSwitch, inPort, srcIp, transportProtocol, srcPort);
-						OFFlowMod flowMod = createEntryFlowMod(hitSwitch, flowMatch, MacAddress.of(currentNode.getMacAddress(0)), 
-								OFPort.of(inputHostServer.statInPort), srcDstPair[0], srcDstPair[1], scalingInterval, "udp");
-						hitSwitch.write(flowMod);
-						//hitSwitch.flush();
-						
-						flowMatch = createMatch(hitSwitch, OFPort.of(inputHostServer.statOutPort), srcIp, transportProtocol, srcPort);
-						flowMod = createFlowMod(hitSwitch, flowMatch, 
-						                          MacAddress.of(currentNode.getMacAddress(0)),
-												  OFPort.of(currentNode.getPort(0)));
-						hitSwitch.write(flowMod);
-						//hitSwitch.flush();
-						
-					}
-					else{
-						Match flowMatch = createMatch(hitSwitch, inPort, srcIp, transportProtocol, srcPort);
-						OFFlowMod flowMod = createFlowMod(hitSwitch, flowMatch, 
-		                          MacAddress.of(currentNode.getMacAddress(0)),
-								  OFPort.of(currentNode.getPort(0)));
-						hitSwitch.write(flowMod);
-						//hitSwitch.flush();
-					}
-				}
-				else{
-					//temporarily ignore this condition.
-					String localServerIp = localHostServer.hostServerConfig.managementIp;
-					HostServer remoteHostServer = currentNode.vmInstance.hostServer;
-					String remoteServerIp = remoteHostServer.hostServerConfig.managementIp;
-					
-					int localPort = localHostServer.tunnelPortMap.get(remoteServerIp).intValue();
-					int remotePort = remoteHostServer.tunnelPortMap.get(localServerIp).intValue();
-					
-					//first, push flow rules on hitSwitch. Without changing the mac address, push 
-					//The flow to the localPort on hitSwitch.
-					Match flowMatch = createMatch(hitSwitch, inPort, srcIp,
-							  					  transportProtocol, srcPort);
-					
-					OFFlowMod flowMod = null;
-					if(stageList.get(i).intValue() == 0){
-						flowMod = createEntryFlowMod(hitSwitch, flowMatch, MacAddress.of(currentNode.getMacAddress(0)), 
-								OFPort.of(localPort), srcDstPair[0], srcDstPair[1], scalingInterval, "udp");
-					}
-					else{
-						flowMod = createFlowMod(hitSwitch, flowMatch, 
-		                          MacAddress.of(currentNode.getMacAddress(0)),
-								  OFPort.of(localPort));
-					}
-					hitSwitch.write(flowMod);
-					//hitSwitch.flush();
-					
-					flowMatch = createMatch(nodeSwitch, OFPort.of(remotePort), srcIp,
-		  					                transportProtocol, srcPort);
-					flowMod = createFlowMod(nodeSwitch, flowMatch, 
-						                    MacAddress.of(currentNode.getMacAddress(0)),
-						                    OFPort.of(currentNode.getPort(0)));
-					nodeSwitch.write(flowMod);
-					//nodeSwitch.flush();
-				}
-				
-				currentNode.addActiveFlow();
-				hitSwitch = this.switchService.getSwitch(DatapathId.of(currentNode.getBridgeDpid(1)));
-				inPort = OFPort.of(currentNode.getPort(1));
-				localHostServer = currentNode.vmInstance.hostServer;
-			}
-		}*/
     }
     
     private Match createMatch(IOFSwitch sw, OFPort inPort, 
@@ -797,53 +641,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
        
         return mb.build();
     }
-    
-    /*private OFFlowMod createFlowModWithoutMac(IOFSwitch sw, Match flowMatch, OFPort outPort){
-		List<OFAction> actionList = new ArrayList<OFAction>();	
-		OFActions actions = sw.getOFFactory().actions();
-		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
-		
-		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
-		fmb.setHardTimeout(0);
-		fmb.setIdleTimeout(15);
-		fmb.setBufferId(OFBufferId.NO_BUFFER);
-		fmb.setCookie(U64.of(8617));
-		fmb.setPriority(5);
-		fmb.setOutPort(outPort);
-		fmb.setActions(actionList);
-		fmb.setMatch(flowMatch);
-		
-		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
-		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
-		fmb.setFlags(sfmf);
-		
-		return fmb.build();
-    }*/
-    
-    /*private OFFlowMod createFlowMod(IOFSwitch sw, Match flowMatch, MacAddress dstMac, OFPort outPort){
-		List<OFAction> actionList = new ArrayList<OFAction>();	
-		OFActions actions = sw.getOFFactory().actions();
-		OFOxms oxms = sw.getOFFactory().oxms();
-		
-		actionList.add(actions.setField(oxms.ethDst(dstMac)));
-		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
-		
-		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
-		fmb.setHardTimeout(0);
-		fmb.setIdleTimeout(15);
-		fmb.setBufferId(OFBufferId.NO_BUFFER);
-		fmb.setCookie(U64.of(8617));
-		fmb.setPriority(5);
-		fmb.setOutPort(outPort);
-		fmb.setActions(actionList);
-		fmb.setMatch(flowMatch);
-		
-		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
-		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
-		fmb.setFlags(sfmf);
-		
-		return fmb.build();
-    }*/
     
     private OFFlowMod createFlowModFromOtherDc(IOFSwitch sw, Match flowMatch, IPv4Address dstAddr, OFPort outPort){
 		List<OFAction> actionList = new ArrayList<OFAction>();	
@@ -927,39 +724,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		return fmb.build();
     }
-    
-    /*private net.floodlightcontroller.core.IListener.Command processPktRemoved(IOFSwitch sw, OFFlowRemoved msg){
-    	if (!msg.getCookie().equals(U64.of(8617))) {
-			return Command.CONTINUE;
-		}
-    	
-    	Match match = msg.getMatch();
-    	IPv4Address srcIp = match.get(MatchField.IPV4_SRC);
-    	IPv4Address dstIp = match.get(MatchField.IPV4_DST);
-    	IpProtocol protocol = match.get(MatchField.IP_PROTO);
-    	TransportPort srcPort = null;
-    	TransportPort dstPort = null;
-    	if(protocol.equals(IpProtocol.TCP)){
-    		srcPort = match.get(MatchField.TCP_SRC);
-    		dstPort = match.get(MatchField.TCP_DST);
-    	}
-    	else{
-    		srcPort = match.get(MatchField.UDP_SRC);
-    		dstPort = match.get(MatchField.UDP_DST);
-    	}
-    	
-    	RouteTuple tuple = new RouteTuple(srcIp.getInt(), dstIp.getInt(),
-    					protocol.equals(IpProtocol.TCP)?RouteTuple.TCP:RouteTuple.UDP,
-    							srcPort.getPort(), dstPort.getPort(), sw.getId().getLong());
-    	
-    	if(this.routeMap.containsKey(tuple)){
-    		String managementIp = this.routeMap.get(tuple);
-    		this.dpServiceChain.getNode(managementIp).deleteActiveFlow();
-    		
-    		//System.out.println("Flow on node "+managementIp+" is removed");
-    	}
-    	return Command.STOP;
-    }*/
+   
     @Override
     public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
     	switch (msg.getType()) {
