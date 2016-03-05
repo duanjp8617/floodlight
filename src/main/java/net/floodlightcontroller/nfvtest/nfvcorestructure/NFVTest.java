@@ -584,16 +584,16 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     	if(isExit==true){
     		if(stageList.size()==0){
     			//This is the last stage
-    			String print="the stage list is: ";
-    			for(int i=0; i<stageList.size(); i++){
-    				print  = print + stageList.get(i).toString()+" ";
-    			}
+    			//String print="the stage list is: ";
+    			//for(int i=0; i<stageList.size(); i++){
+    			//	print  = print + stageList.get(i).toString()+" ";
+    			//}
     			//System.out.println(print);
     			//System.out.println(" the src is: "+new Integer(srcDstPair[0]).toString()+" the dst is: "+new Integer(srcDstPair[1]).toString());
-    			print = "the path is: ";
-    			for(int i=0; i<dpPaths.length; i++){
-    				print = print + new Integer(dpPaths[i])+" ";
-    			}
+    			//print = "the path is: ";
+    			//for(int i=0; i<dpPaths.length; i++){
+    			//	print = print + new Integer(dpPaths[i])+" ";
+    			//}
     			//System.out.println(print);
     			
     			String exitFlowSrcAddr = srcIp.toString()+":"+srcPort.toString();
@@ -619,38 +619,46 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     		else{
     			//we got a flow coming from another datacenter, let's route the flow to 
     			//proper location
-    			int incomingDcIndex = inputHostServer.portDcIndexMap.get(new Integer(initialInPort.getPortNumber()));
-    			int toThisPort = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
-    			
-    			//System.out.println("got a flow comming from datacenter: "+new Integer(incomingDcIndex).toString());
-    			String printSth = "the patch port list is :";
-    			ArrayList<Integer> array = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex));
-    			for(int i=0; i<array.size(); i++){
-    				printSth = printSth+array.get(i).toString()+" ";
+    			if(isEntry==false){
+	    			int incomingDcIndex = inputHostServer.portDcIndexMap.get(new Integer(initialInPort.getPortNumber()));
+	    			int toThisPort = 0;
+	    			
+	    			if(stageList.get(0) == 0){
+	    				toThisPort = routeList.get(0).getPort(0);
+	    			}
+	    			else{
+	    				toThisPort = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
+	    			}
+	    			//System.out.println("got a flow comming from datacenter: "+new Integer(incomingDcIndex).toString());
+	    			//String printSth = "the patch port list is :";
+	    			//ArrayList<Integer> array = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex));
+	    			//for(int i=0; i<array.size(); i++){
+	    			//	printSth = printSth+array.get(i).toString()+" ";
+	    			//}
+	    			//System.out.println(printSth);
+	    			//System.out.println("The flow comes from datacenter: "+new Integer(incomingDcIndex).toString());
+	    			//System.out.println("The flow will be sent to this port: "+new Integer(toThisPort).toString());
+	    			
+	    			
+	    			Match flowMatch = createMatch(sw, initialInPort, srcIp, transportProtocol, srcPort);
+	    			OFFlowMod flowMod = createFlowModFromOtherDc(sw, flowMatch, IPv4Address.of(newDstAddr), OFPort.of(toThisPort));
+	    			sw.write(flowMod);
+	    			sw.flush();
     			}
-    			//System.out.println(printSth);
-    			//System.out.println("The flow comes from datacenter: "+new Integer(incomingDcIndex).toString());
-    			//System.out.println("The flow will be sent to this port: "+new Integer(toThisPort).toString());
-    			
-    			
-    			Match flowMatch = createMatch(sw, initialInPort, srcIp, transportProtocol, srcPort);
-    			OFFlowMod flowMod = createFlowModFromOtherDc(sw, flowMatch, IPv4Address.of(newDstAddr), OFPort.of(toThisPort));
-    			sw.write(flowMod);
-    			sw.flush();
 
-    			inPort = OFPort.of(inputHostServer.dcIndexPortMap.get(incomingDcIndex));
+    			//inPort = OFPort.of(inputHostServer.dcIndexPortMap.get(incomingDcIndex));
     			
     			//This is the last stage
-    			String print="the stage list is: ";
-    			for(int i=0; i<stageList.size(); i++){
-    				print  = print + stageList.get(i).toString()+" ";
-    			}
+    			//String print="the stage list is: ";
+    			//for(int i=0; i<stageList.size(); i++){
+    			//	print  = print + stageList.get(i).toString()+" ";
+    			//}
     			//System.out.println(print);
     			//System.out.println(" the src is: "+new Integer(srcDstPair[0]).toString()+" the dst is: "+new Integer(srcDstPair[1]).toString());
-    			print = "the path is: ";
-    			for(int i=0; i<dpPaths.length; i++){
-    				print = print + new Integer(dpPaths[i])+" ";
-    			}
+    			//print = "the path is: ";
+    			//for(int i=0; i<dpPaths.length; i++){
+    			//	print = print + new Integer(dpPaths[i])+" ";
+    			//}
     			//System.out.println(print);
     					
     			String exitFlowSrcAddr = srcIp.toString()+":"+srcPort.toString();
@@ -667,9 +675,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     			String exitFlowDstPort = sArray[1];
     			
     			OFPort exitPort = OFPort.of(inputHostServer.patchPort);
-    			flowMatch = createMatch(sw, exitPort, srcIp,transportProtocol, srcPort);
+    			Match flowMatch = createMatch(sw, exitPort, srcIp,transportProtocol, srcPort);
     			
-    			flowMod = createExitFlowMod(sw, flowMatch, MacAddress.of(inputHostServer.gatewayMac), 
+    			OFFlowMod flowMod = createExitFlowMod(sw, flowMatch, MacAddress.of(inputHostServer.gatewayMac), 
     					OFPort.of(inputHostServer.gatewayPort), exitFlowSrcIp, exitFlowDstip, Integer.parseInt(exitFlowDstPort), "udp");
     			sw.write(flowMod);
     			sw.flush();

@@ -266,7 +266,7 @@ public class VmAllocator extends MessageProcessor {
 		}
 		
 		try {
-			edgeServerAgent.addDpFlow(edgeBridge, req.tunnelPortNum, req.dstDcIndex, 0);
+			edgeServerAgent.addEntrySwitchFlow(edgeBridge, req.tunnelPortNum, edgeServer.statOutPort, req.dstDcIndex);
 		} catch (Exception e) {
 			e.printStackTrace();
 		} 
