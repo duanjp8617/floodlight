@@ -207,24 +207,6 @@ public class VmAllocator extends MessageProcessor {
 			e.printStackTrace();
 		}
 		
-		for(String key : localcIndexMap.keySet()){
-			if(localcIndexMap.get(key).intValue() != srcIndex){
-				dstIndex = localcIndexMap.get(key).intValue();
-				dstIp = key;
-				if(srcIndex<dstIndex){
-					interDcVniIndex = req.globalBaseVni+srcIndex*localcIndexMap.size()+dstIndex;
-				}
-				else{
-					interDcVniIndex = req.globalBaseVni+dstIndex*localcIndexMap.size()+srcIndex;
-				}
-				
-				int newVniPort[] = createInterDcPort(new CreateInterDcTunnelRequest("this", srcIndex, srcIp, dstIndex, dstIp, 
-						interDcVniIndex, basePort, baseVni));
-				basePort = newVniPort[0];
-				baseVni = newVniPort[1];
-			}
-		}
-		
 		for(int i=0; i<hostServerList.size(); i++){
 			HostServer hostServer = hostServerList.get(i);
 			//ServiceChainConfig chainConfig = hostServer.serviceChainConfigMap.get("DATA");
@@ -241,6 +223,24 @@ public class VmAllocator extends MessageProcessor {
 			}
 			catch(Exception e){
 				e.printStackTrace();
+			}
+		}
+		
+		for(String key : localcIndexMap.keySet()){
+			if(localcIndexMap.get(key).intValue() != srcIndex){
+				dstIndex = localcIndexMap.get(key).intValue();
+				dstIp = key;
+				if(srcIndex<dstIndex){
+					interDcVniIndex = req.globalBaseVni+srcIndex*localcIndexMap.size()+dstIndex;
+				}
+				else{
+					interDcVniIndex = req.globalBaseVni+dstIndex*localcIndexMap.size()+srcIndex;
+				}
+				
+				int newVniPort[] = createInterDcPort(new CreateInterDcTunnelRequest("this", srcIndex, srcIp, dstIndex, dstIp, 
+						interDcVniIndex, basePort, baseVni));
+				basePort = newVniPort[0];
+				baseVni = newVniPort[1];
 			}
 		}
 		
@@ -264,6 +264,12 @@ public class VmAllocator extends MessageProcessor {
 		} catch(Exception e){
 			e.printStackTrace();
 		}
+		
+		try {
+			edgeServerAgent.addDpFlow(edgeBridge, req.tunnelPortNum, req.dstDcIndex, 0);
+		} catch (Exception e) {
+			e.printStackTrace();
+		} 
 		
 		int tunnelPortNum = req.tunnelPortNum+1;
 		int baseVniIndex = req.baseVniIndex;
@@ -299,12 +305,14 @@ public class VmAllocator extends MessageProcessor {
 			patchPortList.set(i, new Integer(tunnelPortNum));
 			tunnelPortNum += 1;
 		}
+		
 		String tailBridge = dpBridgeList.get(dpBridgeList.size()-1);
 		try {
 			edgeServerAgent.addTailFlow(tailBridge, edgeServer.patchPort);
 		} catch  (Exception e1) {
 			e1.printStackTrace();
 		}
+		
 		edgeServer.dcIndexPatchPortListMap.put(new Integer(req.dstDcIndex), patchPortList);
 		
 		//ignore the following part
