@@ -277,7 +277,7 @@ public class VmAllocator extends MessageProcessor {
 			patchPortList.add(new Integer(0));
 		}
 		
-		for(int i=1; i<dpBridgeList.size()-1; i++){
+		for(int i=1; i<dpBridgeList.size(); i++){
 			String bridge = dpBridgeList.get(i);
 			String localPortName = "wd"+Integer.toString(req.dstDcIndex)+"id"+Integer.toString(i);
 			String remotePortName = "ed"+Integer.toString(req.dstDcIndex)+"id"+Integer.toString(i);
@@ -307,6 +307,7 @@ public class VmAllocator extends MessageProcessor {
 		}
 		edgeServer.dcIndexPatchPortListMap.put(new Integer(req.dstDcIndex), patchPortList);
 		
+		//ignore the following part
 		for(int i=1; i<this.hostServerList.size(); i++){
 			HostServer workingServer = this.hostServerList.get(i);
 			HostAgent workingServerAgent = new HostAgent(workingServer.hostServerConfig);

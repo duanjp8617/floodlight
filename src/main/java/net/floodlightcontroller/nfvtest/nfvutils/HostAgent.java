@@ -712,7 +712,7 @@ public class HostAgent{
 		IOException, UserAuthException, TransportException{
 		
 		String cmd = "sudo ovs-ofctl add-flow "+bridgeName+
-				" ip,nw_dst=1.1.1.1/0.0.0.0,actions=mod_nw_dst:1.1.1.1,output:"+Integer.toString(outPort);
+				" ip,nw_dst=0.0.0.9/0.0.0.255,actions=mod_nw_dst:1.1.1.1,output:"+Integer.toString(outPort);
 		ProcessBuilder builder = new ProcessBuilder("/bin/bash", "-c", cmd);
         builder.redirectErrorStream(true);
         Process p = null;
