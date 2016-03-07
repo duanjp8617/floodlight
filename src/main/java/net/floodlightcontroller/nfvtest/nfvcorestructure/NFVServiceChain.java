@@ -247,8 +247,8 @@ public class NFVServiceChain {
 					}
 				}
 			}
-			dcPathCopy(this.dpDcPath, this.nextDpDcPath);
 			dcPathCopy(this.previousDpDcPath, this.dpDcPath);
+			dcPathCopy(this.dpDcPath, this.nextDpDcPath);
 		}
 		
 		System.out.println("after updating, the previous stage placement is: ");
