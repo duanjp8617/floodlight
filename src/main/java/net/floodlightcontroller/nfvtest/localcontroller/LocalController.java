@@ -537,9 +537,11 @@ public class LocalController implements Runnable{
 				}
 				else{
 					pos+=1;
-					row = pos/localcIndexMap.size();
-					col = pos%localcIndexMap.size();
-					dpDcPath.get(row).get(col).clear();
+					if(pos<localcIndexMap.size()*localcIndexMap.size()){
+						row = pos/localcIndexMap.size();
+						col = pos%localcIndexMap.size();
+						dpDcPath.get(row).get(col).clear();
+					}
 				}
 			}
 			
