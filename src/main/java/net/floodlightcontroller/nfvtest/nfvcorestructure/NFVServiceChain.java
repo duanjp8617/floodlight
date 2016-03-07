@@ -189,7 +189,7 @@ public class NFVServiceChain {
 	public synchronized void addScalingInterval(){
 		this.scalingInterval += 1;
 		
-		System.out.println("before updating, the current path is: ");
+		System.out.println("before updating, the current stage placement is: ");
 		for(int i=0; i<dpPaths.length; i++){
 			String print = "";
 			for(int j=0; j<dpPaths[i].length; j++){
@@ -200,7 +200,8 @@ public class NFVServiceChain {
 			}
 			System.out.println(print);
 		}
-		System.out.println("before updating, the next path is: ");
+		System.out.println("before updating, the next stage placement is: ");
+		
 		for(int i=0; i<nextDpPaths.length; i++){
 			String print = "";
 			for(int j=0; j<nextDpPaths[i].length; j++){
@@ -208,6 +209,30 @@ public class NFVServiceChain {
 					print = print + new Integer(nextDpPaths[i][j][k]).toString() + " ";
 				}
 				print = print + ": ";
+			}
+			System.out.println(print);
+		}
+		
+		System.out.println("before updating, the current dc path is: ");
+		for(int i=0; i<dpDcPath.size(); i++){
+			String print = "";
+			for(int j=0; j<dpDcPath.get(i).size();j++){
+				for(int k=0; k<dpDcPath.get(i).get(j).size(); k++){
+					print = print + dpDcPath.get(i).get(j).get(k).toString() + " ";
+				}
+				print = print + ":";
+			}
+			System.out.println(print);
+		}
+		
+		System.out.println("before updating, the next dc path is: ");
+		for(int i=0; i<nextDpDcPath.size(); i++){
+			String print = "";
+			for(int j=0; j<nextDpDcPath.get(i).size();j++){
+				for(int k=0; k<nextDpDcPath.get(i).get(j).size(); k++){
+					print = print + nextDpDcPath.get(i).get(j).get(k).toString() + " ";
+				}
+				print = print + ":";
 			}
 			System.out.println(print);
 		}
@@ -226,7 +251,7 @@ public class NFVServiceChain {
 			dcPathCopy(this.previousDpDcPath, this.dpDcPath);
 		}
 		
-		System.out.println("after updating, the previous path is: ");
+		System.out.println("after updating, the previous stage placement is: ");
 		for(int i=0; i<previousDpPaths.length; i++){
 			String print = "";
 			for(int j=0; j<previousDpPaths[i].length; j++){
@@ -237,7 +262,8 @@ public class NFVServiceChain {
 			}
 			System.out.println(print);
 		}
-		System.out.println("after updating, the current path is: ");
+		
+		System.out.println("after updating, the current stage placement is: ");
 		for(int i=0; i<dpPaths.length; i++){
 			String print = "";
 			for(int j=0; j<dpPaths[i].length; j++){
@@ -248,6 +274,32 @@ public class NFVServiceChain {
 			}
 			System.out.println(print);
 		}
+		
+		System.out.println("before updating, the previous dc path is: ");
+		for(int i=0; i<previousDpDcPath.size(); i++){
+			String print = "";
+			for(int j=0; j<previousDpDcPath.get(i).size();j++){
+				for(int k=0; k<previousDpDcPath.get(i).get(j).size(); k++){
+					print = print + previousDpDcPath.get(i).get(j).get(k).toString() + " ";
+				}
+				print = print + ":";
+			}
+			System.out.println(print);
+		}
+		
+		System.out.println("before updating, the current dc path is: ");
+		for(int i=0; i<dpDcPath.size(); i++){
+			String print = "";
+			for(int j=0; j<dpDcPath.get(i).size();j++){
+				for(int k=0; k<dpDcPath.get(i).get(j).size(); k++){
+					print = print + dpDcPath.get(i).get(j).get(k).toString() + " ";
+				}
+				print = print + ":";
+			}
+			System.out.println(print);
+		}
+		
+		System.out.println(this.serviceChainConfig.name+" end");
 	}
 	
 	public synchronized int[] getProvision(){
