@@ -566,7 +566,12 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			}
 			else{
 				int incomingDcIndex = inputHostServer.portDcIndexMap.get(new Integer(initialInPort.getPortNumber()));
-				toThisPort = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
+				if(stageList.get(0)!=0){
+					toThisPort = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
+				}
+				else{
+					toThisPort = routeList.get(0).getPort(0);
+				}
 			}
 			
 			//System.out.println("got a flow comming from datacenter: "+new Integer(incomingDcIndex).toString());
