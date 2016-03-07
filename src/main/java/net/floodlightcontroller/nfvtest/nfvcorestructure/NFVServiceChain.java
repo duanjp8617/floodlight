@@ -275,7 +275,7 @@ public class NFVServiceChain {
 			System.out.println(print);
 		}
 		
-		System.out.println("before updating, the previous dc path is: ");
+		System.out.println("after updating, the previous dc path is: ");
 		for(int i=0; i<previousDpDcPath.size(); i++){
 			String print = "";
 			for(int j=0; j<previousDpDcPath.get(i).size();j++){
@@ -287,7 +287,7 @@ public class NFVServiceChain {
 			System.out.println(print);
 		}
 		
-		System.out.println("before updating, the current dc path is: ");
+		System.out.println("after updating, the current dc path is: ");
 		for(int i=0; i<dpDcPath.size(); i++){
 			String print = "";
 			for(int j=0; j<dpDcPath.get(i).size();j++){
