@@ -5,11 +5,15 @@ import java.util.List;
 import java.util.Map;
 
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedList;
+
+import net.floodlightcontroller.nfvtest.nfvslaveservice.ServiceChainHandler;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.*;
 
 public class NFVServiceChain {
@@ -36,6 +40,8 @@ public class NFVServiceChain {
 	private ArrayList<ArrayList<ArrayList<Integer>>> nextDpDcPath;
 	
 	private final Map<DatapathId, Map<Integer, NFVNode>> dpidNodeExitPortMap;
+	
+	private final Logger logger =  LoggerFactory.getLogger(NFVServiceChain.class);
 	
 	NFVServiceChain(ServiceChainConfig serviceChainConfig){
 		this.serviceChainConfig = serviceChainConfig;
@@ -187,9 +193,13 @@ public class NFVServiceChain {
 	}
 	
 	public synchronized void addScalingInterval(){
+		if(this.serviceChainConfig.nVmInterface == 3){
+			logger.info("scaling interval finishes,interval: ", this.scalingInterval);
+		}
+		
 		this.scalingInterval += 1;
 		
-		System.out.println("before updating, the current stage placement is: ");
+		/*System.out.println("before updating, the current stage placement is: ");
 		for(int i=0; i<dpPaths.length; i++){
 			String print = "";
 			for(int j=0; j<dpPaths[i].length; j++){
@@ -200,8 +210,8 @@ public class NFVServiceChain {
 			}
 			System.out.println(print);
 		}
-		System.out.println("before updating, the next stage placement is: ");
 		
+		System.out.println("before updating, the next stage placement is: ");
 		for(int i=0; i<nextDpPaths.length; i++){
 			String print = "";
 			for(int j=0; j<nextDpPaths[i].length; j++){
@@ -235,7 +245,7 @@ public class NFVServiceChain {
 				print = print + ":";
 			}
 			System.out.println(print);
-		}
+		}*/
 		
 		if(this.serviceChainConfig.nVmInterface == 3){
 			for(int i=0; i<dpPaths.length; i++){
@@ -251,7 +261,7 @@ public class NFVServiceChain {
 			dcPathCopy(this.dpDcPath, this.nextDpDcPath);
 		}
 		
-		System.out.println("after updating, the previous stage placement is: ");
+		/*System.out.println("after updating, the previous stage placement is: ");
 		for(int i=0; i<previousDpPaths.length; i++){
 			String print = "";
 			for(int j=0; j<previousDpPaths[i].length; j++){
@@ -297,9 +307,7 @@ public class NFVServiceChain {
 				print = print + ":";
 			}
 			System.out.println(print);
-		}
-		
-		System.out.println(this.serviceChainConfig.name+" end");
+		}*/
 	}
 	
 	public synchronized int[] getProvision(){
