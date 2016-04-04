@@ -381,16 +381,14 @@ public class ConcreteMessage {
 		private final int localCpProvision[];
 		private final int localDpProvision[];
 		private final int dpPaths[][][];
-		private final ArrayList<ArrayList<ArrayList<Integer>>> dpDcPath;
 		private final String sourceId;
 		
 		public ProactiveScalingRequest(String sourceId, int[] localCpProvision, int[] localDpProvision, 
-				int[][][] dpPaths, ArrayList<ArrayList<ArrayList<Integer>>> dpDcPath){
+				int[][][] dpPaths){
 			this.localCpProvision = localCpProvision;
 			this.localDpProvision = localDpProvision;
 			this.sourceId = sourceId;
 			this.dpPaths = dpPaths;
-			this.dpDcPath = dpDcPath;
 		}
 		
 		public String getSourceId(){
@@ -407,10 +405,6 @@ public class ConcreteMessage {
 		
 		public int[][][] getDpPaths(){
 			return this.dpPaths;
-		}
-		
-		public ArrayList<ArrayList<ArrayList<Integer>>> getDpDcPath(){
-			return this.dpDcPath;
 		}
 		
 	}

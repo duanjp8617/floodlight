@@ -375,6 +375,24 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     	}
     }
     
+    private ArrayList<Integer> buildDpDcPath(int[] dpPath, int src, int dst){
+    	ArrayList<Integer> dpDcPath = new ArrayList<Integer>();
+		dpDcPath.add(src);
+		int duplicatedDc = src;
+    	
+    	for(int i=0; i<dpPath.length; i++){
+    		if(duplicatedDc != dpPath[i]){
+    			dpDcPath.add(dpPath[i]);
+    			duplicatedDc = dpPath[i];
+    		}
+    	}
+    	
+    	if(dpDcPath.get(dpDcPath.size()-1) != dst){
+    		dpDcPath.add(dst);
+    	}
+    	return dpDcPath;
+    }
+    
     private void serviceChainLoadBalancing(IOFSwitch sw, FloodlightContext cntx, OFPort initialInPort, 
     		HostServer inputHostServer){
     	Ethernet eth =
@@ -401,7 +419,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         int srcDstPair[] = null; //array containing srcDcIndex and dstDcIndex
     	int scalingInterval = 0; //the current scaling interval
     	int dpPaths[] = null;    //dpPaths of the current scaling interval
-    	ArrayList<Integer> dpDcPath = null;
     	int currentDcIndex = localController.getCurrentDcIndex();
     	
     	synchronized(this.dpServiceChain){
@@ -412,7 +429,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	    		srcDstPair = localController.getSrcDstPair(srcAddr);
 	    		scalingInterval = this.dpServiceChain.getScalingInterval();
 	    		dpPaths = this.dpServiceChain.getCurrentDpPaths(srcDstPair[0], srcDstPair[1]);
-	    		dpDcPath = this.dpServiceChain.getCurrentDpDcPath(srcDstPair[0], srcDstPair[1]);
 	    	}
 	    	else{
 	    		//This is not a new flow, we need to check the tagging
@@ -437,32 +453,14 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	    		if(scalingInterval == currentScalingInterval){
 	    			//System.out.println("use current path");
 	    			dpPaths = this.dpServiceChain.getCurrentDpPaths(srcDstPair[0], srcDstPair[1]);
-	    			dpDcPath = this.dpServiceChain.getCurrentDpDcPath(srcDstPair[0], srcDstPair[1]);
-	    			String pathOutput = "";
-	    			for(int i=0; i<dpPaths.length; i++){
-	    				pathOutput = pathOutput + new Integer(dpPaths[i]).toString() + " ";
-	    			}
-	    			//System.out.println("The path is: "+pathOutput);
 	    		}
 	    		else if(((scalingInterval+1)%4)==currentScalingInterval){
 	    			//System.out.println("use previous path");
 	    			dpPaths = this.dpServiceChain.getPreviousDpPaths(srcDstPair[0], srcDstPair[1]);
-	    			dpDcPath = this.dpServiceChain.getPreviousDpDcPath(srcDstPair[0], srcDstPair[1]);
-	    			String pathOutput = "";
-	    			for(int i=0; i<dpPaths.length; i++){
-	    				pathOutput = pathOutput + new Integer(dpPaths[i]).toString() + " ";
-	    			}
-	    			//System.out.println("The path is: "+pathOutput);
 	    		}
 	    		else if(((scalingInterval+4-1)%4)==currentScalingInterval){
 	    			//System.out.println("use next path");
 	    			dpPaths = this.dpServiceChain.getNextDpPaths(srcDstPair[0], srcDstPair[1]);
-	    			dpDcPath = this.dpServiceChain.getNextDpDcPath(srcDstPair[0], srcDstPair[1]);
-	    			String pathOutput = "";
-	    			for(int i=0; i<dpPaths.length; i++){
-	    				pathOutput = pathOutput + new Integer(dpPaths[i]).toString() + " ";
-	    			}
-	    			//System.out.println("The path is: "+pathOutput);
 	    		}
 	    		else{
 	    			logger.info("routing error");
@@ -471,12 +469,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	    	}
     	}
     	
-    	//Now let's verify whether the packet is a correct packet
-    	if((srcDstPair[0]!=dpDcPath.get(0))||(srcDstPair[1]!=dpDcPath.get(dpDcPath.size()-1))){
-    		//System.out.println("we are getting an incorrect packet with unmatching service chain path");
-    		return;
-    	}
-		
+    	ArrayList<Integer> dpDcPath = buildDpDcPath(dpPaths, srcDstPair[0], srcDstPair[1]);
     	boolean currentDcOnPath = false;
     	int pos = 0;
     	for(; pos<dpDcPath.size(); pos++){

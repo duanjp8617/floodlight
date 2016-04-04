@@ -5,15 +5,11 @@ import java.util.List;
 import java.util.Map;
 
 import org.projectfloodlight.openflow.types.DatapathId;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedList;
-
-import net.floodlightcontroller.nfvtest.nfvslaveservice.ServiceChainHandler;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.*;
 
 public class NFVServiceChain {
@@ -35,13 +31,7 @@ public class NFVServiceChain {
 	private int previousDpPaths[][][];
 	private int nextDpPaths[][][];
 	
-	private ArrayList<ArrayList<ArrayList<Integer>>> dpDcPath;
-	private ArrayList<ArrayList<ArrayList<Integer>>> previousDpDcPath;
-	private ArrayList<ArrayList<ArrayList<Integer>>> nextDpDcPath;
-	
 	private final Map<DatapathId, Map<Integer, NFVNode>> dpidNodeExitPortMap;
-	
-	private final Logger logger =  LoggerFactory.getLogger(NFVServiceChain.class);
 	
 	NFVServiceChain(ServiceChainConfig serviceChainConfig){
 		this.serviceChainConfig = serviceChainConfig;
@@ -82,30 +72,14 @@ public class NFVServiceChain {
 		this.previousDpPaths = new int[dcNum][dcNum][length];
 		this.nextDpPaths = new int[dcNum][dcNum][length];
 		
-		this.dpDcPath = new ArrayList<ArrayList<ArrayList<Integer>>>();
-		this.previousDpDcPath = new ArrayList<ArrayList<ArrayList<Integer>>>();
-		this.nextDpDcPath = new ArrayList<ArrayList<ArrayList<Integer>>>();
-		
 		for(int i=0; i<dcNum; i++){
-			ArrayList<ArrayList<Integer>> list1 = new ArrayList<ArrayList<Integer>>();
-			ArrayList<ArrayList<Integer>> list2 = new ArrayList<ArrayList<Integer>>();
-			ArrayList<ArrayList<Integer>> list3 = new ArrayList<ArrayList<Integer>>();
 			for(int j=0; j<dcNum; j++){
-				ArrayList<Integer> p1 = new ArrayList<Integer>();
-				list1.add(p1);
-				ArrayList<Integer> p2 = new ArrayList<Integer>();
-				list2.add(p2);
-				ArrayList<Integer> p3 = new ArrayList<Integer>();
-				list3.add(p3);
 				for(int k=0; k<length; k++){
 					this.dpPaths[i][j][k] = -1;
 					this.previousDpPaths[i][j][k] = -1;
 					this.nextDpPaths[i][j][k] = -1;
 				}
 			}
-			this.dpDcPath.add(list1);
-			this.previousDpDcPath.add(list2);
-			this.nextDpDcPath.add(list3);
 		}
 	}
 	
@@ -137,34 +111,7 @@ public class NFVServiceChain {
 		return returnPaths;
 	}
 	
-	public synchronized ArrayList<Integer> getPreviousDpDcPath(int src, int dst){
-		ArrayList<Integer> p = new ArrayList<Integer>();
-		for(int i=0; i<this.previousDpDcPath.get(src).get(dst).size(); i++){
-			int dc = this.previousDpDcPath.get(src).get(dst).get(i);
-			p.add(dc);
-		}
-		return p;
-	}
-	
-	public synchronized ArrayList<Integer> getCurrentDpDcPath(int src, int dst){
-		ArrayList<Integer> p = new ArrayList<Integer>();
-		for(int i=0; i<this.dpDcPath.get(src).get(dst).size(); i++){
-			int dc = this.dpDcPath.get(src).get(dst).get(i);
-			p.add(dc);
-		}
-		return p;
-	}
-	
-	public synchronized ArrayList<Integer> getNextDpDcPath(int src, int dst){
-		ArrayList<Integer> p = new ArrayList<Integer>();
-		for(int i=0; i<this.nextDpDcPath.get(src).get(dst).size(); i++){
-			int dc = this.nextDpDcPath.get(src).get(dst).get(i);
-			p.add(dc);
-		}
-		return p;
-	}
-	
-	public synchronized  void addNextDpPaths(int[][][] nextDpPaths, ArrayList<ArrayList<ArrayList<Integer>>> nextDpDcPath){
+	public synchronized  void addNextDpPaths(int[][][] nextDpPaths){
 		if(this.serviceChainConfig.nVmInterface == 3){
 			for(int i=0; i<nextDpPaths.length; i++){
 				for(int j=0; j<nextDpPaths[i].length; j++){
@@ -173,33 +120,13 @@ public class NFVServiceChain {
 					}
 				}
 			}
-			
-			dcPathCopy(this.nextDpDcPath, nextDpDcPath);
-		}
-	}
-	
-	private void dcPathCopy(ArrayList<ArrayList<ArrayList<Integer>>> dst, ArrayList<ArrayList<ArrayList<Integer>>> src){
-		//this is a deep copy
-		for(int i=0; i<dst.size(); i++){
-			for(int j=0; j<dst.get(i).size(); j++){
-				dst.get(i).get(j).clear();
-				ArrayList<Integer> srcP = src.get(i).get(j);
-				for(int k=0; k<srcP.size(); k++){
-					int dc = srcP.get(k);
-					dst.get(i).get(j).add(dc);
-				}
-			}
 		}
 	}
 	
 	public synchronized void addScalingInterval(){
-		if(this.serviceChainConfig.nVmInterface == 3){
-			logger.info("scaling interval finishes,interval: "+new Integer(this.scalingInterval).toString());
-		}
-		
 		this.scalingInterval += 1;
 		
-		/*System.out.println("before updating, the current stage placement is: ");
+		System.out.println("before updating, the current path is: ");
 		for(int i=0; i<dpPaths.length; i++){
 			String print = "";
 			for(int j=0; j<dpPaths[i].length; j++){
@@ -210,8 +137,7 @@ public class NFVServiceChain {
 			}
 			System.out.println(print);
 		}
-		
-		System.out.println("before updating, the next stage placement is: ");
+		System.out.println("before updating, the next path is: ");
 		for(int i=0; i<nextDpPaths.length; i++){
 			String print = "";
 			for(int j=0; j<nextDpPaths[i].length; j++){
@@ -223,30 +149,6 @@ public class NFVServiceChain {
 			System.out.println(print);
 		}
 		
-		System.out.println("before updating, the current dc path is: ");
-		for(int i=0; i<dpDcPath.size(); i++){
-			String print = "";
-			for(int j=0; j<dpDcPath.get(i).size();j++){
-				for(int k=0; k<dpDcPath.get(i).get(j).size(); k++){
-					print = print + dpDcPath.get(i).get(j).get(k).toString() + " ";
-				}
-				print = print + ":";
-			}
-			System.out.println(print);
-		}
-		
-		System.out.println("before updating, the next dc path is: ");
-		for(int i=0; i<nextDpDcPath.size(); i++){
-			String print = "";
-			for(int j=0; j<nextDpDcPath.get(i).size();j++){
-				for(int k=0; k<nextDpDcPath.get(i).get(j).size(); k++){
-					print = print + nextDpDcPath.get(i).get(j).get(k).toString() + " ";
-				}
-				print = print + ":";
-			}
-			System.out.println(print);
-		}*/
-		
 		if(this.serviceChainConfig.nVmInterface == 3){
 			for(int i=0; i<dpPaths.length; i++){
 				for(int j=0; j<dpPaths[i].length; j++){
@@ -257,11 +159,9 @@ public class NFVServiceChain {
 					}
 				}
 			}
-			dcPathCopy(this.previousDpDcPath, this.dpDcPath);
-			dcPathCopy(this.dpDcPath, this.nextDpDcPath);
 		}
 		
-		/*System.out.println("after updating, the previous stage placement is: ");
+		System.out.println("after updating, the previous path is: ");
 		for(int i=0; i<previousDpPaths.length; i++){
 			String print = "";
 			for(int j=0; j<previousDpPaths[i].length; j++){
@@ -272,8 +172,7 @@ public class NFVServiceChain {
 			}
 			System.out.println(print);
 		}
-		
-		System.out.println("after updating, the current stage placement is: ");
+		System.out.println("after updating, the current path is: ");
 		for(int i=0; i<dpPaths.length; i++){
 			String print = "";
 			for(int j=0; j<dpPaths[i].length; j++){
@@ -284,30 +183,6 @@ public class NFVServiceChain {
 			}
 			System.out.println(print);
 		}
-		
-		System.out.println("after updating, the previous dc path is: ");
-		for(int i=0; i<previousDpDcPath.size(); i++){
-			String print = "";
-			for(int j=0; j<previousDpDcPath.get(i).size();j++){
-				for(int k=0; k<previousDpDcPath.get(i).get(j).size(); k++){
-					print = print + previousDpDcPath.get(i).get(j).get(k).toString() + " ";
-				}
-				print = print + ":";
-			}
-			System.out.println(print);
-		}
-		
-		System.out.println("after updating, the current dc path is: ");
-		for(int i=0; i<dpDcPath.size(); i++){
-			String print = "";
-			for(int j=0; j<dpDcPath.get(i).size();j++){
-				for(int k=0; k<dpDcPath.get(i).get(j).size(); k++){
-					print = print + dpDcPath.get(i).get(j).get(k).toString() + " ";
-				}
-				print = print + ":";
-			}
-			System.out.println(print);
-		}*/
 	}
 	
 	public synchronized int[] getProvision(){
