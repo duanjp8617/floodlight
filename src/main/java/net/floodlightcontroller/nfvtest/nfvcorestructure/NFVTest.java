@@ -583,81 +583,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			sw.write(flowMod);
 			sw.flush();
 		}
-		
-		/*if(needDynamicRule){
-			
-			for(int i=0; i<routeList.size(); i++){
-				NFVNode currentNode = routeList.get(i);
-				IOFSwitch nodeSwitch = this.switchService.getSwitch(DatapathId.of(currentNode.getBridgeDpid(0)));
-				//create flow rules to route the flow from hitSwitch to nodeSwitch.
-				
-				if(hitSwitch.getId().getLong() == nodeSwitch.getId().getLong()){
-					if(stageList.get(i).intValue() == 0){
-						Match flowMatch = createMatch(hitSwitch, inPort, srcIp, transportProtocol, srcPort);
-						OFFlowMod flowMod = createEntryFlowMod(hitSwitch, flowMatch, MacAddress.of(currentNode.getMacAddress(0)), 
-								OFPort.of(inputHostServer.statInPort), srcDstPair[0], srcDstPair[1], scalingInterval, "udp");
-						hitSwitch.write(flowMod);
-						//hitSwitch.flush();
-						
-						flowMatch = createMatch(hitSwitch, OFPort.of(inputHostServer.statOutPort), srcIp, transportProtocol, srcPort);
-						flowMod = createFlowMod(hitSwitch, flowMatch, 
-						                          MacAddress.of(currentNode.getMacAddress(0)),
-												  OFPort.of(currentNode.getPort(0)));
-						hitSwitch.write(flowMod);
-						//hitSwitch.flush();
-						
-					}
-					else{
-						Match flowMatch = createMatch(hitSwitch, inPort, srcIp, transportProtocol, srcPort);
-						OFFlowMod flowMod = createFlowMod(hitSwitch, flowMatch, 
-		                          MacAddress.of(currentNode.getMacAddress(0)),
-								  OFPort.of(currentNode.getPort(0)));
-						hitSwitch.write(flowMod);
-						//hitSwitch.flush();
-					}
-				}
-				else{
-					//temporarily ignore this condition.
-					String localServerIp = localHostServer.hostServerConfig.managementIp;
-					HostServer remoteHostServer = currentNode.vmInstance.hostServer;
-					String remoteServerIp = remoteHostServer.hostServerConfig.managementIp;
-					
-					int localPort = localHostServer.tunnelPortMap.get(remoteServerIp).intValue();
-					int remotePort = remoteHostServer.tunnelPortMap.get(localServerIp).intValue();
-					
-					//first, push flow rules on hitSwitch. Without changing the mac address, push 
-					//The flow to the localPort on hitSwitch.
-					Match flowMatch = createMatch(hitSwitch, inPort, srcIp,
-							  					  transportProtocol, srcPort);
-					
-					OFFlowMod flowMod = null;
-					if(stageList.get(i).intValue() == 0){
-						flowMod = createEntryFlowMod(hitSwitch, flowMatch, MacAddress.of(currentNode.getMacAddress(0)), 
-								OFPort.of(localPort), srcDstPair[0], srcDstPair[1], scalingInterval, "udp");
-					}
-					else{
-						flowMod = createFlowMod(hitSwitch, flowMatch, 
-		                          MacAddress.of(currentNode.getMacAddress(0)),
-								  OFPort.of(localPort));
-					}
-					hitSwitch.write(flowMod);
-					//hitSwitch.flush();
-					
-					flowMatch = createMatch(nodeSwitch, OFPort.of(remotePort), srcIp,
-		  					                transportProtocol, srcPort);
-					flowMod = createFlowMod(nodeSwitch, flowMatch, 
-						                    MacAddress.of(currentNode.getMacAddress(0)),
-						                    OFPort.of(currentNode.getPort(0)));
-					nodeSwitch.write(flowMod);
-					//nodeSwitch.flush();
-				}
-				
-				currentNode.addActiveFlow();
-				hitSwitch = this.switchService.getSwitch(DatapathId.of(currentNode.getBridgeDpid(1)));
-				inPort = OFPort.of(currentNode.getPort(1));
-				localHostServer = currentNode.vmInstance.hostServer;
-			}
-		}*/
     }
     
     private Match createMatch(IOFSwitch sw, OFPort inPort, 
@@ -680,53 +605,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
        
         return mb.build();
     }
-    
-    /*private OFFlowMod createFlowModWithoutMac(IOFSwitch sw, Match flowMatch, OFPort outPort){
-		List<OFAction> actionList = new ArrayList<OFAction>();	
-		OFActions actions = sw.getOFFactory().actions();
-		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
-		
-		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
-		fmb.setHardTimeout(0);
-		fmb.setIdleTimeout(15);
-		fmb.setBufferId(OFBufferId.NO_BUFFER);
-		fmb.setCookie(U64.of(8617));
-		fmb.setPriority(5);
-		fmb.setOutPort(outPort);
-		fmb.setActions(actionList);
-		fmb.setMatch(flowMatch);
-		
-		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
-		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
-		fmb.setFlags(sfmf);
-		
-		return fmb.build();
-    }*/
-    
-    /*private OFFlowMod createFlowMod(IOFSwitch sw, Match flowMatch, MacAddress dstMac, OFPort outPort){
-		List<OFAction> actionList = new ArrayList<OFAction>();	
-		OFActions actions = sw.getOFFactory().actions();
-		OFOxms oxms = sw.getOFFactory().oxms();
-		
-		actionList.add(actions.setField(oxms.ethDst(dstMac)));
-		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
-		
-		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
-		fmb.setHardTimeout(0);
-		fmb.setIdleTimeout(15);
-		fmb.setBufferId(OFBufferId.NO_BUFFER);
-		fmb.setCookie(U64.of(8617));
-		fmb.setPriority(5);
-		fmb.setOutPort(outPort);
-		fmb.setActions(actionList);
-		fmb.setMatch(flowMatch);
-		
-		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
-		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
-		fmb.setFlags(sfmf);
-		
-		return fmb.build();
-    }*/
     
     private OFFlowMod createFlowModFromOtherDc(IOFSwitch sw, Match flowMatch, IPv4Address dstAddr, OFPort outPort){
 		List<OFAction> actionList = new ArrayList<OFAction>();	
@@ -811,38 +689,6 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		return fmb.build();
     }
     
-    /*private net.floodlightcontroller.core.IListener.Command processPktRemoved(IOFSwitch sw, OFFlowRemoved msg){
-    	if (!msg.getCookie().equals(U64.of(8617))) {
-			return Command.CONTINUE;
-		}
-    	
-    	Match match = msg.getMatch();
-    	IPv4Address srcIp = match.get(MatchField.IPV4_SRC);
-    	IPv4Address dstIp = match.get(MatchField.IPV4_DST);
-    	IpProtocol protocol = match.get(MatchField.IP_PROTO);
-    	TransportPort srcPort = null;
-    	TransportPort dstPort = null;
-    	if(protocol.equals(IpProtocol.TCP)){
-    		srcPort = match.get(MatchField.TCP_SRC);
-    		dstPort = match.get(MatchField.TCP_DST);
-    	}
-    	else{
-    		srcPort = match.get(MatchField.UDP_SRC);
-    		dstPort = match.get(MatchField.UDP_DST);
-    	}
-    	
-    	RouteTuple tuple = new RouteTuple(srcIp.getInt(), dstIp.getInt(),
-    					protocol.equals(IpProtocol.TCP)?RouteTuple.TCP:RouteTuple.UDP,
-    							srcPort.getPort(), dstPort.getPort(), sw.getId().getLong());
-    	
-    	if(this.routeMap.containsKey(tuple)){
-    		String managementIp = this.routeMap.get(tuple);
-    		this.dpServiceChain.getNode(managementIp).deleteActiveFlow();
-    		
-    		//System.out.println("Flow on node "+managementIp+" is removed");
-    	}
-    	return Command.STOP;
-    }*/
     @Override
     public net.floodlightcontroller.core.IListener.Command receive(IOFSwitch sw, OFMessage msg, FloodlightContext cntx) {
     	switch (msg.getType()) {
