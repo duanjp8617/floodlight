@@ -430,7 +430,8 @@ public class ServiceChainHandler extends MessageProcessor {
 		synchronized(serviceChain){
 			if(pendingMap.containsKey(uuid)){
 				//one of the proactive scaling requests is finished.
-				logger.info("node:"+node.vmInstance.managementIp+"is created by proactive scaling");
+				logger.info("node: "+node.vmInstance.managementIp+" stage: "+new Integer(node.vmInstance.stageIndex).toString()+
+						" chain: "+node.vmInstance.serviceChainConfig.name+" is created by proactive scaling");
 				serviceChain.addToServiceChain(node);
 				serviceChain.addWorkingNode(node);
 				
@@ -459,7 +460,8 @@ public class ServiceChainHandler extends MessageProcessor {
 			}
 			else{
 				//a reactive scaling request is finished
-				logger.info("node:"+node.vmInstance.managementIp+"is created by reactive scaling");
+				logger.info("node: "+node.vmInstance.managementIp+" stage: "+new Integer(node.vmInstance.stageIndex).toString()+
+						" chain: "+node.vmInstance.serviceChainConfig.name+" is created by reactive scaling");
 				serviceChain.addToServiceChain(node);
 				if(this.reactiveStart == true){
 					//reactive scaling is enabled, we add the node to working node
@@ -623,6 +625,11 @@ public class ServiceChainHandler extends MessageProcessor {
 					for(String key : chain.destroyNodeMap.keySet()){
 						NFVNode destroyNode = chain.destroyNodeMap.get(key);
 						if(destroyNode.checkIdle()){
+							logger.info(
+								"node: "+destroyNode.vmInstance.managementIp+
+								" stage: "+new Integer(destroyNode.vmInstance.stageIndex).toString()+
+								" chain: "+destroyNode.vmInstance.serviceChainConfig.name+
+								" is destroyed!");
 							if(destroyNode.vmInstance.serviceChainConfig.nVmInterface==3){
 								//This is a dataplane node, we need to remove its index from indexmap
 								deleteStaticFlowRule(destroyNode);

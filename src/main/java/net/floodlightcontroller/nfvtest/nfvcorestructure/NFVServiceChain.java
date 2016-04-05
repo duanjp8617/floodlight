@@ -130,7 +130,7 @@ public class NFVServiceChain {
 	
 	public synchronized void addScalingInterval(){
 		if(this.serviceChainConfig.nVmInterface == 3){
-			logger.info("scaling interval finishes,interval: ", this.scalingInterval);
+			logger.info("scaling interval finishes,interval: "+new Integer(this.scalingInterval).toString());
 		}
 		
 		this.scalingInterval += 1;
