@@ -387,17 +387,11 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         }
         
         IPv4Address srcIp = ip_pkt.getSourceAddress();
-        IPv4Address dstIp = ip_pkt.getDestinationAddress();
         byte dscpEcn = ip_pkt.getDiffServ();
-        
     	UDP udp_pkt = (UDP)ip_pkt.getPayload();
     	IpProtocol transportProtocol = IpProtocol.UDP;
     	TransportPort srcPort = udp_pkt.getSourcePort();
-    	TransportPort dstPort = udp_pkt.getDestinationPort();
     	
-    	//System.out.println("sdn controller receives flow srcIp:"+srcIp.toString()+" srcPort:"+srcPort.toString()
-    	//+" dstIp:"+dstIp.toString()+" dstPort:"+dstPort.toString());
-
         OFPort inPort = initialInPort;
         	
         int srcDstPair[] = null; //array containing srcDcIndex and dstDcIndex
@@ -429,37 +423,14 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	    		scalingInterval = (int)(dscpEcn&0x03);
 	    		int currentScalingInterval = this.dpServiceChain.getScalingInterval();
 	    		
-	    		
-	    		//System.out.println("got a flow from another datacenter, src dc: "+new Integer(srcDstPair[0]).toString()+
-	    		//		" dst dc: "+new Integer(srcDstPair[1]).toString() + " scalingInterval: "+new Integer(scalingInterval).toString());
-	    		//System.out.println("The current scaling interval is: " + new Integer(currentScalingInterval).toString());
-	    		//the scaling interval loops through 0-3. 
 	    		if(scalingInterval == currentScalingInterval){
-	    			//System.out.println("use current path");
 	    			dpPaths = this.dpServiceChain.getCurrentDpPaths(srcDstPair[0], srcDstPair[1]);
-	    			String pathOutput = "";
-	    			for(int i=0; i<dpPaths.length; i++){
-	    				pathOutput = pathOutput + new Integer(dpPaths[i]).toString() + " ";
-	    			}
-	    			//System.out.println("The path is: "+pathOutput);
 	    		}
 	    		else if(((scalingInterval+1)%4)==currentScalingInterval){
-	    			//System.out.println("use previous path");
 	    			dpPaths = this.dpServiceChain.getPreviousDpPaths(srcDstPair[0], srcDstPair[1]);
-	    			String pathOutput = "";
-	    			for(int i=0; i<dpPaths.length; i++){
-	    				pathOutput = pathOutput + new Integer(dpPaths[i]).toString() + " ";
-	    			}
-	    			//System.out.println("The path is: "+pathOutput);
 	    		}
 	    		else if(((scalingInterval+4-1)%4)==currentScalingInterval){
-	    			//System.out.println("use next path");
 	    			dpPaths = this.dpServiceChain.getNextDpPaths(srcDstPair[0], srcDstPair[1]);
-	    			String pathOutput = "";
-	    			for(int i=0; i<dpPaths.length; i++){
-	    				pathOutput = pathOutput + new Integer(dpPaths[i]).toString() + " ";
-	    			}
-	    			//System.out.println("The path is: "+pathOutput);
 	    		}
 	    		else{
 	    			logger.info("routing error");
@@ -468,9 +439,17 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	    	}
     	}
     	
-    	//Now let's verify whether the packet is a correct packet
-    	if((srcDstPair[0]!=dpPaths[0])||(srcDstPair[1]!=dpPaths[dpPaths.length-1])){
-    		//System.out.println("we are getting an incorrect packet with unmatching service chain path");
+    	boolean currentDcOnPath = false;
+    	if((currentDcIndex==srcDstPair[0])||(currentDcIndex==srcDstPair[1])){
+    		currentDcOnPath = true;
+    	}
+    	for(int i=0; i<dpPaths.length; i++){
+    		if(dpPaths[i] == currentDcIndex){
+    			currentDcOnPath = true;
+    			break;
+    		}
+    	}
+    	if(currentDcOnPath == false){
     		return;
     	}
 		
@@ -482,106 +461,138 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		}
 		
 		if(stageList.size() == 0){
-			//System.out.println("the current datacenter is not on the service chain path");
-			return;
-		}
-		
-		List<NFVNode> routeList = this.dpServiceChain.forwardRoute(stageList.get(0).intValue(),
-				stageList.get(stageList.size()-1).intValue());
-		
-		boolean needDynamicRule = false;
-		byte[] newDstAddr = new byte[4];
-		newDstAddr[0] = 0;
-		newDstAddr[1] = 0;
-		newDstAddr[2] = 0;
-		newDstAddr[3] = 0;
-		for(int i=0; i<routeList.size(); i++){
-			NFVNode currentNode = routeList.get(i);
-			int nodeIndex = currentNode.getIndex();
-			if(nodeIndex==-1){
-				needDynamicRule = true;
+			if(currentDcIndex == srcDstPair[0]){
+				byte[] newDstAddr = new byte[4];
+				newDstAddr[0] = (byte)dpPaths[0];
+				newDstAddr[1] = 1;
+				newDstAddr[2] = 1;
+				newDstAddr[3] = 1;
+				IOFSwitch hitSwitch = sw;
+				Match flowMatch = createMatch(hitSwitch, inPort, srcIp, transportProtocol, srcPort);
+				OFFlowMod flowMod = createEntryFlowMod(hitSwitch, flowMatch, MacAddress.of(inputHostServer.exitMac), 
+						OFPort.of(inputHostServer.statInPort), srcDstPair[0], srcDstPair[1], scalingInterval, IPv4Address.of(newDstAddr));
+				hitSwitch.write(flowMod);
+				hitSwitch.flush();
 			}
-			
-			newDstAddr[stageList.get(i)] = (byte)nodeIndex;
-		}
-		
-		if(stageList.get(stageList.size()-1).intValue() != dpPaths.length-1){
-			int lastStage = stageList.get(stageList.size()-1);
-			int nextDcIndex = dpPaths[lastStage+1];
-			newDstAddr[lastStage+1] = (byte)nextDcIndex;
-		}
-		
-		IOFSwitch hitSwitch = sw;
-		HostServer localHostServer = vmAllocator.dpidHostServerMap.get(hitSwitch.getId());
-		
-		if(stageList.get(0).intValue()!=0){
-			//we got a flow coming from another datacenter, let's route the flow to 
-			//proper location
-			int incomingDcIndex = inputHostServer.portDcIndexMap.get(new Integer(initialInPort.getPortNumber()));
-			int toThisPort = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
-			
-			//System.out.println("got a flow comming from datacenter: "+new Integer(incomingDcIndex).toString());
-			String printSth = "the patch port list is :";
-			ArrayList<Integer> array = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex));
-			for(int i=0; i<array.size(); i++){
-				printSth = printSth+array.get(i).toString()+" ";
+			else if(currentDcIndex == srcDstPair[1]){
+				String exitFlowSrcAddr = srcIp.toString()+":"+srcPort.toString();
+    			//System.out.println(" exitFlowSrcAddr: "+exitFlowSrcAddr+" is going to access the map");
+    			String exitFlowDstAddr = localController.getExitFlowDstAddr(exitFlowSrcAddr);
+    			String exitFlowSrcIp   = localController.getExitFlowSrcIp(exitFlowSrcAddr);
+    			if(exitFlowDstAddr.equals("")||exitFlowSrcIp.equals("")){
+    				return;
+    			}
+    			String sArray[] = exitFlowDstAddr.split(":");
+    			String exitFlowDstip = sArray[0];
+    			String exitFlowDstPort = sArray[1];
+    			Match flowMatch = createMatch(sw, inPort, srcIp,transportProtocol, srcPort);
+    			OFFlowMod flowMod = createExitFlowMod(sw, flowMatch, MacAddress.of(inputHostServer.gatewayMac), 
+    					OFPort.of(inputHostServer.gatewayPort), exitFlowSrcIp, exitFlowDstip, Integer.parseInt(exitFlowDstPort), "udp");
+    			sw.write(flowMod);
+    			sw.flush();
 			}
-			//System.out.println(printSth);
-			//System.out.println("The flow comes from datacenter: "+new Integer(incomingDcIndex).toString());
-			//System.out.println("The flow will be sent to this port: "+new Integer(toThisPort).toString());
-			
-			
-			Match flowMatch = createMatch(sw, initialInPort, srcIp, transportProtocol, srcPort);
-			OFFlowMod flowMod = createFlowModFromOtherDc(sw, flowMatch, IPv4Address.of(newDstAddr), OFPort.of(toThisPort));
-			sw.write(flowMod);
-			sw.flush();
-
-			inPort = OFPort.of(inputHostServer.dcIndexPortMap.get(incomingDcIndex));
-		}
-		else{
-			Match flowMatch = createMatch(hitSwitch, inPort, srcIp, transportProtocol, srcPort);
-			OFFlowMod flowMod = createEntryFlowMod(hitSwitch, flowMatch, MacAddress.of(routeList.get(0).getMacAddress(0)), 
-					OFPort.of(inputHostServer.statInPort), srcDstPair[0], srcDstPair[1], scalingInterval, IPv4Address.of(newDstAddr));
-			hitSwitch.write(flowMod);
-			hitSwitch.flush();
-		}
-		
-		if(stageList.get(stageList.size()-1).intValue() == dpPaths.length-1){
-			//This is the last stage
-			String print="the stage list is: ";
-			for(int i=0; i<stageList.size(); i++){
-				print  = print + stageList.get(i).toString()+" ";
-			}
-			//System.out.println(print);
-			//System.out.println(" the src is: "+new Integer(srcDstPair[0]).toString()+" the dst is: "+new Integer(srcDstPair[1]).toString());
-			print = "the path is: ";
-			for(int i=0; i<dpPaths.length; i++){
-				print = print + new Integer(dpPaths[i])+" ";
-			}
-			//System.out.println(print);
-					
-			
-			
-			String exitFlowSrcAddr = srcIp.toString()+":"+srcPort.toString();
-			//System.out.println(" exitFlowSrcAddr: "+exitFlowSrcAddr+" is going to access the map");
-			String exitFlowDstAddr = localController.getExitFlowDstAddr(exitFlowSrcAddr);
-			String exitFlowSrcIp   = localController.getExitFlowSrcIp(exitFlowSrcAddr);
-			
-			if(exitFlowDstAddr.equals("")||exitFlowSrcIp.equals("")){
+			else{
+				logger.info("fatal error! please debug!");
 				return;
 			}
+		}
+		else{
+			List<NFVNode> routeList = this.dpServiceChain.forwardRoute(stageList.get(0).intValue(),
+					stageList.get(stageList.size()-1).intValue());
+
+			byte[] newDstAddr = new byte[4];
+			newDstAddr[0] = 0;
+			newDstAddr[1] = 0;
+			newDstAddr[2] = 0;
+			newDstAddr[3] = 9;
+			for(int i=0; i<routeList.size(); i++){
+				NFVNode currentNode = routeList.get(i);
+				int nodeIndex = currentNode.getIndex();
+				newDstAddr[stageList.get(i)] = (byte)nodeIndex;
+			}
 			
-			String sArray[] = exitFlowDstAddr.split(":");
-			String exitFlowDstip = sArray[0];
-			String exitFlowDstPort = sArray[1];
+			if(stageList.get(stageList.size()-1).intValue() != dpPaths.length-1){
+				int lastStage = stageList.get(stageList.size()-1);
+				int nextDcIndex = dpPaths[lastStage+1];
+				newDstAddr[lastStage+1] = (byte)nextDcIndex;
+			}
+			else{
+				if(currentDcIndex != srcDstPair[1]){
+					//we have one more hop to go
+					newDstAddr[3] = (byte)srcDstPair[1];
+				}
+			}
 			
-			OFPort exitPort = OFPort.of(inputHostServer.patchPort);
-			Match flowMatch = createMatch(sw, exitPort, srcIp,transportProtocol, srcPort);
+			IOFSwitch hitSwitch = sw;
 			
-			OFFlowMod flowMod = createExitFlowMod(sw, flowMatch, MacAddress.of(inputHostServer.gatewayMac), 
-					OFPort.of(inputHostServer.gatewayPort), exitFlowSrcIp, exitFlowDstip, Integer.parseInt(exitFlowDstPort), "udp");
-			sw.write(flowMod);
-			sw.flush();
+			if(stageList.get(0).intValue()!=0){
+				//we got a flow coming from another datacenter, let's route the flow to 
+				//proper location
+				
+				//System.out.println("got a flow comming from datacenter: "+new Integer(incomingDcIndex).toString());
+				//String printSth = "the patch port list is :";
+				//ArrayList<Integer> array = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex));
+				//for(int i=0; i<array.size(); i++){
+				//	printSth = printSth+array.get(i).toString()+" ";
+				//}
+				//System.out.println(printSth);
+				//System.out.println("The flow comes from datacenter: "+new Integer(incomingDcIndex).toString());
+				//System.out.println("The flow will be sent to this port: "+new Integer(toThisPort).toString());
+				
+				int incomingDcIndex = inputHostServer.portDcIndexMap.get(new Integer(initialInPort.getPortNumber()));
+				int toThisPort = inputHostServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
+				Match flowMatch = createMatch(sw, initialInPort, srcIp, transportProtocol, srcPort);
+				OFFlowMod flowMod = createFlowModFromOtherDc(sw, flowMatch, IPv4Address.of(newDstAddr), OFPort.of(toThisPort));
+				sw.write(flowMod);
+				sw.flush();
+			}
+			else{
+				if(currentDcIndex == srcDstPair[0]){
+					Match flowMatch = createMatch(hitSwitch, inPort, srcIp, transportProtocol, srcPort);
+					OFFlowMod flowMod = createEntryFlowMod(hitSwitch, flowMatch, MacAddress.of(routeList.get(0).getMacAddress(0)), 
+							OFPort.of(inputHostServer.statInPort), srcDstPair[0], srcDstPair[1], scalingInterval, IPv4Address.of(newDstAddr));
+					hitSwitch.write(flowMod);
+					hitSwitch.flush();
+				}
+				else{
+					int toThisPort = routeList.get(0).getPort(0);
+					Match flowMatch = createMatch(sw, initialInPort, srcIp, transportProtocol, srcPort);
+					OFFlowMod flowMod = createFlowModFromOtherDc(sw, flowMatch, IPv4Address.of(newDstAddr), OFPort.of(toThisPort));
+					sw.write(flowMod);
+					sw.flush();
+				}
+			}
+			if((stageList.get(stageList.size()-1).intValue() == dpPaths.length-1)&&(currentDcIndex==srcDstPair[1])){
+				//This is the last stage
+				//String print="the stage list is: ";
+				//for(int i=0; i<stageList.size(); i++){
+				//	print  = print + stageList.get(i).toString()+" ";
+				//}
+				//System.out.println(print);
+				//System.out.println(" the src is: "+new Integer(srcDstPair[0]).toString()+" the dst is: "+new Integer(srcDstPair[1]).toString());
+				//print = "the path is: ";
+				//for(int i=0; i<dpPaths.length; i++){
+				//	print = print + new Integer(dpPaths[i])+" ";
+				//}
+				//System.out.println(print);
+				
+				String exitFlowSrcAddr = srcIp.toString()+":"+srcPort.toString();
+				//System.out.println(" exitFlowSrcAddr: "+exitFlowSrcAddr+" is going to access the map");
+				String exitFlowDstAddr = localController.getExitFlowDstAddr(exitFlowSrcAddr);
+				String exitFlowSrcIp   = localController.getExitFlowSrcIp(exitFlowSrcAddr);
+				if(exitFlowDstAddr.equals("")||exitFlowSrcIp.equals("")){
+					return;
+				}
+				String sArray[] = exitFlowDstAddr.split(":");
+				String exitFlowDstip = sArray[0];
+				String exitFlowDstPort = sArray[1];
+				OFPort exitPort = OFPort.of(inputHostServer.patchPort);
+				Match flowMatch = createMatch(sw, exitPort, srcIp,transportProtocol, srcPort);
+				OFFlowMod flowMod = createExitFlowMod(sw, flowMatch, MacAddress.of(inputHostServer.gatewayMac), 
+						OFPort.of(inputHostServer.gatewayPort), exitFlowSrcIp, exitFlowDstip, Integer.parseInt(exitFlowDstPort), "udp");
+				sw.write(flowMod);
+				sw.flush();
+			}
 		}
     }
     
