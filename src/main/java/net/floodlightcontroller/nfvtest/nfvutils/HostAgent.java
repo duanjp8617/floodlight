@@ -666,6 +666,47 @@ public class HostAgent{
         	return false;
 	}
 	
+	public boolean addEntrySwitchFlow(String bridgeName, int outPort, int inputPort, int dstDcIndex)throws
+		IOException, UserAuthException, TransportException{
+		byte newDstAddr[] = new byte[4];
+		byte mask[] = new byte[4];
+		for(int i=0; i<4; i++){
+			if((i)==0){
+				newDstAddr[i] = (byte)dstDcIndex;
+				mask[i] = ((byte)255);
+			}
+			else{
+				newDstAddr[i] = 0;
+				mask[i] = ((byte)0);
+			}
+		}
+		
+		String cmd = "sudo ovs-ofctl add-flow "+bridgeName+" in_port="+new Integer(inputPort).toString()+
+				",ip,nw_dst="+IPv4Address.of(newDstAddr).toString()+"/"+IPv4Address.of(mask).toString()
+				+",actions=mod_nw_dst:1.1.1.1,output:"+Integer.toString(outPort);
+		ProcessBuilder builder = new ProcessBuilder("/bin/bash", "-c", cmd);
+        builder.redirectErrorStream(true);
+        Process p = null;
+        int returnVal = 0;
+		try {
+			p = builder.start();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+        try {
+			returnVal = p.waitFor();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+        if(returnVal==0)
+        	return true;
+        else
+        	return false;
+	}
+	
 	public boolean addDpFlow(String bridgeName, int outPort, int dstDcIndex, int stageIndex)throws
 		IOException, UserAuthException, TransportException{
 		
@@ -712,7 +753,7 @@ public class HostAgent{
 		IOException, UserAuthException, TransportException{
 		
 		String cmd = "sudo ovs-ofctl add-flow "+bridgeName+
-				" ip,nw_dst=1.1.1.1/0.0.0.0,actions=mod_nw_dst:1.1.1.1,output:"+Integer.toString(outPort);
+				" ip,nw_dst=0.0.0.9/0.0.0.255,actions=mod_nw_dst:1.1.1.1,output:"+Integer.toString(outPort);
 		ProcessBuilder builder = new ProcessBuilder("/bin/bash", "-c", cmd);
         builder.redirectErrorStream(true);
         Process p = null;
