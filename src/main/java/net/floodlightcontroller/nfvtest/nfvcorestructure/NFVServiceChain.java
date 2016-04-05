@@ -12,6 +12,9 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class NFVServiceChain {
 	
 	public final ServiceChainConfig serviceChainConfig;
@@ -32,6 +35,8 @@ public class NFVServiceChain {
 	private int nextDpPaths[][][];
 	
 	private final Map<DatapathId, Map<Integer, NFVNode>> dpidNodeExitPortMap;
+	
+	private final Logger logger =  LoggerFactory.getLogger(NFVServiceChain.class);
 	
 	NFVServiceChain(ServiceChainConfig serviceChainConfig){
 		this.serviceChainConfig = serviceChainConfig;
@@ -124,6 +129,10 @@ public class NFVServiceChain {
 	}
 	
 	public synchronized void addScalingInterval(){
+		if(this.serviceChainConfig.nVmInterface == 3){
+			logger.info("scaling interval finishes,interval: ", this.scalingInterval);
+		}
+		
 		this.scalingInterval += 1;
 		
 		System.out.println("before updating, the current path is: ");
