@@ -286,9 +286,9 @@ public class ServiceChainHandler extends MessageProcessor {
 									domainName = "sprout.cw.t";
 								}
 								
-								DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-										bufferNode.vmInstance.operationIp, "add");
-								this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+								//DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+								//		bufferNode.vmInstance.operationIp, "add");
+								//this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 							}
 						}
 						else{
@@ -337,9 +337,9 @@ public class ServiceChainHandler extends MessageProcessor {
 									domainName = "sprout.cw.t";
 								}
 								
-								DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-										workingNode.vmInstance.operationIp, "delete");
-								this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+								//DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+								//		workingNode.vmInstance.operationIp, "delete");
+								//this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 							}
 						}
 					}
@@ -443,9 +443,9 @@ public class ServiceChainHandler extends MessageProcessor {
 					else {
 						domainName = "sprout.cw.t";
 					}
-					DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-							node.vmInstance.operationIp, "add");
-					this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+					//DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+					//		node.vmInstance.operationIp, "add");
+					//this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 				}
 				pendingMap.remove(uuid);
 				if(pendingMap.size() == 0){
@@ -475,9 +475,9 @@ public class ServiceChainHandler extends MessageProcessor {
 						else {
 							domainName = "sprout.cw.t";
 						}
-						DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-								node.vmInstance.operationIp, "add");
-						this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+						//DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+						//		node.vmInstance.operationIp, "add");
+						//this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 					}
 				}
 				else{
@@ -499,9 +499,9 @@ public class ServiceChainHandler extends MessageProcessor {
 		logger.info("receive SubConnReply for "+vmInstance.serviceChainConfig.name+" and stage "+
 		Integer.toString(vmInstance.stageIndex));
 		
-		String managementIp = vmInstance.managementIp;
-		Socket subscriber1 = reply.getSubscriber1();
-		this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
+		//String managementIp = vmInstance.managementIp;
+		//Socket subscriber1 = reply.getSubscriber1();
+		//this.poller.register(new Pair<String, Socket>(managementIp+":1", subscriber1));
 		
 		if(node.vmInstance.serviceChainConfig.nVmInterface == 3){
 			//This a dataplane node, assign a unique identifier to it.
@@ -606,9 +606,9 @@ public class ServiceChainHandler extends MessageProcessor {
 										domainName = "sprout.cw.t";
 									}
 									
-									DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-											bufferNode.vmInstance.operationIp, "add");
-									this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+									//DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+									//		bufferNode.vmInstance.operationIp, "add");
+									//this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 								}
 							}
 							else{

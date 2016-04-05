@@ -6,13 +6,9 @@ import net.floodlightcontroller.nfvtest.message.MessageProcessor;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
 import net.floodlightcontroller.nfvtest.nfvutils.HostAgent;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
-import net.floodlightcontroller.nfvtest.nfvutils.GlobalConfig.ServiceChainConfig;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.*;
-import net.schmizz.sshj.transport.TransportException;
-import net.schmizz.sshj.userauth.UserAuthException;
 import net.floodlightcontroller.nfvtest.message.Pending;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
