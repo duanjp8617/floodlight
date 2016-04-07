@@ -236,6 +236,12 @@ public class HostServer {
 			}
 		}
 		
+		for(int i=0; i<4; i++){
+			FakeDhcpAllocator oDhcpAllocator = new FakeDhcpAllocator(this.macAllocator,
+					ipAllocator.allocateIp()+2, 32);
+			this.serviceChainONetworkMap.put("TEST-"+new Integer(i).toString(), oDhcpAllocator);
+		}
+		
 		this.statBridgeDpid = this.macAllocator.getMac();
 		this.statInPort = 6;
 		this.statOutPort = 5;

@@ -176,6 +176,20 @@ public class VmWorker extends MessageProcessor{
 					agent.createNetworkFromXml(remoteMNetXMLFilz);
 				}
 			}
+			
+			//create 4 test networks TEST-0-TEST-3
+			for(int i=0; i<4; i++){
+				String testNetworkName = "TEST-"+new Integer(i).toString();
+				if(agent.networkExist(testNetworkName)){
+					agent.deleteNetwork(testNetworkName);
+				}
+				String localMNetXMLFile = constructNetworkXmlFile(hostServer.controllerConfig," ", testNetworkName,
+			              hostServer.serviceChainONetworkMap.get(testNetworkName));
+				String remoteMNetXMLFile = hostServer.hostServerConfig.xmlDir+"/"+testNetworkName;
+				agent.uploadFile(localMNetXMLFile, remoteMNetXMLFile);
+				agent.createNetworkFromXml(remoteMNetXMLFile);
+			}
+			
 			agent.createRouteToGateway(hostServer.entryIp, hostServer.gatewayIp, "gateway");
 			//remove previous generated vm images
 			String[] unusedImgArray = agent.createSelectedRemoveList(hostServer.hostServerConfig.imgDir, baseImgList);
