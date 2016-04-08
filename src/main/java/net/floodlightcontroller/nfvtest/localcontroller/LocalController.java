@@ -3,15 +3,42 @@ package net.floodlightcontroller.nfvtest.localcontroller;
 import org.zeromq.ZMQ.Socket;
 
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
+import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVNode;
+import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVServiceChain;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVTest;
 import net.floodlightcontroller.nfvtest.nfvslaveservice.ServiceChainHandler;
+import net.floodlightcontroller.nfvtest.nfvslaveservice.VmAllocator;
+import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
+import net.floodlightcontroller.core.IOFSwitch;
+import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.nfvtest.message.MessageHub;
 
 import org.zeromq.ZMQ.Context;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
+import org.projectfloodlight.openflow.protocol.OFFlowMod;
+import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
+import org.projectfloodlight.openflow.protocol.action.OFAction;
+import org.projectfloodlight.openflow.protocol.action.OFActions;
+import org.projectfloodlight.openflow.protocol.match.Match;
+import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.EthType;
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.IpDscp;
+import org.projectfloodlight.openflow.types.IpEcn;
+import org.projectfloodlight.openflow.types.IpProtocol;
+import org.projectfloodlight.openflow.types.MacAddress;
+import org.projectfloodlight.openflow.types.OFBufferId;
+import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TransportPort;
+import org.projectfloodlight.openflow.types.U64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZMQ;
@@ -71,9 +98,15 @@ public class LocalController implements Runnable{
 	
 	private ArrayList<Integer> cpStatArray;
 	
+	private VmAllocator vmAllocator;
+	private NFVServiceChain dpServiceChain;
+	
+	protected IOFSwitchService switchService;
+	
 	public LocalController(String globalIp, int publishPort, int syncPort, int pullPort, int repPort, int pcscfPort,
 			String localIp, boolean hasScscf, int delayPollInterval, int dpCapacity[], MessageHub mh, Context context,
-			String entryIp, ServiceChainHandler chainHandler){
+			String entryIp, ServiceChainHandler chainHandler, VmAllocator vmAllocator, NFVServiceChain dpServiceChain,
+			IOFSwitchService switchService){
 		this.globalIp = globalIp;
 		this.publishPort = publishPort;
 		this.syncPort = syncPort;
@@ -114,6 +147,10 @@ public class LocalController implements Runnable{
 		this.dpTrafficPuller = new DpTrafficPuller(2000, context);
 		
 		this.cpStatArray = new ArrayList<Integer>();
+		
+		this.vmAllocator = vmAllocator;
+		this.dpServiceChain = dpServiceChain;
+		this.switchService = switchService;
 	}
 	
 	public int getCurrentDcIndex(){
@@ -389,7 +426,6 @@ public class LocalController implements Runnable{
 				cpStatArray.set(i, val+Integer.parseInt(statArray[i]));
 			}
 		}
-		
 	}
 	
 	private void processSchSync(){
@@ -679,4 +715,342 @@ public class LocalController implements Runnable{
 		}
 		return returnVal;
 	}
+	
+	private void EntryPrepush(int dstIndex, String srcAddr){
+		int srcIndex = localcIndexMap.get(localIp).intValue();
+		String[] addrSplit = srcAddr.split(":");
+		
+		int scalingInterval = 0;
+		int[] dpPaths = null;
+		synchronized(this.dpServiceChain){
+			scalingInterval = this.dpServiceChain.getScalingInterval();
+			dpPaths = this.dpServiceChain.getCurrentDpPaths(srcIndex, dstIndex);	
+		}
+			
+		ArrayList<Integer> stageList = new ArrayList<Integer>();
+		for(int i=0; i<dpPaths.length; i++){
+			if(dpPaths[i] == srcIndex){
+				stageList.add(new Integer(i));
+			}
+		}
+		
+		byte[] newDstAddr = new byte[4];
+		List<NFVNode> routeList = null;
+		if(stageList.size() == 0){
+			newDstAddr[0] = (byte)dpPaths[0];
+			newDstAddr[1] = 1;
+			newDstAddr[2] = 1;
+			newDstAddr[3] = 1;
+		}
+		else{
+			routeList = this.dpServiceChain.forwardRoute(stageList.get(0).intValue(),
+					stageList.get(stageList.size()-1).intValue());
+			newDstAddr[0] = 0;
+			newDstAddr[1] = 0;
+			newDstAddr[2] = 0;
+			newDstAddr[3] = 9;
+			for(int i=0; i<routeList.size(); i++){
+				NFVNode currentNode = routeList.get(i);
+				int nodeIndex = currentNode.getIndex();
+				newDstAddr[stageList.get(i)] = (byte)nodeIndex;
+			}
+			
+			if(stageList.get(stageList.size()-1).intValue() != dpPaths.length-1){
+				int lastStage = stageList.get(stageList.size()-1);
+				int nextDcIndex = dpPaths[lastStage+1];
+				newDstAddr[lastStage+1] = (byte)nextDcIndex;
+			}
+			else{
+				if(srcIndex != dstIndex){
+					//we have one more hop to go
+					newDstAddr[3] = (byte)dstIndex;
+				}
+			}
+		}
+		
+		HostServer entryServer = vmAllocator.hostServerList.get(0);
+		String entrySwitchDpid = entryServer.serviceChainDpidMap.get("DATA").get(0);
+		IOFSwitch entrySwitch = switchService.getSwitch(DatapathId.of(entrySwitchDpid));
+		OFPort inPort = OFPort.of(entryServer.gatewayPort);
+		IPv4Address srcIp = IPv4Address.of(addrSplit[0]);
+		TransportPort srcPort = TransportPort.of(new Integer(addrSplit[1]).intValue());
+		IpProtocol transportProtocol = IpProtocol.UDP;
+		MacAddress mac = null;
+		if(stageList.size()==0){
+			mac = MacAddress.of(entryServer.exitMac);
+		}
+		else{
+			mac = MacAddress.of(routeList.get(0).getMacAddress(0));
+		}
+		
+		Match flowMatch = createMatch(entrySwitch, inPort, srcIp, transportProtocol, srcPort);
+		OFFlowMod flowMod = createEntryFlowMod(entrySwitch, flowMatch, mac, 
+				OFPort.of(entryServer.statInPort), srcIndex, dstIndex, scalingInterval, IPv4Address.of(newDstAddr));
+		entrySwitch.write(flowMod);
+		entrySwitch.flush();
+	}
+	
+	private void intermPrepush(int currentDcIndex, int srcIndex, int dstIndex, int scalingInterval, String srcAddr){
+		int[] dpPaths = null;
+		String[] addrSplit = srcAddr.split(":");
+		synchronized(this.dpServiceChain){
+			int currentScalingInterval = this.dpServiceChain.getScalingInterval();
+			
+			
+			if(scalingInterval == currentScalingInterval){
+    			dpPaths = this.dpServiceChain.getCurrentDpPaths(srcIndex, dstIndex);
+    		}
+    		else if(((scalingInterval+1)%4)==currentScalingInterval){
+    			dpPaths = this.dpServiceChain.getPreviousDpPaths(srcIndex, dstIndex);
+    		}
+    		else if(((scalingInterval+4-1)%4)==currentScalingInterval){
+    			dpPaths = this.dpServiceChain.getNextDpPaths(srcIndex, dstIndex);
+    		}
+    		else{
+    			logger.info("routing error");
+    			return;
+    		}
+		}
+		
+		ArrayList<Integer> stageList = new ArrayList<Integer>();
+		for(int i=0; i<dpPaths.length; i++){
+			if(dpPaths[i] == currentDcIndex){
+				stageList.add(new Integer(i));
+			}
+		}
+		byte[] newDstAddr = new byte[4];
+		List<NFVNode> routeList = this.dpServiceChain.forwardRoute(stageList.get(0).intValue(),
+				stageList.get(stageList.size()-1).intValue());
+		newDstAddr[0] = 0;
+		newDstAddr[1] = 0;
+		newDstAddr[2] = 0;
+		newDstAddr[3] = 9;
+		for(int i=0; i<routeList.size(); i++){
+			NFVNode currentNode = routeList.get(i);
+			int nodeIndex = currentNode.getIndex();
+			newDstAddr[stageList.get(i)] = (byte)nodeIndex;
+		}
+		
+		if(stageList.get(stageList.size()-1).intValue() != dpPaths.length-1){
+			int lastStage = stageList.get(stageList.size()-1);
+			int nextDcIndex = dpPaths[lastStage+1];
+			newDstAddr[lastStage+1] = (byte)nextDcIndex;
+		}
+		else{
+			newDstAddr[3] = (byte)dstIndex;
+		}
+		
+		HostServer entryServer = vmAllocator.hostServerList.get(0);
+		String entrySwitchDpid = entryServer.serviceChainDpidMap.get("DATA").get(0);
+		IOFSwitch entrySwitch = switchService.getSwitch(DatapathId.of(entrySwitchDpid));
+		IPv4Address srcIp = IPv4Address.of(addrSplit[0]);
+		TransportPort srcPort = TransportPort.of(new Integer(addrSplit[1]).intValue());
+		IpProtocol transportProtocol = IpProtocol.UDP;
+		
+		int toThisPort = 0;
+		int incomingDcIndex = 0;	
+		if(stageList.get(0).intValue()!=0){
+			incomingDcIndex = dpPaths[stageList.get(0)-1];
+			toThisPort = entryServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
+		}
+		else{
+			incomingDcIndex = srcIndex;
+			toThisPort = routeList.get(0).getPort(0);
+		}
+		OFPort inPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
+		
+		Match flowMatch = createMatch(entrySwitch, inPort, srcIp, transportProtocol, srcPort);
+		OFFlowMod flowMod = createFlowModFromOtherDc(entrySwitch, flowMatch, IPv4Address.of(newDstAddr), OFPort.of(toThisPort));
+		entrySwitch.write(flowMod);
+		entrySwitch.flush();
+	}
+	
+	private void exitPrepush(int srcIndex, int dstIndex, int scalingInterval, String srcAddr){
+		int[] dpPaths = null;
+		String[] addrSplit = srcAddr.split(":");
+		synchronized(this.dpServiceChain){
+			int currentScalingInterval = this.dpServiceChain.getScalingInterval();
+			
+			
+			if(scalingInterval == currentScalingInterval){
+    			dpPaths = this.dpServiceChain.getCurrentDpPaths(srcIndex, dstIndex);
+    		}
+    		else if(((scalingInterval+1)%4)==currentScalingInterval){
+    			dpPaths = this.dpServiceChain.getPreviousDpPaths(srcIndex, dstIndex);
+    		}
+    		else if(((scalingInterval+4-1)%4)==currentScalingInterval){
+    			dpPaths = this.dpServiceChain.getNextDpPaths(srcIndex, dstIndex);
+    		}
+    		else{
+    			logger.info("routing error");
+    			return;
+    		}
+		}
+		
+		ArrayList<Integer> stageList = new ArrayList<Integer>();
+		for(int i=0; i<dpPaths.length; i++){
+			if(dpPaths[i] == dstIndex){
+				stageList.add(new Integer(i));
+			}
+		}
+		byte[] newDstAddr = new byte[4];
+		List<NFVNode> routeList = null;		
+		if(stageList.size()>0){
+			routeList = this.dpServiceChain.forwardRoute(stageList.get(0).intValue(),
+					stageList.get(stageList.size()-1).intValue());
+			newDstAddr[0] = 0;
+			newDstAddr[1] = 0;
+			newDstAddr[2] = 0;
+			newDstAddr[3] = 9;
+			for(int i=0; i<routeList.size(); i++){
+				NFVNode currentNode = routeList.get(i);
+				int nodeIndex = currentNode.getIndex();
+				newDstAddr[stageList.get(i)] = (byte)nodeIndex;
+			}
+		}
+		
+		HostServer entryServer = vmAllocator.hostServerList.get(0);
+		String entrySwitchDpid = entryServer.serviceChainDpidMap.get("DATA").get(0);
+		IOFSwitch entrySwitch = switchService.getSwitch(DatapathId.of(entrySwitchDpid));
+		IPv4Address srcIp = IPv4Address.of(addrSplit[0]);
+		TransportPort srcPort = TransportPort.of(new Integer(addrSplit[1]).intValue());
+		IpProtocol transportProtocol = IpProtocol.UDP;
+		
+		OFPort exitPort = null;
+		if(stageList.size()>0){
+			int incomingDcIndex = dpPaths[stageList.get(0)-1];
+			int toThisPort = entryServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
+			OFPort inPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
+			
+			Match flowMatch = createMatch(entrySwitch, inPort, srcIp, transportProtocol, srcPort);
+			OFFlowMod flowMod = createFlowModFromOtherDc(entrySwitch, flowMatch, IPv4Address.of(newDstAddr), OFPort.of(toThisPort));
+			entrySwitch.write(flowMod);
+			entrySwitch.flush();
+			
+			exitPort = OFPort.of(entryServer.patchPort);
+		}
+		else{
+			int incomingDcIndex = dpPaths[dpPaths.length-1];
+			exitPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
+		}
+		
+		String exitFlowSrcAddr = srcIp.toString()+":"+srcPort.toString();
+		String exitFlowDstAddr = this.getExitFlowDstAddr(exitFlowSrcAddr);
+		String exitFlowSrcIp   = this.getExitFlowSrcIp(exitFlowSrcAddr);
+		if(exitFlowDstAddr.equals("")||exitFlowSrcIp.equals("")){
+			return;
+		}
+		String sArray[] = exitFlowDstAddr.split(":");
+		String exitFlowDstip = sArray[0];
+		String exitFlowDstPort = sArray[1];
+		Match flowMatch = createMatch(entrySwitch, exitPort, srcIp,transportProtocol, srcPort);
+		OFFlowMod flowMod = createExitFlowMod(entrySwitch, flowMatch, MacAddress.of(entryServer.gatewayMac), 
+				OFPort.of(entryServer.gatewayPort), exitFlowSrcIp, exitFlowDstip, Integer.parseInt(exitFlowDstPort), "udp");
+		entrySwitch.write(flowMod);
+		entrySwitch.flush();
+	}
+	
+	private Match createMatch(IOFSwitch sw, OFPort inPort, 
+			  IPv4Address srcIp, IpProtocol transportProtocol,
+			  TransportPort srcPort){
+		Match.Builder mb = sw.getOFFactory().buildMatch();
+		mb.setExact(MatchField.IN_PORT, inPort);
+		
+		mb.setExact(MatchField.ETH_TYPE, EthType.IPv4)
+		.setExact(MatchField.IPV4_SRC, srcIp);
+		
+		if(transportProtocol.equals(IpProtocol.TCP)){
+			mb.setExact(MatchField.IP_PROTO, IpProtocol.TCP)
+			.setExact(MatchField.TCP_SRC, srcPort);
+		}
+		else{
+			mb.setExact(MatchField.IP_PROTO, IpProtocol.UDP)
+			.setExact(MatchField.UDP_SRC, srcPort);
+		}
+		
+		return mb.build();
+	}
+	
+    private OFFlowMod createEntryFlowMod(IOFSwitch sw, Match flowMatch, MacAddress dstMac, OFPort outPort, 
+    		int srcDcIndex, int dstDcIndex, int scalingInterval, IPv4Address dstAddr){
+    	byte ecn = (byte)(scalingInterval%4);
+    	byte dscp = (byte)(((srcDcIndex&0x07)<<3)+((dstDcIndex&0x07)));
+    	
+    	List<OFAction> actionList = new ArrayList<OFAction>();	
+		OFActions actions = sw.getOFFactory().actions();
+		OFOxms oxms = sw.getOFFactory().oxms();
+		actionList.add(actions.setField(oxms.ethDst(dstMac)));
+		actionList.add(actions.setField(oxms.ipEcn(IpEcn.of(ecn))));
+		actionList.add(actions.setField(oxms.ipDscp(IpDscp.of(dscp))));
+		actionList.add(actions.setField(oxms.ipv4Dst(dstAddr)));
+		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
+		
+		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+		fmb.setHardTimeout(0);
+		fmb.setIdleTimeout(15);
+		fmb.setBufferId(OFBufferId.NO_BUFFER);
+		fmb.setCookie(U64.of(8617));
+		fmb.setPriority(5);
+		fmb.setOutPort(outPort);
+		fmb.setActions(actionList);
+		fmb.setMatch(flowMatch);
+		
+		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
+		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
+		fmb.setFlags(sfmf);
+		
+		return fmb.build();
+    }
+    
+    private OFFlowMod createFlowModFromOtherDc(IOFSwitch sw, Match flowMatch, IPv4Address dstAddr, OFPort outPort){
+		List<OFAction> actionList = new ArrayList<OFAction>();	
+		OFActions actions = sw.getOFFactory().actions();
+		OFOxms oxms = sw.getOFFactory().oxms();
+		actionList.add(actions.setField(oxms.ipv4Dst(dstAddr)));
+		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
+		
+		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+		fmb.setHardTimeout(0);
+		fmb.setIdleTimeout(15);
+		fmb.setBufferId(OFBufferId.NO_BUFFER);
+		fmb.setCookie(U64.of(8617));
+		fmb.setPriority(5);
+		fmb.setOutPort(outPort);
+		fmb.setActions(actionList);
+		fmb.setMatch(flowMatch);
+		
+		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
+		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
+		fmb.setFlags(sfmf);
+		
+		return fmb.build();
+    }
+    
+    private OFFlowMod createExitFlowMod(IOFSwitch sw, Match flowMatch, MacAddress dstMac, OFPort outPort, 
+    		String srcIp, String dstIp, int dstPort, String udpOrTcp){
+		List<OFAction> actionList = new ArrayList<OFAction>();	
+		OFActions actions = sw.getOFFactory().actions();
+		OFOxms oxms = sw.getOFFactory().oxms();
+		
+		actionList.add(actions.setField(oxms.ethDst(dstMac)));
+		actionList.add(actions.setField(oxms.ipv4Src(IPv4Address.of(srcIp))));
+		actionList.add(actions.setField(oxms.ipv4Dst(IPv4Address.of(dstIp))));
+		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
+		
+		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+		fmb.setHardTimeout(0);
+		fmb.setIdleTimeout(15);
+		fmb.setBufferId(OFBufferId.NO_BUFFER);
+		fmb.setCookie(U64.of(8617));
+		fmb.setPriority(5);
+		fmb.setOutPort(outPort);
+		fmb.setActions(actionList);
+		fmb.setMatch(flowMatch);
+		
+		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
+		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
+		fmb.setFlags(sfmf);
+		
+		return fmb.build();
+    }
 }
