@@ -502,7 +502,7 @@ public class LocalController implements Runnable{
 			intermPrepush(currentDcIndex, srcIndex, dstIndex, scalingInterval, entryFlowSrcAddr);
 			intermPrepush(currentDcIndex, srcIndex, dstIndex, scalingInterval, entryMinorFlowSrcAddr);
 			
-			Socket dcPcscfPusher = this.pcscfPusherMap.get(srcIndex);
+			Socket dcPcscfPusher = this.localcPcscfPusherMap.get(srcIndex);
 			dcPcscfPusher.send("ACK", ZMQ.SNDMORE);
 			dcPcscfPusher.send(pcscfIpPort, ZMQ.SNDMORE);
 			dcPcscfPusher.send(entryFlowSrcAddr, 0);
@@ -528,7 +528,7 @@ public class LocalController implements Runnable{
 			exitPrepush(srcIndex, dstIndex, scalingInterval, entryFlowSrcAddr, exitFlowSrcAddr);
 			exitPrepush(srcIndex, dstIndex, scalingInterval, entryMinorFlowSrcAddr, exitMinorFlowSrcAddr);
 			
-			Socket dcPcscfPusher = this.pcscfPusherMap.get(srcIndex);
+			Socket dcPcscfPusher = this.localcPcscfPusherMap.get(srcIndex);
 			dcPcscfPusher.send("ACK", ZMQ.SNDMORE);
 			dcPcscfPusher.send(pcscfIpPort, ZMQ.SNDMORE);
 			dcPcscfPusher.send(entryFlowSrcAddr, 0);
