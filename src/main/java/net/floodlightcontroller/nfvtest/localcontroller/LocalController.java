@@ -2,6 +2,8 @@ package net.floodlightcontroller.nfvtest.localcontroller;
 
 import org.zeromq.ZMQ.Socket;
 
+import com.sun.nio.sctp.SctpStandardSocketOptions.InitMaxStreams;
+
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVNode;
 import net.floodlightcontroller.nfvtest.nfvcorestructure.NFVServiceChain;
@@ -66,6 +68,7 @@ public class LocalController implements Runnable{
 	
 	private boolean hasScscf;
 	private HashMap<String, Integer> localcIndexMap;
+	private HashMap<Integer, Socket> localcPcscfPusherMap;
 	
 	private int delayPollInterval;
 	
@@ -103,6 +106,8 @@ public class LocalController implements Runnable{
 	
 	protected IOFSwitchService switchService;
 	
+	private HashMap<String, Pending> pendingMap;
+	
 	public LocalController(String globalIp, int publishPort, int syncPort, int pullPort, int repPort, int pcscfPort,
 			String localIp, boolean hasScscf, int delayPollInterval, int dpCapacity[], MessageHub mh, Context context,
 			String entryIp, ServiceChainHandler chainHandler, VmAllocator vmAllocator, NFVServiceChain dpServiceChain,
@@ -123,6 +128,7 @@ public class LocalController implements Runnable{
 		
 		this.hasScscf = hasScscf;
 		this.localcIndexMap = new HashMap<String, Integer>();
+		this.localcPcscfPusherMap  = new HashMap<Integer, Socket>();
 		
 		this.delayPollInterval = delayPollInterval;
 		
@@ -151,6 +157,7 @@ public class LocalController implements Runnable{
 		this.vmAllocator = vmAllocator;
 		this.dpServiceChain = dpServiceChain;
 		this.switchService = switchService;
+		this.pendingMap = new HashMap<String, Pending>();
 	}
 	
 	public int getCurrentDcIndex(){
@@ -211,6 +218,14 @@ public class LocalController implements Runnable{
 			localcIndexMap.put(ip, new Integer(Integer.parseInt(index)));
 			System.out.println("learns a local controller at IP: "+ip+" with index "+index+"\n");
 			hasMore = subscriber.hasReceiveMore();
+		}
+		
+		for(String ip : localcIndexMap.keySet()){
+			if(!ip.equals(localIp)){
+				Socket localcPcscfPusher = context.socket(ZMQ.PUSH);
+				localcPcscfPusher.connect("tcp://"+ip+":"+Integer.toString(pcscfPort));
+				localcPcscfPusherMap.put(localcIndexMap.get(ip), localcPcscfPusher);
+			}
 		}
 		
 		cpProvision = new int[localcIndexMap.size()][2];
@@ -292,6 +307,23 @@ public class LocalController implements Runnable{
 		}
 	}
 	
+	private ArrayList<Integer> checkSubsequentDc(int srcIndex, int dstIndex, int[] dpPaths){
+		ArrayList<Integer> list = new ArrayList<Integer>();
+		int lastSeen = srcIndex;
+		for(int i=0; i<dpPaths.length; i++){
+			if(dpPaths[i] != lastSeen){
+				list.add(dpPaths[i]);
+				lastSeen = dpPaths[i];
+			}
+		}
+		
+		if(dstIndex != lastSeen){
+			list.add(dstIndex);
+		}
+		
+		return list;
+	}
+	
 	private void processPcscfPuller(){
 		String initMsg = pcscfPuller.recvStr();
 		if(initMsg.equals("PCSCFCONNECT")){
@@ -349,11 +381,45 @@ public class LocalController implements Runnable{
 				this.exitFlowSrcIpMap.put(exitMinorFlowSrcAddr, exitFlowSrcIp);
 			}
 			
-			Socket socket = this.pcscfPusherMap.get(pcscfIpPort);
-			socket.send("REPLY", ZMQ.SNDMORE);
-			socket.send(entryFlowSrcAddr,ZMQ.SNDMORE);
-			String regIp = chainHandler.getRegIp();
-			socket.send(regIp, 0);
+			int srcIndex = this.getCurrentDcIndex();
+			int dstIndex = new Integer(entryFlowDstDc).intValue();
+			RtPair rtPair = entryPrepush(dstIndex, entryFlowSrcAddr, entryMinorFlowSrcAddr);
+			
+			if(srcIndex!=dstIndex){
+				ArrayList<Integer> subsequentDcList = checkSubsequentDc(srcIndex, dstIndex, rtPair.dpPaths);
+				for(int i=0; i<subsequentDcList.size(); i++){
+					int intermDcIndex = subsequentDcList.get(i);
+					Socket dcPcscfPusher = localcPcscfPusherMap.get(intermDcIndex);
+					if(i<subsequentDcList.size()-1){
+						dcPcscfPusher.send("INTERM", ZMQ.SNDMORE);
+					}
+					else{
+						dcPcscfPusher.send("EXIT", ZMQ.SNDMORE);
+					}
+					dcPcscfPusher.send(new Integer(srcIndex).toString(), ZMQ.SNDMORE);
+					dcPcscfPusher.send(new Integer(dstIndex).toString(), ZMQ.SNDMORE);
+					dcPcscfPusher.send(new Integer(rtPair.scalingInterval).toString(), ZMQ.SNDMORE);
+					dcPcscfPusher.send(entryFlowSrcAddr, ZMQ.SNDMORE);
+					dcPcscfPusher.send(entryMinorFlowSrcAddr, ZMQ.SNDMORE);
+					if(i == subsequentDcList.size()-1){
+						dcPcscfPusher.send(exitFlowSrcAddr, ZMQ.SNDMORE);
+						dcPcscfPusher.send(exitMinorFlowSrcAddr, ZMQ.SNDMORE);
+					}
+					dcPcscfPusher.send(pcscfIpPort, 0);
+				}
+				String key = pcscfIpPort+":"+entryFlowSrcAddr;
+				this.pendingMap.put(key, new Pending(subsequentDcList.size()));
+			}
+			else{
+				exitPrepush(srcIndex, dstIndex, rtPair.scalingInterval, entryFlowSrcAddr, exitFlowSrcAddr);
+				exitPrepush(srcIndex, dstIndex, rtPair.scalingInterval, entryMinorFlowSrcAddr, exitMinorFlowSrcAddr);
+				
+				Socket socket = this.pcscfPusherMap.get(pcscfIpPort);
+				socket.send("REPLY", ZMQ.SNDMORE);
+				socket.send(entryFlowSrcAddr,ZMQ.SNDMORE);
+				String regIp = chainHandler.getRegIp();
+				socket.send(regIp, 0);
+			}
 		}
 		else if(initMsg.equals("CLOSE")){
 			String pcscfIpPort      = pcscfPuller.recvStr();
@@ -417,6 +483,71 @@ public class LocalController implements Runnable{
 			socket.send("REPLY", ZMQ.SNDMORE);
 			socket.send(entryFlowSrcAddr, ZMQ.SNDMORE);
 			socket.send(" ", 0);
+		}
+		else if(initMsg.equals("INTERM")){
+			String s_srcIndex = pcscfPuller.recvStr();
+			int srcIndex = new Integer(s_srcIndex).intValue();
+			
+			String s_dstIndex = pcscfPuller.recvStr();
+			int dstIndex = new Integer(s_dstIndex).intValue();
+			
+			String s_scalingInterval = pcscfPuller.recvStr();
+			int scalingInterval = new Integer(s_scalingInterval).intValue();
+			
+			String entryFlowSrcAddr = pcscfPuller.recvStr();
+			String entryMinorFlowSrcAddr = pcscfPuller.recvStr();
+			String pcscfIpPort = pcscfPuller.recvStr();
+			int currentDcIndex = this.getCurrentDcIndex();
+			
+			intermPrepush(currentDcIndex, srcIndex, dstIndex, scalingInterval, entryFlowSrcAddr);
+			intermPrepush(currentDcIndex, srcIndex, dstIndex, scalingInterval, entryMinorFlowSrcAddr);
+			
+			Socket dcPcscfPusher = this.pcscfPusherMap.get(srcIndex);
+			dcPcscfPusher.send("ACK", ZMQ.SNDMORE);
+			dcPcscfPusher.send(pcscfIpPort, ZMQ.SNDMORE);
+			dcPcscfPusher.send(entryFlowSrcAddr, ZMQ.SNDMORE);
+			dcPcscfPusher.send(entryMinorFlowSrcAddr, 0);
+		}
+		else if(initMsg.equals("EXIT")){
+			String s_srcIndex = pcscfPuller.recvStr();
+			int srcIndex = new Integer(s_srcIndex).intValue();
+			
+			String s_dstIndex = pcscfPuller.recvStr();
+			int dstIndex = new Integer(s_dstIndex).intValue();
+			
+			String s_scalingInterval = pcscfPuller.recvStr();
+			int scalingInterval = new Integer(s_scalingInterval).intValue();
+			
+			String entryFlowSrcAddr = pcscfPuller.recvStr();
+			String entryMinorFlowSrcAddr = pcscfPuller.recvStr();
+			String exitFlowSrcAddr = pcscfPuller.recvStr();
+			String exitMinorFlowSrcAddr = pcscfPuller.recvStr();
+			String pcscfIpPort = pcscfPuller.recvStr();
+			
+			
+			exitPrepush(srcIndex, dstIndex, scalingInterval, entryFlowSrcAddr, exitFlowSrcAddr);
+			exitPrepush(srcIndex, dstIndex, scalingInterval, entryMinorFlowSrcAddr, exitMinorFlowSrcAddr);
+			
+			Socket dcPcscfPusher = this.pcscfPusherMap.get(srcIndex);
+			dcPcscfPusher.send("ACK", ZMQ.SNDMORE);
+			dcPcscfPusher.send(pcscfIpPort, ZMQ.SNDMORE);
+			dcPcscfPusher.send(entryFlowSrcAddr, ZMQ.SNDMORE);
+			dcPcscfPusher.send(entryMinorFlowSrcAddr, 0);
+		}
+		else if(initMsg.equals("ACK")){
+			String pcscfIpPort = pcscfPuller.recvStr();
+			String entryFlowSrcAddr = pcscfPuller.recvStr();
+			String entryMinorFlowSrcAddr = pcscfPuller.recvStr();
+			
+			String key = pcscfIpPort+":"+entryFlowSrcAddr;
+			Pending pending = pendingMap.get(key);
+			if(pending.decreaseCounter()){
+				Socket socket = this.pcscfPusherMap.get(pcscfIpPort);
+				socket.send("REPLY", ZMQ.SNDMORE);
+				socket.send(entryFlowSrcAddr,ZMQ.SNDMORE);
+				String regIp = chainHandler.getRegIp();
+				socket.send(regIp, 0);
+			}
 		}
 		else{
 			String statMat = pcscfPuller.recvStr();
@@ -716,16 +847,55 @@ public class LocalController implements Runnable{
 		return returnVal;
 	}
 	
-	private void EntryPrepush(int dstIndex, String srcAddr){
-		int srcIndex = localcIndexMap.get(localIp).intValue();
-		String[] addrSplit = srcAddr.split(":");
+	static public class RtPair{
+		public int scalingInterval;
+		public int[] dpPaths;
 		
+		public RtPair(int scalingInterval, int[] dpPaths){
+			this.scalingInterval = scalingInterval;
+			this.dpPaths = new int[dpPaths.length];
+			for(int i=0; i<this.dpPaths.length; i++){
+				this.dpPaths[i] = dpPaths[i];
+			}
+		}
+	}
+	
+	static public class Pending{
+		private int counter;
+		
+		public Pending(int counter){
+			this.counter = counter;
+		}
+		
+		public boolean decreaseCounter(){
+			this.counter -= 1;
+			if(this.counter == 0){
+				return true;
+			}
+			else{
+				return false;
+			}
+		}
+	}
+	
+	private RtPair entryPrepush(int dstIndex, String srcAddr, String minorSrcAddr){
+		int srcIndex = localcIndexMap.get(localIp).intValue();
 		int scalingInterval = 0;
 		int[] dpPaths = null;
 		synchronized(this.dpServiceChain){
 			scalingInterval = this.dpServiceChain.getScalingInterval();
 			dpPaths = this.dpServiceChain.getCurrentDpPaths(srcIndex, dstIndex);	
 		}
+		entryPrepush1(dstIndex, srcAddr, scalingInterval, dpPaths);
+		entryPrepush1(dstIndex, minorSrcAddr, scalingInterval, dpPaths);
+		
+		return new RtPair(scalingInterval, dpPaths);
+		
+	}
+	
+	private void entryPrepush1(int dstIndex, String srcAddr, int scalingInterval, int[] dpPaths){
+		int srcIndex = localcIndexMap.get(localIp).intValue();
+		String[] addrSplit = srcAddr.split(":");
 			
 		ArrayList<Integer> stageList = new ArrayList<Integer>();
 		for(int i=0; i<dpPaths.length; i++){
@@ -865,7 +1035,7 @@ public class LocalController implements Runnable{
 		entrySwitch.flush();
 	}
 	
-	private void exitPrepush(int srcIndex, int dstIndex, int scalingInterval, String srcAddr){
+	private void exitPrepush(int srcIndex, int dstIndex, int scalingInterval, String srcAddr, String exitFlowSrcAddr){
 		int[] dpPaths = null;
 		String[] addrSplit = srcAddr.split(":");
 		synchronized(this.dpServiceChain){
@@ -917,8 +1087,14 @@ public class LocalController implements Runnable{
 		IpProtocol transportProtocol = IpProtocol.UDP;
 		
 		OFPort exitPort = null;
-		if(stageList.size()>0){
-			int incomingDcIndex = dpPaths[stageList.get(0)-1];
+		if((stageList.size()>0)&&(srcIndex!=dstIndex)){
+			int incomingDcIndex = 0;
+			if(stageList.get(0) == 0){
+				incomingDcIndex = srcIndex;
+			}
+			else{
+				incomingDcIndex = dpPaths[stageList.get(0)-1];
+			}
 			int toThisPort = entryServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
 			OFPort inPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
 			
@@ -934,13 +1110,8 @@ public class LocalController implements Runnable{
 			exitPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
 		}
 		
-		String exitFlowSrcAddr = srcIp.toString()+":"+srcPort.toString();
-		String exitFlowDstAddr = this.getExitFlowDstAddr(exitFlowSrcAddr);
-		String exitFlowSrcIp   = this.getExitFlowSrcIp(exitFlowSrcAddr);
-		if(exitFlowDstAddr.equals("")||exitFlowSrcIp.equals("")){
-			return;
-		}
-		String sArray[] = exitFlowDstAddr.split(":");
+		String exitFlowSrcIp = entryServer.gatewayIp;
+		String sArray[] = exitFlowSrcAddr.split(":");
 		String exitFlowDstip = sArray[0];
 		String exitFlowDstPort = sArray[1];
 		Match flowMatch = createMatch(entrySwitch, exitPort, srcIp,transportProtocol, srcPort);
