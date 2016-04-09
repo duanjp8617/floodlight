@@ -388,8 +388,8 @@ public class LocalController implements Runnable{
 			if(srcIndex!=dstIndex){
 				ArrayList<Integer> subsequentDcList = checkSubsequentDc(srcIndex, dstIndex, rtPair.dpPaths);
 				for(int i=0; i<subsequentDcList.size(); i++){
-					int intermDcIndex = subsequentDcList.get(i);
-					Socket dcPcscfPusher = localcPcscfPusherMap.get(intermDcIndex);
+					int subsequentDcIndex = subsequentDcList.get(i);
+					Socket dcPcscfPusher = localcPcscfPusherMap.get(subsequentDcIndex);
 					if(i<subsequentDcList.size()-1){
 						dcPcscfPusher.send("INTERM", ZMQ.SNDMORE);
 					}
@@ -505,8 +505,8 @@ public class LocalController implements Runnable{
 			Socket dcPcscfPusher = this.pcscfPusherMap.get(srcIndex);
 			dcPcscfPusher.send("ACK", ZMQ.SNDMORE);
 			dcPcscfPusher.send(pcscfIpPort, ZMQ.SNDMORE);
-			dcPcscfPusher.send(entryFlowSrcAddr, ZMQ.SNDMORE);
-			dcPcscfPusher.send(entryMinorFlowSrcAddr, 0);
+			dcPcscfPusher.send(entryFlowSrcAddr, 0);
+			//dcPcscfPusher.send(entryMinorFlowSrcAddr, 0);
 		}
 		else if(initMsg.equals("EXIT")){
 			String s_srcIndex = pcscfPuller.recvStr();
@@ -531,13 +531,13 @@ public class LocalController implements Runnable{
 			Socket dcPcscfPusher = this.pcscfPusherMap.get(srcIndex);
 			dcPcscfPusher.send("ACK", ZMQ.SNDMORE);
 			dcPcscfPusher.send(pcscfIpPort, ZMQ.SNDMORE);
-			dcPcscfPusher.send(entryFlowSrcAddr, ZMQ.SNDMORE);
-			dcPcscfPusher.send(entryMinorFlowSrcAddr, 0);
+			dcPcscfPusher.send(entryFlowSrcAddr, 0);
+			//dcPcscfPusher.send(entryMinorFlowSrcAddr, 0);
 		}
 		else if(initMsg.equals("ACK")){
 			String pcscfIpPort = pcscfPuller.recvStr();
 			String entryFlowSrcAddr = pcscfPuller.recvStr();
-			String entryMinorFlowSrcAddr = pcscfPuller.recvStr();
+			//String entryMinorFlowSrcAddr = pcscfPuller.recvStr();
 			
 			String key = pcscfIpPort+":"+entryFlowSrcAddr;
 			Pending pending = pendingMap.get(key);
@@ -1087,22 +1087,23 @@ public class LocalController implements Runnable{
 		IpProtocol transportProtocol = IpProtocol.UDP;
 		
 		OFPort exitPort = null;
-		if((stageList.size()>0)&&(srcIndex!=dstIndex)){
-			int incomingDcIndex = 0;
-			if(stageList.get(0) == 0){
-				incomingDcIndex = srcIndex;
+		if((stageList.size()>0)){
+			if(srcIndex!=dstIndex){
+				int incomingDcIndex = 0;
+				if(stageList.get(0) == 0){
+					incomingDcIndex = srcIndex;
+				}
+				else{
+					incomingDcIndex = dpPaths[stageList.get(0)-1];
+				}
+				int toThisPort = entryServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
+				OFPort inPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
+				
+				Match flowMatch = createMatch(entrySwitch, inPort, srcIp, transportProtocol, srcPort);
+				OFFlowMod flowMod = createFlowModFromOtherDc(entrySwitch, flowMatch, IPv4Address.of(newDstAddr), OFPort.of(toThisPort));
+				entrySwitch.write(flowMod);
+				entrySwitch.flush();
 			}
-			else{
-				incomingDcIndex = dpPaths[stageList.get(0)-1];
-			}
-			int toThisPort = entryServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
-			OFPort inPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
-			
-			Match flowMatch = createMatch(entrySwitch, inPort, srcIp, transportProtocol, srcPort);
-			OFFlowMod flowMod = createFlowModFromOtherDc(entrySwitch, flowMatch, IPv4Address.of(newDstAddr), OFPort.of(toThisPort));
-			entrySwitch.write(flowMod);
-			entrySwitch.flush();
-			
 			exitPort = OFPort.of(entryServer.patchPort);
 		}
 		else{

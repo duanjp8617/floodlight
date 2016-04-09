@@ -249,7 +249,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
  
     @Override
     public void startUp(FloodlightModuleContext context) {
-        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        //floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         //floodlightProvider.addOFMessageListener(OFType.FLOW_REMOVED, this);
         //floodlightProvider.addOFMessageListener(OFType.ERROR, this);
     }
