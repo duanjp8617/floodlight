@@ -249,7 +249,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
  
     @Override
     public void startUp(FloodlightModuleContext context) {
-        //floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
+        floodlightProvider.addOFMessageListener(OFType.PACKET_IN, this);
         //floodlightProvider.addOFMessageListener(OFType.FLOW_REMOVED, this);
         //floodlightProvider.addOFMessageListener(OFType.ERROR, this);
     }
@@ -267,7 +267,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
             }
         } 
         
-        if(pkt instanceof IPv4){
+        /*if(pkt instanceof IPv4){
         	int switchStageIndex = vmAllocator.dpidStageIndexMap.get(sw.getId());
        	 	if( switchStageIndex == 0 ){
        	 		int inputPort = pi.getMatch().get(MatchField.IN_PORT).getPortNumber();
@@ -284,7 +284,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
        	 			return Command.STOP;
        	 		}
        	 	}
-        }
+        }*/
         
         return Command.STOP;
     }
