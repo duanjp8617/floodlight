@@ -1090,13 +1090,15 @@ public class LocalController implements Runnable{
 		if((stageList.size()>0)){
 			if(srcIndex!=dstIndex){
 				int incomingDcIndex = 0;
+				int toThisPort = 0;
 				if(stageList.get(0) == 0){
 					incomingDcIndex = srcIndex;
+					toThisPort = routeList.get(0).getPort(0);
 				}
 				else{
 					incomingDcIndex = dpPaths[stageList.get(0)-1];
+					toThisPort = entryServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
 				}
-				int toThisPort = entryServer.dcIndexPatchPortListMap.get(new Integer(incomingDcIndex)).get(stageList.get(0)).intValue();
 				OFPort inPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
 				
 				Match flowMatch = createMatch(entrySwitch, inPort, srcIp, transportProtocol, srcPort);
