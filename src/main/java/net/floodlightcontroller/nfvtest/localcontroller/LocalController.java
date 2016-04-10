@@ -1111,7 +1111,7 @@ public class LocalController implements Runnable{
 			exitPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
 		}
 		
-		String exitFlowSrcIp = entryServer.gatewayIp;
+		String exitFlowSrcIp = entryServer.entryIp;
 		String sArray[] = exitFlowSrcAddr.split(":");
 		String exitFlowDstip = sArray[0];
 		String exitFlowDstPort = sArray[1];
