@@ -212,11 +212,11 @@ public class VmWorker extends MessageProcessor{
 		//set remove file names
 		logger.info("start creating new VM");
 		VmInstance vmInstance = request.getVmInstance();
-		String localXmlFile = constructLocalXmlFile(vmInstance);
+		/*String localXmlFile = constructLocalXmlFile(vmInstance);
 		String remoteXmlFile = vmInstance.hostServerConfig.xmlDir+"/"+vmInstance.vmName;
 		String remoteImgFile = vmInstance.hostServerConfig.imgDir+"/"+vmInstance.vmName;
 		String remoteBaseImgFile = vmInstance.hostServerConfig.imgDir+"/"+
-		                   vmInstance.serviceChainConfig.getImgNameForStage(vmInstance.stageIndex);
+		                   vmInstance.serviceChainConfig.getImgNameForStage(vmInstance.stageIndex);*/
 		logger.info("finish constructing xmls");
 		//this is the actual procedure to create vm on remote host server
 		HostAgent agent = new HostAgent(vmInstance.hostServerConfig);
