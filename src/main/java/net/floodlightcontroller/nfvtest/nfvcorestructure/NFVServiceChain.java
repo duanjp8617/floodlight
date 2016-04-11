@@ -260,6 +260,16 @@ public class NFVServiceChain {
 		}
 	}
 	
+	public synchronized boolean isWorkingNode(NFVNode node){
+		Map<String, NFVNode> stageMap = this.workingNodeMaps.get(node.vmInstance.stageIndex);
+		if( (stageMap.containsKey(node.getManagementIp())) ){
+			return true;
+		}
+		else{
+			return false;
+		}
+	}
+	
 	//The following 2 functions are public interfaces for manipulating the destroy
 	//node map
 	public synchronized void addDestroyNode(NFVNode node){
