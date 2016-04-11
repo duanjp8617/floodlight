@@ -577,46 +577,59 @@ public class ServiceChainHandler extends MessageProcessor {
 						chain.updateControlNodeStat(managementIp, statList);
 					}
 					
-					if(reactiveStart == true){
-						NFVNode node = chain.getNode(managementIp);
-						Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
-						
-						int nOverload = 0;
-						for(String ip : stageMap.keySet()){
-							NFVNode n = stageMap.get(ip);
-							if(n.getState() == NFVNode.OVERLOAD){
-								nOverload += 1;
-							}
+					NFVNode node = chain.getNode(managementIp);
+					if(node.getState() == NFVNode.ERROR){
+						if(chain.getScaleIndicator(node.vmInstance.stageIndex) == false){
+							chain.setScaleIndicator(node.vmInstance.stageIndex, true);
+							AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
+									                  node.vmInstance.serviceChainConfig.name,
+									                              node.vmInstance.stageIndex);
+							this.mh.sendTo("vmAllocator", newRequest);
+							chain.addDestroyNode(node);
+							chain.removeFromServiceChain(node);	
 						}
-						
-						if( (nOverload == stageMap.size())&&
-						    (!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
-							//Here we trigger a reactive scaling condition.
-							//Create a new vm.
-							NFVNode bufferNode = chain.removeFromBqRear(node.vmInstance.stageIndex);
-							if(bufferNode != null){
-								chain.addWorkingNode(bufferNode);
-								
-								if(chain.serviceChainConfig.nVmInterface == 2){
-									String domainName = "";
-									if(bufferNode.vmInstance.stageIndex == 0){
-										domainName = "bono.cw.t";
-									}
-									else {
-										domainName = "sprout.cw.t";
-									}
-									
-									DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-											bufferNode.vmInstance.operationIp, "add");
-									this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+					}
+					else{
+						if(reactiveStart == true){
+							Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
+							
+							int nOverload = 0;
+							for(String ip : stageMap.keySet()){
+								NFVNode n = stageMap.get(ip);
+								if(n.getState() == NFVNode.OVERLOAD){
+									nOverload += 1;
 								}
 							}
-							else{
-								chain.setScaleIndicator(node.vmInstance.stageIndex, true);
-								AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
-										                  node.vmInstance.serviceChainConfig.name,
-										                              node.vmInstance.stageIndex);
-								this.mh.sendTo("vmAllocator", newRequest);
+							
+							if( (nOverload == stageMap.size())&&
+							    (!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
+								//Here we trigger a reactive scaling condition.
+								//Create a new vm.
+								NFVNode bufferNode = chain.removeFromBqRear(node.vmInstance.stageIndex);
+								if(bufferNode != null){
+									chain.addWorkingNode(bufferNode);
+									
+									if(chain.serviceChainConfig.nVmInterface == 2){
+										String domainName = "";
+										if(bufferNode.vmInstance.stageIndex == 0){
+											domainName = "bono.cw.t";
+										}
+										else {
+											domainName = "sprout.cw.t";
+										}
+										
+										DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+												bufferNode.vmInstance.operationIp, "add");
+										this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+									}
+								}
+								else{
+									chain.setScaleIndicator(node.vmInstance.stageIndex, true);
+									AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
+											                  node.vmInstance.serviceChainConfig.name,
+											                              node.vmInstance.stageIndex);
+									this.mh.sendTo("vmAllocator", newRequest);
+								}
 							}
 						}
 					}

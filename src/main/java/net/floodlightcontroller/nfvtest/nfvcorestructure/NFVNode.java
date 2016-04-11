@@ -165,7 +165,7 @@ public class NFVNode {
 				this.recvPkt.add(recvPkt);		
 		}
 		
-		public int getNodeState(){
+		public int getNodeState(Float cpuUsageStat, Long recvPktStat, Long sendPktStat, String whichPlane){
 			if(cpuUsage.getFilledUp()&&(cpuThresh!=-1)){
 				cpuState.updateTransientState(checkStatus(cpuUsage.getCircularList(), 
 														  new Float(cpuThresh/2),
@@ -193,6 +193,16 @@ public class NFVNode {
 				if(stateList[i] == NFVNode.OVERLOAD){
 					nOverload+=1;
 				}
+			}
+			
+			if((cpuUsageStat>(30.0))&&(recvPktStat>3000)&&((recvPktStat/3)>sendPktStat)&&(whichPlane.equals("DATA"))){
+				errorCounter+=1;
+				if(errorCounter > 8){
+					return NFVNode.ERROR;
+				}
+			}
+			else{
+				errorCounter = 0;
 			}
 			
 			if(nOverload > 1){
@@ -251,6 +261,9 @@ public class NFVNode {
 	public static final int IDLE = 1;
 	public static final int NORMAL = 2;
 	public static final int OVERLOAD = 3;
+	public static final int ERROR = 4;
+	
+	private int errorCounter = 0;
 	
 	public NFVNode(VmInstance vmInstance){
 		this.vmInstance = vmInstance;
@@ -325,8 +338,10 @@ public class NFVNode {
 	public void updateNodeProperty(Float cpuUsage, Long recvBdw, Long recvPkt, Long sendPkt){
 		String stat = cpuUsage.toString()+" "+recvBdw.toString()+" "+recvPkt.toString()+" "+sendPkt.toString();
 		
-		this.property.updateNodeProperty(cpuUsage, recvBdw, recvPkt);
-		this.state = this.property.getNodeState();
+		if(this.state != NFVNode.ERROR){
+			this.property.updateNodeProperty(cpuUsage, recvBdw, recvPkt);
+			this.state = this.property.getNodeState(cpuUsage, recvPkt, sendPkt, this.vmInstance.serviceChainConfig.name);
+		}
 		
 		//if(this.vmInstance.stageIndex == 0){
 		if(this.state == NFVNode.IDLE){
@@ -339,6 +354,10 @@ public class NFVNode {
 		}
 		if(this.state == NFVNode.OVERLOAD){
 			String output = "Node-"+this.getManagementIp()+" is OVERLOAD : "+stat;
+			logger.info("{}", output);
+		}
+		if(this.state == NFVNode.ERROR){
+			String output = "Node-"+this.getManagementIp()+" is ERROR : "+stat;
 			logger.info("{}", output);
 		}
 	}
