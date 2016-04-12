@@ -39,6 +39,10 @@ import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Set;
 import net.floodlightcontroller.packet.Ethernet;
@@ -139,9 +143,39 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         zmqContext = ZMQ.context(1);
         
         logger.info("start testing network xml");
+        
+        BufferedReader br = null;
+		boolean enableReactive = false;
+		int bladeIdx = 0;
+
+		try {
+
+			String sEnableReactive = null;
+			String sBladeIdx = null;
+			br = new BufferedReader(new FileReader("/home/net/floodlight/localc.cfg"));
+			sEnableReactive = br.readLine();
+			sBladeIdx = br.readLine();
+			System.out.println(sEnableReactive);
+			System.out.println(sBladeIdx);
+			if(sEnableReactive.equals("true")){
+				enableReactive = true;
+			}
+			else{
+				enableReactive = false;
+			}
+			bladeIdx = new Integer(sBladeIdx);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				if (br != null)br.close();
+			} catch (IOException ex) {
+				ex.printStackTrace();
+			}
+		}
 
         //create controller config and host server configi
-        int bladeIndex = 1;
+        int bladeIndex = bladeIdx;
         String userName = "*";
 		String password = "*";
 		String gIp = "202.45.128.147";
@@ -211,7 +245,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		dnsUpdator.registerWithMessageHub(mh);
 		dnsUpdator.connect();
 		
-		chainHandler = new ServiceChainHandler("chainHandler", zmqContext, this.switchService);
+		chainHandler = new ServiceChainHandler("chainHandler", zmqContext, this.switchService, enableReactive);
 		chainHandler.registerWithMessageHub(mh);
 		chainHandler.startPollerThread();
 		chainHandler.addServiceChain(cpServiceChain);

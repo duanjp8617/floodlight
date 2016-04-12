@@ -50,6 +50,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	private Context context;
 	
 	private boolean reactiveStart;
+	private boolean enableReactive;
 	
 	private int dcNum;
 	private int dcIndex;
@@ -64,7 +65,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private final Logger logger =  LoggerFactory.getLogger(ServiceChainHandler.class);
 
-	public ServiceChainHandler(String id, Context context, IOFSwitchService switchService){
+	public ServiceChainHandler(String id, Context context, IOFSwitchService switchService, boolean enableReactive){
 		this.id = id;
 		this.context = context;
 		this.queue = new LinkedBlockingQueue<Message>();
@@ -81,6 +82,8 @@ public class ServiceChainHandler extends MessageProcessor {
 		this.hostServerList = new ArrayList<HostServer>();
 		this.dpidHostServerMap = new HashMap<DatapathId, HostServer> ();
 		this.dpidStageIndexMap = new HashMap<DatapathId, Integer>();
+		
+		this.enableReactive = enableReactive;
 	}
 	
 	public void addHostServer(HostServer hostServer){
@@ -99,7 +102,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	}
 	
 	private void enableReactive(){
-		this.reactiveStart = true;
+		this.reactiveStart = enableReactive;
 	}
 	
 	public void startPollerThread(){
