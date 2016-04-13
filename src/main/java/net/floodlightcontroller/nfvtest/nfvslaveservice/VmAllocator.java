@@ -215,6 +215,7 @@ public class VmAllocator extends MessageProcessor {
 					int dstDcIndex = req.localcIndexMap.get(key).intValue();
 					hostAgent.addStatFlow("stat-br", hostServer.statInPort, hostServer.statOutPort, srcDcIndex, dstDcIndex);
 				}
+				hostAgent.addFlow("stat-br", hostServer.sInPort, hostServer.sOutPort);
 				hostAgent.disconnect();
 			}
 			catch(Exception e){

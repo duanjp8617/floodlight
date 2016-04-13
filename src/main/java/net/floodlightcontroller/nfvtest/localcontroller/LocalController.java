@@ -1142,9 +1142,16 @@ public class LocalController implements Runnable{
 				OFFlowMod flowMod = createFlowModFromOtherDc(entrySwitch, flowMatch, IPv4Address.of(newDstAddr), OFPort.of(toThisPort));
 				entrySwitch.write(flowMod);
 				entrySwitch.flush();
+				
+				exitPort = OFPort.of(entryServer.patchPort);
 			}
-			int incomingDcIndex = (srcIndex+1)%localcIndexMap.size();
-			exitPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
+			else{
+				int incomingDcIndex = (srcIndex+1)%localcIndexMap.size();
+				exitPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
+				String[] ipSplit = addrSplit[0].split(".");
+				String newIp = "10."+new Integer(incomingDcIndex).toString()+"."+ipSplit[3]+"."+ipSplit[4];
+				srcIp = IPv4Address.of(newIp);
+			}
 		}
 		else{
 			int incomingDcIndex = dpPaths[dpPaths.length-1];
@@ -1170,9 +1177,10 @@ public class LocalController implements Runnable{
 		IPv4Address srcIp = IPv4Address.of(addrSplit[0]);
 		TransportPort srcPort = TransportPort.of(new Integer(addrSplit[1]).intValue());
 		IpProtocol transportProtocol = IpProtocol.UDP;
-		OFPort inPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
 		
-		OFPort outPort = inPort;
+		OFPort inPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
+		OFPort outPort = OFPort.of(entryServer.sInPort);
+		
 		Match flowMatch = createMatch(entrySwitch, inPort, srcIp,transportProtocol, srcPort);
 		byte[] newDstAddr = new byte[4];
 		newDstAddr[0] = 2;
@@ -1180,6 +1188,19 @@ public class LocalController implements Runnable{
 		newDstAddr[2] = 2;
 		newDstAddr[3] = 2;
 		OFFlowMod flowMod = createFlowModFromOtherDc(entrySwitch, flowMatch, IPv4Address.of(newDstAddr), outPort);
+		entrySwitch.write(flowMod);
+		entrySwitch.flush();
+		
+		String[] ipSplit = addrSplit[0].split(".");
+		int currentDcIndex = this.getCurrentDcIndex();
+		int secondFour = 30+currentDcIndex;
+		String newIp = "10."+new Integer(secondFour).toString()+"."+ipSplit[3]+"."+ipSplit[4];
+	
+		
+		inPort = OFPort.of(entryServer.sOutPort);
+		outPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
+		flowMatch = createMatch(entrySwitch, inPort, srcIp,transportProtocol, srcPort);
+		flowMod = createSrcNatMod(entrySwitch, flowMatch, outPort, newIp);
 		entrySwitch.write(flowMod);
 		entrySwitch.flush();
 	}
@@ -1269,6 +1290,31 @@ public class LocalController implements Runnable{
 		actionList.add(actions.setField(oxms.ethDst(dstMac)));
 		actionList.add(actions.setField(oxms.ipv4Src(IPv4Address.of(srcIp))));
 		actionList.add(actions.setField(oxms.ipv4Dst(IPv4Address.of(dstIp))));
+		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
+		
+		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
+		fmb.setHardTimeout(0);
+		fmb.setIdleTimeout(15);
+		fmb.setBufferId(OFBufferId.NO_BUFFER);
+		fmb.setCookie(U64.of(8617));
+		fmb.setPriority(5);
+		fmb.setOutPort(outPort);
+		fmb.setActions(actionList);
+		fmb.setMatch(flowMatch);
+		
+		Set<OFFlowModFlags> sfmf = new HashSet<OFFlowModFlags>();
+		sfmf.add(OFFlowModFlags.SEND_FLOW_REM);
+		fmb.setFlags(sfmf);
+		
+		return fmb.build();
+    }
+    
+    private OFFlowMod createSrcNatMod(IOFSwitch sw, Match flowMatch, OFPort outPort, String newSrcIp){
+		List<OFAction> actionList = new ArrayList<OFAction>();	
+		OFActions actions = sw.getOFFactory().actions();
+		OFOxms oxms = sw.getOFFactory().oxms();
+		
+		actionList.add(actions.setField(oxms.ipv4Src(IPv4Address.of(newSrcIp))));
 		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
 		
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();

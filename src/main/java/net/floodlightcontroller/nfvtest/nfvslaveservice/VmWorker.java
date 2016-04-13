@@ -129,6 +129,11 @@ public class VmWorker extends MessageProcessor{
 						agent.addPatchPort(chainConfig.bridges.get(i), "edgeOut", hostServer.statOutPort, "statOut");
 						agent.addPatchPort("stat-br", "statOut", hostServer.statOutPort, "edgeOut");
 						
+						agent.addPatchPort(chainConfig.bridges.get(i), "eIn", hostServer.sInPort, "sIn");
+						agent.addPatchPort("stat-br", "sIn", hostServer.sInPort, "eIn");
+						
+						agent.addPatchPort(chainConfig.bridges.get(i), "eOut", hostServer.sOutPort, "sOut");
+						agent.addPatchPort("stat-br", "sOut", hostServer.sOutPort, "eOut");
 					}
 					if(i==chainConfig.bridges.size()-1){
 						//create an exit ip for the last bridge

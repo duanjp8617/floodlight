@@ -186,6 +186,8 @@ public class HostServer {
 	public final String statBridgeDpid;
 	public final int statInPort;
 	public final int statOutPort;
+	public final int sInPort;
+	public final int sOutPort;
 	
 	public HostServer(ControllerConfig controllerConfig,
 			   		  HostServerConfig hostServerConfig,
@@ -245,6 +247,8 @@ public class HostServer {
 		this.statBridgeDpid = this.macAllocator.getMac();
 		this.statInPort = 6;
 		this.statOutPort = 5;
+		this.sInPort = 4;
+		this.sOutPort = 3;
 		
 		this.tunnelPortMap = new HashMap<String, Integer>();
 		this.portTunnelMap = new HashMap<Integer, String>();
