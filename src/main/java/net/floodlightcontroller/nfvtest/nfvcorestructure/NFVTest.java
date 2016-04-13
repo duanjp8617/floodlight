@@ -301,7 +301,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
             }
         } 
         
-        if(pkt instanceof IPv4){
+        /*if(pkt instanceof IPv4){
         	int switchStageIndex = vmAllocator.dpidStageIndexMap.get(sw.getId());
        	 	if( switchStageIndex == 0 ){
        	 		int inputPort = pi.getMatch().get(MatchField.IN_PORT).getPortNumber();
@@ -318,7 +318,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
        	 			return Command.STOP;
        	 		}
        	 	}
-        }
+        }*/
         
         return Command.STOP;
     }
