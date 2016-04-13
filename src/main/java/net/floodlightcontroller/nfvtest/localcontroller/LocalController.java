@@ -381,7 +381,13 @@ public class LocalController implements Runnable{
 				this.exitFlowSrcIpMap.put(exitMinorFlowSrcAddr, exitFlowSrcIp);
 			}
 			
-			int srcIndex = this.getCurrentDcIndex();
+			Socket socket = this.pcscfPusherMap.get(pcscfIpPort);
+			socket.send("REPLY", ZMQ.SNDMORE);
+			socket.send(entryFlowSrcAddr,ZMQ.SNDMORE);
+			String regIp = chainHandler.getRegIp();
+			socket.send(regIp, 0);
+			
+			/*int srcIndex = this.getCurrentDcIndex();
 			int dstIndex = new Integer(entryFlowDstDc).intValue();
 			RtPair rtPair = entryPrepush(dstIndex, entryFlowSrcAddr, entryMinorFlowSrcAddr);
 			
@@ -419,7 +425,7 @@ public class LocalController implements Runnable{
 				socket.send(entryFlowSrcAddr,ZMQ.SNDMORE);
 				String regIp = chainHandler.getRegIp();
 				socket.send(regIp, 0);
-			}
+			}*/
 		}
 		else if(initMsg.equals("CLOSE")){
 			String pcscfIpPort      = pcscfPuller.recvStr();
