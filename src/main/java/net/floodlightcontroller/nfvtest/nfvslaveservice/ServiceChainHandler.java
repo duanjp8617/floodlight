@@ -63,6 +63,8 @@ public class ServiceChainHandler extends MessageProcessor {
 	
 	private List<Map<Integer, Integer>> indexMap = null;
 	
+	private int[][] indexTable = null;
+	
 	private final Logger logger =  LoggerFactory.getLogger(ServiceChainHandler.class);
 
 	public ServiceChainHandler(String id, Context context, IOFSwitchService switchService, boolean enableReactive){
@@ -118,6 +120,13 @@ public class ServiceChainHandler extends MessageProcessor {
 			for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
 				this.indexMap.add(new HashMap<Integer, Integer>());
 			}
+			
+			this.indexTable = new int[serviceChain.serviceChainConfig.stages.size()][254-9+1];
+			for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
+				for(int j=0; j<(254-9+1); j++){
+					this.indexTable[i][j] = 0;
+				}
+			}
 		}
 	}
 	
@@ -139,6 +148,16 @@ public class ServiceChainHandler extends MessageProcessor {
 				}
 			}
 		}
+	}
+	
+	private int searchIndexTable(int[] table){
+		for(int i=0; i<table.length; i++){
+			if(table[i]==0){
+				return i;
+			}
+		}
+		
+		return -1;
 	}
 	
 	@Override
@@ -508,11 +527,13 @@ public class ServiceChainHandler extends MessageProcessor {
 		
 		if(node.vmInstance.serviceChainConfig.nVmInterface == 3){
 			//This a dataplane node, assign a unique identifier to it.
-			int newIndex = searchIndexMap(8, 255, indexMap.get(node.vmInstance.stageIndex));
-			if(newIndex!=-1){
-				indexMap.get(node.vmInstance.stageIndex).put(newIndex, 0);
-			}
-			node.setIndex(newIndex);
+			//int newIndex = searchIndexMap(8, 255, indexMap.get(node.vmInstance.stageIndex));
+			//if(newIndex!=-1){
+			//	indexMap.get(node.vmInstance.stageIndex).put(newIndex, 0);
+			//}
+			int pos = searchIndexTable(this.indexTable[node.vmInstance.stageIndex]);
+			this.indexTable[node.vmInstance.stageIndex][pos] = 1;
+			node.setIndex(pos+9);
 		}
 		
 		//We push a static flow rule here.
@@ -651,7 +672,8 @@ public class ServiceChainHandler extends MessageProcessor {
 								//This is a dataplane node, we need to remove its index from indexmap
 								deleteStaticFlowRule(destroyNode);
 								int index = destroyNode.getIndex();
-								this.indexMap.get(destroyNode.vmInstance.stageIndex).remove(index);
+								//this.indexMap.get(destroyNode.vmInstance.stageIndex).remove(index);
+								this.indexTable[node.vmInstance.stageIndex][index-9] = 0;
 							}
 							else{
 								//TODO:remove DNS here, or it seems that we don't really need to
