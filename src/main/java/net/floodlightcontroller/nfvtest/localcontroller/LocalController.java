@@ -420,11 +420,22 @@ public class LocalController implements Runnable{
 				exitPrepush(srcIndex, dstIndex, rtPair.scalingInterval, entryFlowSrcAddr, exitFlowSrcAddr);
 				exitPrepush(srcIndex, dstIndex, rtPair.scalingInterval, entryMinorFlowSrcAddr, exitMinorFlowSrcAddr);
 				
-				Socket socket = this.pcscfPusherMap.get(pcscfIpPort);
+				/*Socket socket = this.pcscfPusherMap.get(pcscfIpPort);
 				socket.send("REPLY", ZMQ.SNDMORE);
 				socket.send(entryFlowSrcAddr,ZMQ.SNDMORE);
 				String regIp = chainHandler.getRegIp();
-				socket.send(regIp, 0);
+				socket.send(regIp, 0);*/
+				int subsequentDcIndex = (srcIndex+1)%localcIndexMap.size();
+				Socket dcPcscfPusher = localcPcscfPusherMap.get(subsequentDcIndex);
+				
+				dcPcscfPusher.send("TOUR", ZMQ.SNDMORE);
+				dcPcscfPusher.send(new Integer(srcIndex).toString(), ZMQ.SNDMORE);
+				dcPcscfPusher.send(entryFlowSrcAddr, ZMQ.SNDMORE);
+				dcPcscfPusher.send(entryMinorFlowSrcAddr, ZMQ.SNDMORE);
+				dcPcscfPusher.send(pcscfIpPort, 0);
+				
+				String key = pcscfIpPort+":"+entryFlowSrcAddr;
+				this.pendingMap.put(key, new Pending(1));
 			}
 		}
 		else if(initMsg.equals("CLOSE")){
@@ -539,6 +550,22 @@ public class LocalController implements Runnable{
 			dcPcscfPusher.send(pcscfIpPort, ZMQ.SNDMORE);
 			dcPcscfPusher.send(entryFlowSrcAddr, 0);
 			//dcPcscfPusher.send(entryMinorFlowSrcAddr, 0);
+		}
+		else if(initMsg.equals("TOUR")){
+			String s_srcIndex = pcscfPuller.recvStr();
+			int srcIndex = new Integer(s_srcIndex).intValue();
+			
+			String entryFlowSrcAddr = pcscfPuller.recvStr();
+			String entryMinorFlowSrcAddr = pcscfPuller.recvStr();
+			String pcscfIpPort = pcscfPuller.recvStr();
+			
+			tourPush(srcIndex, entryFlowSrcAddr);
+			tourPush(srcIndex, entryMinorFlowSrcAddr);
+			
+			Socket dcPcscfPusher = this.localcPcscfPusherMap.get(srcIndex);
+			dcPcscfPusher.send("ACK", ZMQ.SNDMORE);
+			dcPcscfPusher.send(pcscfIpPort, ZMQ.SNDMORE);
+			dcPcscfPusher.send(entryFlowSrcAddr, 0);
 		}
 		else if(initMsg.equals("ACK")){
 			String pcscfIpPort = pcscfPuller.recvStr();
@@ -941,6 +968,10 @@ public class LocalController implements Runnable{
 					//we have one more hop to go
 					newDstAddr[3] = (byte)dstIndex;
 				}
+				else{
+					//go to another datacenter for a tour please!
+					newDstAddr[3] = (byte)((srcIndex+1)%localcIndexMap.size());
+				}
 			}
 		}
 		
@@ -1112,7 +1143,8 @@ public class LocalController implements Runnable{
 				entrySwitch.write(flowMod);
 				entrySwitch.flush();
 			}
-			exitPort = OFPort.of(entryServer.patchPort);
+			int incomingDcIndex = (srcIndex+1)%localcIndexMap.size();
+			exitPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
 		}
 		else{
 			int incomingDcIndex = dpPaths[dpPaths.length-1];
@@ -1126,6 +1158,28 @@ public class LocalController implements Runnable{
 		Match flowMatch = createMatch(entrySwitch, exitPort, srcIp,transportProtocol, srcPort);
 		OFFlowMod flowMod = createExitFlowMod(entrySwitch, flowMatch, MacAddress.of(entryServer.gatewayMac), 
 				OFPort.of(entryServer.gatewayPort), exitFlowSrcIp, exitFlowDstip, Integer.parseInt(exitFlowDstPort), "udp");
+		entrySwitch.write(flowMod);
+		entrySwitch.flush();
+	}
+	
+	private void tourPush(int incomingDcIndex, String srcAddr){
+		String[] addrSplit = srcAddr.split(":");
+		HostServer entryServer = vmAllocator.hostServerList.get(0);
+		String entrySwitchDpid = entryServer.serviceChainDpidMap.get("DATA").get(0);
+		IOFSwitch entrySwitch = switchService.getSwitch(DatapathId.of(entrySwitchDpid));
+		IPv4Address srcIp = IPv4Address.of(addrSplit[0]);
+		TransportPort srcPort = TransportPort.of(new Integer(addrSplit[1]).intValue());
+		IpProtocol transportProtocol = IpProtocol.UDP;
+		OFPort inPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
+		
+		OFPort outPort = inPort;
+		Match flowMatch = createMatch(entrySwitch, inPort, srcIp,transportProtocol, srcPort);
+		byte[] newDstAddr = new byte[4];
+		newDstAddr[0] = 2;
+		newDstAddr[1] = 2;
+		newDstAddr[2] = 2;
+		newDstAddr[3] = 2;
+		OFFlowMod flowMod = createFlowModFromOtherDc(entrySwitch, flowMatch, IPv4Address.of(newDstAddr), outPort);
 		entrySwitch.write(flowMod);
 		entrySwitch.flush();
 	}
