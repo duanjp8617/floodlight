@@ -1160,8 +1160,8 @@ public class LocalController implements Runnable{
 		OFActions actions = sw.getOFFactory().actions();
 		OFOxms oxms = sw.getOFFactory().oxms();
 		actionList.add(actions.setField(oxms.ethDst(dstMac)));
-		//actionList.add(actions.setField(oxms.ipEcn(IpEcn.of(ecn))));
-		//actionList.add(actions.setField(oxms.ipDscp(IpDscp.of(dscp))));
+		actionList.add(actions.setField(oxms.ipEcn(IpEcn.of(ecn))));
+		actionList.add(actions.setField(oxms.ipDscp(IpDscp.of(dscp))));
 		actionList.add(actions.setField(oxms.ipv4Dst(dstAddr)));
 		actionList.add(actions.output(outPort, Integer.MAX_VALUE));
 		
