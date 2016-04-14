@@ -1148,7 +1148,7 @@ public class LocalController implements Runnable{
 			else{
 				int incomingDcIndex = (srcIndex+1)%localcIndexMap.size();
 				exitPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
-				String[] ipSplit = addrSplit[0].split(".");
+				String[] ipSplit = addrSplit[0].split("\\.");
 				String newIp = "10."+new Integer(incomingDcIndex).toString()+"."+ipSplit[2]+"."+ipSplit[3];
 				srcIp = IPv4Address.of(newIp);
 			}
@@ -1191,7 +1191,7 @@ public class LocalController implements Runnable{
 		entrySwitch.write(flowMod);
 		entrySwitch.flush();
 		
-		String[] ipSplit = addrSplit[0].split(".");
+		String[] ipSplit = addrSplit[0].split("\\.");
 		int currentDcIndex = this.getCurrentDcIndex();
 		int secondFour = 30+currentDcIndex;
 		String newIp = "10."+new Integer(secondFour).toString()+"."+ipSplit[2]+"."+ipSplit[3];
