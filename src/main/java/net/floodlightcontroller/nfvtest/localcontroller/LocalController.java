@@ -1149,7 +1149,7 @@ public class LocalController implements Runnable{
 				int incomingDcIndex = (srcIndex+1)%localcIndexMap.size();
 				exitPort = OFPort.of(entryServer.dcIndexPortMap.get(incomingDcIndex));
 				String[] ipSplit = addrSplit[0].split("\\.");
-				String newIp = "10."+new Integer(incomingDcIndex).toString()+"."+ipSplit[2]+"."+ipSplit[3];
+				String newIp = "10."+new Integer(30+incomingDcIndex).toString()+"."+ipSplit[2]+"."+ipSplit[3];
 				srcIp = IPv4Address.of(newIp);
 			}
 		}
