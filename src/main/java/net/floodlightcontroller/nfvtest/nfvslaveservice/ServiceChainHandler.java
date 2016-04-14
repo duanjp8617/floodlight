@@ -121,9 +121,9 @@ public class ServiceChainHandler extends MessageProcessor {
 				this.indexMap.add(new HashMap<Integer, Integer>());
 			}
 			
-			this.indexTable = new int[serviceChain.serviceChainConfig.stages.size()][253-9+1];
+			this.indexTable = new int[serviceChain.serviceChainConfig.stages.size()][253-11+1];
 			for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
-				for(int j=0; j<(253-9+1); j++){
+				for(int j=0; j<(253-11+1); j++){
 					this.indexTable[i][j] = 0;
 				}
 			}
@@ -533,7 +533,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			//}
 			int pos = searchIndexTable(this.indexTable[node.vmInstance.stageIndex]);
 			this.indexTable[node.vmInstance.stageIndex][pos] = 1;
-			node.setIndex(pos+9);
+			node.setIndex(pos+11);
 		}
 		
 		//We push a static flow rule here.
@@ -673,7 +673,7 @@ public class ServiceChainHandler extends MessageProcessor {
 								deleteStaticFlowRule(destroyNode);
 								int index = destroyNode.getIndex();
 								//this.indexMap.get(destroyNode.vmInstance.stageIndex).remove(index);
-								this.indexTable[node.vmInstance.stageIndex][index-9] = 0;
+								this.indexTable[node.vmInstance.stageIndex][index-11] = 0;
 							}
 							else{
 								//TODO:remove DNS here, or it seems that we don't really need to
