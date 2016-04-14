@@ -121,9 +121,9 @@ public class ServiceChainHandler extends MessageProcessor {
 				this.indexMap.add(new HashMap<Integer, Integer>());
 			}
 			
-			this.indexTable = new int[serviceChain.serviceChainConfig.stages.size()][254-9+1];
+			this.indexTable = new int[serviceChain.serviceChainConfig.stages.size()][253-9+1];
 			for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
-				for(int j=0; j<(254-9+1); j++){
+				for(int j=0; j<(253-9+1); j++){
 					this.indexTable[i][j] = 0;
 				}
 			}
