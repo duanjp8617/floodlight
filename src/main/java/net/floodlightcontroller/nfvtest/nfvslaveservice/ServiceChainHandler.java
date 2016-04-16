@@ -508,7 +508,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		
 		if(node.vmInstance.serviceChainConfig.nVmInterface == 3){
 			//This a dataplane node, assign a unique identifier to it.
-			int newIndex = searchIndexMap(8, 255, indexMap.get(node.vmInstance.stageIndex));
+			int newIndex = searchIndexMap(11, 255, indexMap.get(node.vmInstance.stageIndex));
 			if(newIndex!=-1){
 				indexMap.get(node.vmInstance.stageIndex).put(newIndex, 0);
 			}
