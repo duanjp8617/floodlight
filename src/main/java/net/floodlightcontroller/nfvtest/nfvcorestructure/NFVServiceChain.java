@@ -219,9 +219,10 @@ public class NFVServiceChain {
 	
 	public synchronized NFVNode removeFromBqRear(int stageIndex){
 		NFVNode node = bufferNodeQueues.get(stageIndex).pollLast();
-		if(node!=null)
+		if(node!=null){
 			logger.info("node: "+node.vmInstance.managementIp+" is removed from buffer queue rear.");
 			node.setScalingInterval(-1);
+		}
 		return node;
 	}
 	
