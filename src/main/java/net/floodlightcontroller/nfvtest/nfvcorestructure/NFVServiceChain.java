@@ -28,7 +28,7 @@ public class NFVServiceChain {
 	public final Map<String, NFVNode> destroyNodeMap;
 	
 	private int scalingInterval;
-	private int maximumBufferingInterval = 2;
+	private int maximumBufferingInterval;
 	
 	private int dpPaths[][][];
 	private int previousDpPaths[][][];
@@ -38,7 +38,7 @@ public class NFVServiceChain {
 	
 	private final Logger logger =  LoggerFactory.getLogger(NFVServiceChain.class);
 	
-	NFVServiceChain(ServiceChainConfig serviceChainConfig){
+	NFVServiceChain(ServiceChainConfig serviceChainConfig, int scaleDownInterval){
 		this.serviceChainConfig = serviceChainConfig;
 		this.managementIpNodeMap = new HashMap<String, NFVNode>();
 		this.nodeMap = new ArrayList<Map<String, NFVNode>>();
@@ -69,6 +69,8 @@ public class NFVServiceChain {
 		this.dpPaths = null;
 		this.previousDpPaths = null;
 		this.nextDpPaths = null;
+		
+		this.maximumBufferingInterval = scaleDownInterval;
 	}
 	
 	public synchronized void initPathsArray(int dcNum){

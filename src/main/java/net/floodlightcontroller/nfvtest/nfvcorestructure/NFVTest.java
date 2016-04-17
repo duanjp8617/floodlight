@@ -147,16 +147,20 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         BufferedReader br = null;
 		boolean enableReactive = false;
 		int bladeIdx = 0;
+		int scaleDownInterval = 0;
 
 		try {
 
 			String sEnableReactive = null;
 			String sBladeIdx = null;
+			String sScaleDownInterval = null;
 			br = new BufferedReader(new FileReader("/home/net/floodlight/localc.cfg"));
 			sEnableReactive = br.readLine();
 			sBladeIdx = br.readLine();
+			sScaleDownInterval = br.readLine();
 			System.out.println(sEnableReactive);
 			System.out.println(sBladeIdx);
+			System.out.println(sScaleDownInterval);
 			if(sEnableReactive.equals("true")){
 				enableReactive = true;
 			}
@@ -164,6 +168,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 				enableReactive = false;
 			}
 			bladeIdx = new Integer(sBladeIdx);
+			scaleDownInterval = new Integer(sScaleDownInterval);
 		} catch (IOException e) {
 			e.printStackTrace();
 		} finally {
@@ -226,8 +231,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		HostServer hostServer = new HostServer(controllerConfig, hostServerConfig, map, macAllocator,
 										ipAllocator, entryIp, gatewayIp, exitIp);
 		
-		this.cpServiceChain = new NFVServiceChain(cpServiceChainConfig);
-		this.dpServiceChain = new NFVServiceChain(dpServiceChainConfig);
+		this.cpServiceChain = new NFVServiceChain(cpServiceChainConfig, scaleDownInterval);
+		this.dpServiceChain = new NFVServiceChain(dpServiceChainConfig, scaleDownInterval);
 		
 		mh = new MessageHub();
 		
