@@ -197,7 +197,7 @@ public class NFVServiceChain {
 	public synchronized int[] getProvision(){
 		int provision[] = new int[this.serviceChainConfig.stages.size()];
 		for(int i=0; i<provision.length; i++){
-			provision[i] = this.workingNodeMaps.get(i).size();
+			provision[i] = this.workingNodeMaps.get(i).size()+this.bufferNodeQueues.get(i).size();
 		}
 		return provision;
 	}
@@ -211,6 +211,7 @@ public class NFVServiceChain {
 	}
 	
 	public synchronized void addToBqRear(NFVNode node){
+		logger.info("node: "+node.vmInstance.managementIp+" is added to buffer queue rear.");
 		int stageIndex = node.vmInstance.stageIndex;
 		node.setScalingInterval(this.scalingInterval);
 		bufferNodeQueues.get(stageIndex).addLast(node);
@@ -219,6 +220,7 @@ public class NFVServiceChain {
 	public synchronized NFVNode removeFromBqRear(int stageIndex){
 		NFVNode node = bufferNodeQueues.get(stageIndex).pollLast();
 		if(node!=null)
+			logger.info("node: "+node.vmInstance.managementIp+" is removed from buffer queue rear.");
 			node.setScalingInterval(-1);
 		return node;
 	}
@@ -228,6 +230,7 @@ public class NFVServiceChain {
 		if(head != null){
 			if((scalingInterval-head.getScalingInterval())>maximumBufferingInterval){
 				head = bufferNodeQueues.get(stageIndex).poll();
+				logger.info("node: "+head.vmInstance.managementIp+" is removed from buffer queue head.");
 				head.setScalingInterval(-1);
 				return head;
 			}
@@ -246,8 +249,15 @@ public class NFVServiceChain {
 		if(node.vmInstance.serviceChainConfig.name.equals(serviceChainConfig.name)){
 			Map<String, NFVNode> stageMap = this.workingNodeMaps.get(node.vmInstance.stageIndex);
 			if(!stageMap.containsKey(node.getManagementIp())){
+				logger.info("node: "+node.vmInstance.managementIp+" is added as working node.");
 				stageMap.put(node.getManagementIp(), node);
 			}
+			else{
+				logger.info("node: "+node.vmInstance.managementIp+" exists in working nodes.");
+			}
+		}
+		else{
+			logger.info("node: "+node.vmInstance.managementIp+" with chain mismatch.");
 		}
 	}
 	
@@ -255,8 +265,15 @@ public class NFVServiceChain {
 		if(node.vmInstance.serviceChainConfig.name.equals(serviceChainConfig.name)){
 			Map<String, NFVNode> stageMap = this.workingNodeMaps.get(node.vmInstance.stageIndex);
 			if( (stageMap.containsKey(node.getManagementIp())) ){
+				logger.info("node: "+node.vmInstance.managementIp+" is removed as working node.");
 				stageMap.remove(node.getManagementIp());
 			}
+			else{
+				logger.info("node: "+node.vmInstance.managementIp+" doesn't exist in working nodes.");
+			}
+		}
+		else{
+			logger.info("node: "+node.vmInstance.managementIp+" with chain mismatch in removeWorkingNode.");
 		}
 	}
 	
@@ -274,7 +291,11 @@ public class NFVServiceChain {
 	//node map
 	public synchronized void addDestroyNode(NFVNode node){
 		if(!destroyNodeMap.containsKey(node.getManagementIp())){
+			logger.info("node: "+node.vmInstance.managementIp+" is added as destroy node.");
 			destroyNodeMap.put(node.getManagementIp(), node);
+		}
+		else{
+			logger.info("node: "+node.vmInstance.managementIp+" exists in destroy node.");
 		}
 	}
 	
@@ -283,6 +304,7 @@ public class NFVServiceChain {
 	//possibly 3 maps.
 	public synchronized void addToServiceChain(NFVNode node){
 		if(!this.managementIpNodeMap.containsKey(node.getManagementIp())){
+			logger.info("node: "+node.vmInstance.managementIp+" is added to the service chain.");
 			this.managementIpNodeMap.put(node.getManagementIp(), node);
 			this.nodeMap.get(node.vmInstance.stageIndex).put(node.getManagementIp(), node);
 			
@@ -299,11 +321,15 @@ public class NFVServiceChain {
 				}
 			}
 		}
+		else{
+			logger.info("node: "+node.vmInstance.managementIp+" exists in the service chain.");
+		}
 	}
 	
 	public synchronized void removeFromServiceChain(NFVNode node){
 		
 		if(this.managementIpNodeMap.containsKey(node.getManagementIp())){
+			logger.info("node: "+node.vmInstance.managementIp+" is removed from the service chain.");
 			this.managementIpNodeMap.remove(node.getManagementIp());
 			this.nodeMap.get(node.vmInstance.stageIndex).remove(node.getManagementIp());
 			
@@ -312,6 +338,9 @@ public class NFVServiceChain {
 				int exitPortNum = node.vmInstance.getPort(1);
 				this.dpidNodeExitPortMap.get(exitSwitchDpid).remove(new Integer(exitPortNum));
 			}
+		}
+		else{
+			logger.info("node: "+node.vmInstance.managementIp+" doesn't exist in the service chain.");
 		}
 	}
 	
