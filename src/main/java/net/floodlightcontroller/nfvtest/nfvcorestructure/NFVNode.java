@@ -197,7 +197,7 @@ public class NFVNode {
 			
 			if((cpuUsageStat>(30.0))&&(recvPktStat>3000)&&((recvPktStat/3)>sendPktStat)&&(whichPlane.equals("DATA"))){
 				errorCounter+=1;
-				if(errorCounter > 8){
+				if(errorCounter > 60){
 					return NFVNode.ERROR;
 				}
 			}

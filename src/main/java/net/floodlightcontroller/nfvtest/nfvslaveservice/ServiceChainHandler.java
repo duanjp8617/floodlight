@@ -603,16 +603,15 @@ public class ServiceChainHandler extends MessageProcessor {
 					
 					NFVNode node = chain.getNode(managementIp);
 					if((node.getState() == NFVNode.ERROR)&&(chain.isWorkingNode(node))){
-						if(chain.getScaleIndicator(node.vmInstance.stageIndex) == false){
-							chain.setScaleIndicator(node.vmInstance.stageIndex, true);
-							AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
-									                  node.vmInstance.serviceChainConfig.name,
-									                              node.vmInstance.stageIndex);
-							this.mh.sendTo("vmAllocator", newRequest);
-							chain.removeWorkingNode(node);
-							chain.addDestroyNode(node);
-							chain.removeFromServiceChain(node);	
-						}
+						logger.info(
+								"node: "+node.vmInstance.managementIp+
+								" stage: "+new Integer(node.vmInstance.stageIndex).toString()+
+								" chain: "+node.vmInstance.serviceChainConfig.name+
+								" is error, added to destroy node.!");
+						
+						chain.removeWorkingNode(node);
+						chain.addDestroyNode(node);
+						chain.removeFromServiceChain(node);	
 					}
 					else{
 						if(reactiveStart == true){

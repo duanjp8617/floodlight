@@ -197,7 +197,7 @@ public class NFVServiceChain {
 	public synchronized int[] getProvision(){
 		int provision[] = new int[this.serviceChainConfig.stages.size()];
 		for(int i=0; i<provision.length; i++){
-			provision[i] = this.workingNodeMaps.get(i).size();
+			provision[i] = this.workingNodeMaps.get(i).size()+this.bufferNodeQueues.get(i).size();
 		}
 		return provision;
 	}
