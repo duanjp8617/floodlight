@@ -205,6 +205,16 @@ public class NFVNode {
 				errorCounter = 0;
 			}
 			
+			if((cpuUsageStat>(30.0))&&(sendPktStat>50000)&&((recvPktStat)<(sendPktStat/3))&&(whichPlane.equals("DATA"))){
+				errorCounter1+=1;
+				if(errorCounter1 > 60){
+					return NFVNode.ERROR;
+				}
+			}
+			else{
+				errorCounter1 = 0;
+			}
+			
 			if(nOverload > 1){
 				return NFVNode.OVERLOAD;
 			}
@@ -264,6 +274,7 @@ public class NFVNode {
 	public static final int ERROR = 4;
 	
 	private int errorCounter = 0;
+	private int errorCounter1 = 0;
 	
 	public NFVNode(VmInstance vmInstance){
 		this.vmInstance = vmInstance;
