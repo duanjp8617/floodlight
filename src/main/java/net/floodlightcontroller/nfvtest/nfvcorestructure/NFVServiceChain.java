@@ -245,7 +245,11 @@ public class NFVServiceChain {
 			return null;
 		}
 	}
-
+	
+	public synchronized int getWorkingNodeNum(int stageIndex){
+		return this.workingNodeMaps.get(stageIndex).size();
+	}
+	
 	//The following 2 functions are public interfaces for manipulating the 
 	//working node map
 	public synchronized void addWorkingNode(NFVNode node){
@@ -264,19 +268,22 @@ public class NFVServiceChain {
 		}
 	}
 	
-	public synchronized void removeWorkingNode(NFVNode node){
+	public synchronized boolean removeWorkingNode(NFVNode node){
 		if(node.vmInstance.serviceChainConfig.name.equals(serviceChainConfig.name)){
 			Map<String, NFVNode> stageMap = this.workingNodeMaps.get(node.vmInstance.stageIndex);
-			if( (stageMap.containsKey(node.getManagementIp())) ){
+			if( (stageMap.containsKey(node.getManagementIp()))&&(stageMap.size()>1) ){
 				logger.info("node: "+node.vmInstance.managementIp+" is removed as working node.");
 				stageMap.remove(node.getManagementIp());
+				return true;
 			}
 			else{
 				logger.info("node: "+node.vmInstance.managementIp+" doesn't exist in working nodes.");
+				return false;
 			}
 		}
 		else{
 			logger.info("node: "+node.vmInstance.managementIp+" with chain mismatch in removeWorkingNode.");
+			return false;
 		}
 	}
 	
@@ -367,7 +374,7 @@ public class NFVServiceChain {
 		
 		for(String key : stageMap.keySet()){
 			NFVNode node = stageMap.get(key);
-			if(node.getState() != NFVNode.OVERLOAD){
+			if((node.getState() != NFVNode.OVERLOAD) && (node.getState() != NFVNode.ERROR)){
 				return node;
 			}
 		}
@@ -398,6 +405,15 @@ public class NFVServiceChain {
 				}
 				
 				routeList.add(stageMap.get(managementIp));
+			}
+			else{
+				NFVNode node = this.removeFromBqRear(i);
+				if(node != null){
+					routeList.add(node);
+				}
+				else{
+					logger.error("FATAL ERROR: there are no nodes for stage "+new Integer(i).toString());
+				}
 			}
 		}
 		return routeList;

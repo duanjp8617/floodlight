@@ -146,11 +146,13 @@ public class ConcreteMessage {
 		private final String sourceId;
 		private final String chainName;
 		private final int stageIndex;
+		private final String errorIp;
 		
-		public AllocateVmRequest(String sourceId, String chainName, int stageIndex){
+		public AllocateVmRequest(String sourceId, String chainName, int stageIndex, String errorIp){
 			this.sourceId = sourceId;
 			this.chainName = chainName;
 			this.stageIndex = stageIndex;
+			this.errorIp = errorIp;
 		}
 		
 		public String getSourceId(){
@@ -163,6 +165,10 @@ public class ConcreteMessage {
 		
 		public int getStageIndex(){
 			return this.stageIndex;
+		}
+		
+		public String getErrorIp(){
+			return this.errorIp;
 		}
 	}
 	

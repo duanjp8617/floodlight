@@ -47,6 +47,8 @@ public class ServiceChainHandler extends MessageProcessor {
 	private final HashMap<String, NFVServiceChain> serviceChainMap;
 	private NFVZmqPoller poller;
 	private final HashMap<UUID, Message> pendingMap;
+	private final HashMap<UUID, Message> errorMap;
+	private final HashMap<String, Integer> errorIpMap;
 	private Context context;
 	
 	private boolean reactiveStart;
@@ -71,6 +73,8 @@ public class ServiceChainHandler extends MessageProcessor {
 		this.queue = new LinkedBlockingQueue<Message>();
 		this.serviceChainMap = new HashMap<String, NFVServiceChain>();
 		this.pendingMap = new HashMap<UUID, Message>();
+		this.errorMap = new HashMap<UUID, Message>();
+		this.errorIpMap = new HashMap<String, Integer>();
 		
 		disableReactive();
 		
@@ -305,7 +309,7 @@ public class ServiceChainHandler extends MessageProcessor {
 								Integer.toString(i)+" working node");
 						
 						AllocateVmRequest newReq = new AllocateVmRequest(this.getId(),
-								serviceChain.serviceChainConfig.name, i);
+								serviceChain.serviceChainConfig.name, i, null);
 						this.pendingMap.put(newReq.getUUID(), newReq);
 						this.mh.sendTo("vmAllocator", newReq);
 					}
@@ -325,24 +329,25 @@ public class ServiceChainHandler extends MessageProcessor {
 							break;
 						}
 						else{
-							
 							logger.info(serviceChain.serviceChainConfig.name+" proactive scaling: transforming a stage "+
 									Integer.toString(i)+" working node into buffer node");
 							
-							serviceChain.removeWorkingNode(workingNode);
-							serviceChain.addToBqRear(workingNode);
-							if(serviceChain.serviceChainConfig.nVmInterface == 2){
-								String domainName = "";
-								if(workingNode.vmInstance.stageIndex == 0){
-									domainName = "bono.cw.t";
+							boolean flag = serviceChain.removeWorkingNode(workingNode);
+							if(flag == true){
+								serviceChain.addToBqRear(workingNode);
+								if(serviceChain.serviceChainConfig.nVmInterface == 2){
+									String domainName = "";
+									if(workingNode.vmInstance.stageIndex == 0){
+										domainName = "bono.cw.t";
+									}
+									else {
+										domainName = "sprout.cw.t";
+									}
+									
+									DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+											workingNode.vmInstance.operationIp, "delete");
+									this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 								}
-								else {
-									domainName = "sprout.cw.t";
-								}
-								
-								DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-										workingNode.vmInstance.operationIp, "delete");
-								this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 							}
 						}
 					}
@@ -429,7 +434,9 @@ public class ServiceChainHandler extends MessageProcessor {
 		}
 	}
 	
-	private void addToServiceChain(NFVServiceChain serviceChain, NFVNode node, UUID uuid){
+	private void addToServiceChain(NFVServiceChain serviceChain, NFVNode node, Message originalMessage){
+		UUID uuid = originalMessage.getUUID();
+		AllocateVmRequest originalRequest = (AllocateVmRequest)originalMessage;
 		synchronized(serviceChain){
 			if(pendingMap.containsKey(uuid)){
 				//one of the proactive scaling requests is finished.
@@ -460,6 +467,31 @@ public class ServiceChainHandler extends MessageProcessor {
 					enableReactive();
 					logger.info("service chain handler finishes executing proactive scaling decision");
 				}
+			}
+			else if(errorMap.containsKey(uuid)){
+				//receive an error node processing
+				serviceChain.addToServiceChain(node);
+				serviceChain.addWorkingNode(node);
+				if(serviceChain.serviceChainConfig.nVmInterface == 2){
+					String domainName = "";
+					if(node.vmInstance.stageIndex == 0){
+						domainName = "bono.cw.t";
+					}
+					else {
+						domainName = "sprout.cw.t";
+					}
+					DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+							node.vmInstance.operationIp, "add");
+					this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+				}
+				errorMap.remove(uuid);
+				String errorIp = originalRequest.getErrorIp();
+				errorIpMap.remove(errorIp);
+				
+				NFVNode errorNode = serviceChain.getNode(errorIp);
+				serviceChain.removeWorkingNode(errorNode);
+				serviceChain.addDestroyNode(errorNode);
+				serviceChain.removeFromServiceChain(errorNode);
 			}
 			else{
 				//a reactive scaling request is finished
@@ -521,7 +553,7 @@ public class ServiceChainHandler extends MessageProcessor {
 			pushStaticFlowRule(node);
 		}
 		
-		addToServiceChain(serviceChain, node, originalMessage.getUUID());
+		addToServiceChain(serviceChain, node, originalMessage);
 	}
 	
 	private void newProactiveScalingInterval(){
@@ -536,10 +568,15 @@ public class ServiceChainHandler extends MessageProcessor {
 			for(int i=0; i<dpServiceChain.serviceChainConfig.stages.size(); i++){
 				destroyNode = dpServiceChain.removeFromBqHead(i);
 				while(destroyNode != null){
-					logger.info("a DATA node will be destroyed");
-					dpServiceChain.addDestroyNode(destroyNode);
-					dpServiceChain.removeFromServiceChain(destroyNode);
-					destroyNode = dpServiceChain.removeFromBqHead(i);
+					if((dpServiceChain.getWorkingNodeNum(i)+dpServiceChain.bqSize(i))==0){
+						dpServiceChain.addWorkingNode(destroyNode);
+					}
+					else{
+						logger.info("a DATA node will be destroyed");
+						dpServiceChain.addDestroyNode(destroyNode);
+						dpServiceChain.removeFromServiceChain(destroyNode);
+						destroyNode = dpServiceChain.removeFromBqHead(i);
+					}
 				}
 			}
 		}
@@ -548,10 +585,15 @@ public class ServiceChainHandler extends MessageProcessor {
 			for(int i=0; i<cpServiceChain.serviceChainConfig.stages.size(); i++){
 				destroyNode = cpServiceChain.removeFromBqHead(i);
 				while(destroyNode != null){
-					logger.info("a CONTROL node will be destroyed");
-					cpServiceChain.addDestroyNode(destroyNode);
-					cpServiceChain.removeFromServiceChain(destroyNode);
-					destroyNode = cpServiceChain.removeFromBqHead(i);
+					if((cpServiceChain.getWorkingNodeNum(i)+cpServiceChain.bqSize(i))==0){
+						cpServiceChain.addWorkingNode(destroyNode);
+					}
+					else{
+						logger.info("a CONTROL node will be destroyed");
+						cpServiceChain.addDestroyNode(destroyNode);
+						cpServiceChain.removeFromServiceChain(destroyNode);
+						destroyNode = cpServiceChain.removeFromBqHead(i);
+					}
 				}
 			}
 		}
@@ -580,15 +622,22 @@ public class ServiceChainHandler extends MessageProcessor {
 					}
 					
 					NFVNode node = chain.getNode(managementIp);
-					if((node.getState() == NFVNode.ERROR)&&(chain.isWorkingNode(node))){
+					if((node.getState() == NFVNode.ERROR)){
 						logger.info(
 								"node: "+node.vmInstance.managementIp+
 								" stage: "+new Integer(node.vmInstance.stageIndex).toString()+
 								" chain: "+node.vmInstance.serviceChainConfig.name+
 								" is error, added to destroy node.!");
-						chain.removeWorkingNode(node);
-						chain.addDestroyNode(node);
-						chain.removeFromServiceChain(node);	
+						
+						if(!this.errorIpMap.containsKey(node.vmInstance.managementIp)){
+							AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
+					                                  node.vmInstance.serviceChainConfig.name,
+					                                               node.vmInstance.stageIndex,
+					                                             node.vmInstance.managementIp);
+							this.errorMap.put(newRequest.getUUID(), newRequest);
+							this.errorIpMap.put(node.vmInstance.managementIp, 0);
+							this.mh.sendTo("vmAllocator", newRequest);
+						}
 					}
 					else{
 						if(reactiveStart == true){
@@ -628,7 +677,8 @@ public class ServiceChainHandler extends MessageProcessor {
 									chain.setScaleIndicator(node.vmInstance.stageIndex, true);
 									AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 											                  node.vmInstance.serviceChainConfig.name,
-											                              node.vmInstance.stageIndex);
+											                              node.vmInstance.stageIndex,
+											                              null);
 									this.mh.sendTo("vmAllocator", newRequest);
 								}
 							}
