@@ -498,25 +498,19 @@ public class ServiceChainHandler extends MessageProcessor {
 				logger.info("node: "+node.vmInstance.managementIp+" stage: "+new Integer(node.vmInstance.stageIndex).toString()+
 						" chain: "+node.vmInstance.serviceChainConfig.name+" is created by reactive scaling");
 				serviceChain.addToServiceChain(node);
-				if(this.reactiveStart == true){
-					//reactive scaling is enabled, we add the node to working node
-					serviceChain.addWorkingNode(node);
-					
-					if(serviceChain.serviceChainConfig.nVmInterface == 2){
-						String domainName = "";
-						if(node.vmInstance.stageIndex == 0){
-							domainName = "bono.cw.t";
-						}
-						else {
-							domainName = "sprout.cw.t";
-						}
-						DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-								node.vmInstance.operationIp, "add");
-						this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+				serviceChain.addWorkingNode(node);
+				
+				if(serviceChain.serviceChainConfig.nVmInterface == 2){
+					String domainName = "";
+					if(node.vmInstance.stageIndex == 0){
+						domainName = "bono.cw.t";
 					}
-				}
-				else{
-					serviceChain.addToBqRear(node);
+					else {
+						domainName = "sprout.cw.t";
+					}
+					DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+							node.vmInstance.operationIp, "add");
+					this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 				}
 				serviceChain.setScaleIndicator(node.vmInstance.stageIndex, false);
 			}
