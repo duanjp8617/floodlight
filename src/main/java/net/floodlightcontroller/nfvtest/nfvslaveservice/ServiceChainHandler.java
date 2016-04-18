@@ -682,29 +682,27 @@ public class ServiceChainHandler extends MessageProcessor {
 					ArrayList<String> list = new ArrayList<String>();
 					for(String key : chain.destroyNodeMap.keySet()){
 						NFVNode destroyNode = chain.destroyNodeMap.get(key);
-						if(destroyNode.checkIdle()){
-							logger.info(
-								"node: "+destroyNode.vmInstance.managementIp+
-								" stage: "+new Integer(destroyNode.vmInstance.stageIndex).toString()+
-								" chain: "+destroyNode.vmInstance.serviceChainConfig.name+
-								" is destroyed!");
-							if(destroyNode.vmInstance.serviceChainConfig.nVmInterface==3){
-								//This is a dataplane node, we need to remove its index from indexmap
-								deleteStaticFlowRule(destroyNode);
-								int index = destroyNode.getIndex();
-								this.indexMap.get(destroyNode.vmInstance.stageIndex).remove(index);
-							}
-							else{
-								//TODO:remove DNS here, or it seems that we don't really need to
-								//because dns record has already been removed
-							}
-							
-							this.poller.unregister(destroyNode.getManagementIp()+":1");
-							DeallocateVmRequest deallocationRequest = 
-									new DeallocateVmRequest(this.getId(), destroyNode.vmInstance);
-							this.mh.sendTo("vmAllocator", deallocationRequest);
-							list.add(key);
+						logger.info(
+							"node: "+destroyNode.vmInstance.managementIp+
+							" stage: "+new Integer(destroyNode.vmInstance.stageIndex).toString()+
+							" chain: "+destroyNode.vmInstance.serviceChainConfig.name+
+							" is destroyed!");
+						if(destroyNode.vmInstance.serviceChainConfig.nVmInterface==3){
+							//This is a dataplane node, we need to remove its index from indexmap
+							deleteStaticFlowRule(destroyNode);
+							int index = destroyNode.getIndex();
+							this.indexMap.get(destroyNode.vmInstance.stageIndex).remove(index);
 						}
+						else{
+							//TODO:remove DNS here, or it seems that we don't really need to
+							//because dns record has already been removed
+						}
+						
+						this.poller.unregister(destroyNode.getManagementIp()+":1");
+						DeallocateVmRequest deallocationRequest = 
+								new DeallocateVmRequest(this.getId(), destroyNode.vmInstance);
+						this.mh.sendTo("vmAllocator", deallocationRequest);
+						list.add(key);
 					}
 					for(int i=0; i<list.size(); i++){
 						chain.destroyNodeMap.remove(list.get(i));
