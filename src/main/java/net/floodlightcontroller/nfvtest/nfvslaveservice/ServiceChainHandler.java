@@ -488,6 +488,11 @@ public class ServiceChainHandler extends MessageProcessor {
 				String errorIp = originalRequest.getErrorIp();
 				errorIpMap.remove(errorIp);
 				
+				logger.info(
+						"node: "+node.vmInstance.managementIp+
+						" stage: "+new Integer(node.vmInstance.stageIndex).toString()+
+						" chain: "+node.vmInstance.serviceChainConfig.name+
+						" is error, added to destroy node.!");
 				NFVNode errorNode = serviceChain.getNode(errorIp);
 				serviceChain.removeWorkingNode(errorNode);
 				serviceChain.addDestroyNode(errorNode);
@@ -617,12 +622,6 @@ public class ServiceChainHandler extends MessageProcessor {
 					
 					NFVNode node = chain.getNode(managementIp);
 					if((node.getState() == NFVNode.ERROR)){
-						logger.info(
-								"node: "+node.vmInstance.managementIp+
-								" stage: "+new Integer(node.vmInstance.stageIndex).toString()+
-								" chain: "+node.vmInstance.serviceChainConfig.name+
-								" is error, added to destroy node.!");
-						
 						if(!this.errorIpMap.containsKey(node.vmInstance.managementIp)){
 							AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 					                                  node.vmInstance.serviceChainConfig.name,
