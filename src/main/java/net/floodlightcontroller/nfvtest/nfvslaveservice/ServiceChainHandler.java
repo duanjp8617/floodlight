@@ -569,8 +569,8 @@ public class ServiceChainHandler extends MessageProcessor {
 						logger.info("a DATA node will be destroyed");
 						dpServiceChain.addDestroyNode(destroyNode);
 						dpServiceChain.removeFromServiceChain(destroyNode);
-						destroyNode = dpServiceChain.removeFromBqHead(i);
 					}
+					destroyNode = dpServiceChain.removeFromBqHead(i);
 				}
 			}
 		}
@@ -586,8 +586,8 @@ public class ServiceChainHandler extends MessageProcessor {
 						logger.info("a CONTROL node will be destroyed");
 						cpServiceChain.addDestroyNode(destroyNode);
 						cpServiceChain.removeFromServiceChain(destroyNode);
-						destroyNode = cpServiceChain.removeFromBqHead(i);
 					}
+					destroyNode = cpServiceChain.removeFromBqHead(i);
 				}
 			}
 		}
