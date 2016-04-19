@@ -368,7 +368,7 @@ public class NFVNode {
 			logger.info("{}", output);
 		}
 		if(this.state == NFVNode.ERROR){
-			String output = "Node-"+this.getManagementIp()+" is ERROR : "+stat;
+			String output = "Node-"+this.getManagementIp()+" is PROBLEMATIC : "+stat;
 			logger.info("{}", output);
 		}
 	}
