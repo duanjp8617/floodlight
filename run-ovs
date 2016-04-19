@@ -1,0 +1,22 @@
+sudo kill $(top -b -n 1 | grep ovs-vswitchd | cut -d. -f1 | awk '{print $1}')
+
+sudo kill $(top -b -n 1 | grep ovsdb-server | cut -d. -f1 | awk '{print $1}')
+
+
+sudo rm -f /usr/local/etc/openvswitch/conf.db
+
+sudo modprobe gre
+
+sudo modprobe openvswitch
+
+sudo modprobe libcrc32c
+
+ovsdb-tool create /usr/local/etc/openvswitch/conf.db /usr/local/share/openvswitch/vswitch.ovsschema
+
+ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock \
+--remote=db:Open_vSwitch,Open_vSwitch,manager_options \
+--pidfile --detach --log-file
+
+ovs-vsctl --no-wait init
+
+ovs-vswitchd --pidfile --detach --log-file
