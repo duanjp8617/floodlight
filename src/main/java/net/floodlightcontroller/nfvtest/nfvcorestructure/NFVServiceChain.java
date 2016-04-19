@@ -277,7 +277,7 @@ public class NFVServiceChain {
 				return true;
 			}
 			else{
-				logger.info("node: "+node.vmInstance.managementIp+" doesn't exist in working nodes.");
+				logger.info("node: "+node.vmInstance.managementIp+" is the last working node, can't remove.");
 				return false;
 			}
 		}

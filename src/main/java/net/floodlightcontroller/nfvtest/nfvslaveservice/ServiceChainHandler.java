@@ -271,42 +271,32 @@ public class ServiceChainHandler extends MessageProcessor {
 			for(int i=0; i<oldProvision.length; i++){
 				if(newProvision[i] > oldProvision[i]){
 					//scale up
-					int scaleUpNum = newProvision[i] - oldProvision[i];
-					
-					int j = 0;
-					for(j=0; j<scaleUpNum; j++){
-						NFVNode bufferNode = serviceChain.removeFromBqRear(i);
-						if(bufferNode != null){
-							
-							logger.info(serviceChain.serviceChainConfig.name+" proactive scaling: transforming a stage "+
-							Integer.toString(i)+" buffer node into working node");
-							
-							serviceChain.addWorkingNode(bufferNode);
-							if(serviceChain.serviceChainConfig.nVmInterface == 2){
-								//in this case, we need to add the IP address of the control plane
-								//middlebox to the DNS.
-								String domainName = "";
-								if(bufferNode.vmInstance.stageIndex == 0){
-									domainName = "bono.cw.t";
-								}
-								else {
-									domainName = "sprout.cw.t";
-								}
-								
-								DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-										bufferNode.vmInstance.operationIp, "add");
-								this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+					//transform all buffer node into working node.
+					NFVNode bufferNode = serviceChain.removeFromBqRear(i);
+					while(bufferNode != null){
+		
+						serviceChain.addWorkingNode(bufferNode);
+						if(serviceChain.serviceChainConfig.nVmInterface == 2){
+							//in this case, we need to add the IP address of the control plane
+							//middlebox to the DNS.
+							String domainName = "";
+							if(bufferNode.vmInstance.stageIndex == 0){
+								domainName = "bono.cw.t";
 							}
+							else {
+								domainName = "sprout.cw.t";
+							}
+							
+							DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+									bufferNode.vmInstance.operationIp, "add");
+							this.mh.sendTo("dnsUpdator", dnsUpdateReq);
 						}
-						else{
-							break;
-						}
+						bufferNode = serviceChain.removeFromBqRear(i);
 					}
-					scaleUpNum = scaleUpNum - j;
-					for(j=0; j<scaleUpNum; j++){
-						
-						logger.info(serviceChain.serviceChainConfig.name+" proactive scaling: creating a stage "+
-								Integer.toString(i)+" working node");
+					
+					//create new vms.
+					int scaleUpNum = newProvision[i] - oldProvision[i];
+					for(int j=0; j<scaleUpNum; j++){
 						
 						AllocateVmRequest newReq = new AllocateVmRequest(this.getId(),
 								serviceChain.serviceChainConfig.name, i, null);
@@ -315,45 +305,76 @@ public class ServiceChainHandler extends MessageProcessor {
 					}
 				}
 				else if(newProvision[i] < oldProvision[i]){
-					//scaleDown, but we maintain at least one working node for each stage
-					int scaleDownNum = 0;
-					if(newProvision[i]==0){
-						scaleDownNum = oldProvision[i]-1;
-					}
-					else{
-						scaleDownNum = oldProvision[i] - newProvision[i];
-					}
-					for(int j=0; j<scaleDownNum; j++){
-						NFVNode workingNode = serviceChain.getNormalWorkingNode(i);
-						if(workingNode == null){
-							break;
-						}
-						else{
-							logger.info(serviceChain.serviceChainConfig.name+" proactive scaling: transforming a stage "+
-									Integer.toString(i)+" working node into buffer node");
-							
-							boolean flag = serviceChain.removeWorkingNode(workingNode);
-							if(flag == true){
-								serviceChain.addToBqRear(workingNode);
-								if(serviceChain.serviceChainConfig.nVmInterface == 2){
-									String domainName = "";
-									if(workingNode.vmInstance.stageIndex == 0){
-										domainName = "bono.cw.t";
-									}
-									else {
-										domainName = "sprout.cw.t";
-									}
-									
-									DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-											workingNode.vmInstance.operationIp, "delete");
-									this.mh.sendTo("dnsUpdator", dnsUpdateReq);
-								}
+					//we need to maintain at least newProvision[i] working node
+					//and oldProvision[i]-newProvision[i] buffer node
+					int workingNodeNum = serviceChain.getWorkingNodeNum(i);
+					
+					if(workingNodeNum<newProvision[i]){
+						//we need to release newProvision[i]-workingNodeNum buffer node
+						int bfNodeToRelease = newProvision[i]-workingNodeNum;
+						for(int j=0; j<bfNodeToRelease; j++){
+							NFVNode bufferNode = serviceChain.removeFromBqRear(i);
+							if(bufferNode!=null){
+								serviceChain.addWorkingNode(bufferNode);
 							}
 						}
 					}
+					else if(workingNodeNum>newProvision[i]){
+						//we need to transform workingNodeNum-newProvision[i] node to buffer node
+						int scaleDownNum = workingNodeNum-newProvision[i];
+						for(int j=0; j<scaleDownNum; j++){
+							NFVNode workingNode = serviceChain.getNormalWorkingNode(i);
+							if(workingNode == null){
+								break;
+							}
+							else{
+								boolean flag = serviceChain.removeWorkingNode(workingNode);
+								if(flag == true){
+									serviceChain.addToBqRear(workingNode);
+									if(serviceChain.serviceChainConfig.nVmInterface == 2){
+										String domainName = "";
+										if(workingNode.vmInstance.stageIndex == 0){
+											domainName = "bono.cw.t";
+										}
+										else {
+											domainName = "sprout.cw.t";
+										}
+										
+										DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+												workingNode.vmInstance.operationIp, "delete");
+										this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+									}
+								}
+							}
+						}	
+					}
+					else{
+						//do nothing
+					}
 				}
 				else{
-					//do nothing
+					//transform all buffer node into working node.
+					NFVNode bufferNode = serviceChain.removeFromBqRear(i);
+					while(bufferNode != null){
+						
+						serviceChain.addWorkingNode(bufferNode);
+						if(serviceChain.serviceChainConfig.nVmInterface == 2){
+							//in this case, we need to add the IP address of the control plane
+							//middlebox to the DNS.
+							String domainName = "";
+							if(bufferNode.vmInstance.stageIndex == 0){
+								domainName = "bono.cw.t";
+							}
+							else {
+								domainName = "sprout.cw.t";
+							}
+							
+							DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+									bufferNode.vmInstance.operationIp, "add");
+							this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+						}
+						bufferNode = serviceChain.removeFromBqRear(i);
+					}
 				}
 			}
 		}
