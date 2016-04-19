@@ -1,7 +1,6 @@
-sudo kill $(top -b -n 1 | grep ovs-vswitchd | cut -d. -f1 | awk '{print $1}')
+sudo kill $(ps -efw | grep ovs-vswitchd | grep -v grep | awk '{print $2}')
 
-sudo kill $(top -b -n 1 | grep ovsdb-server | cut -d. -f1 | awk '{print $1}')
-
+sudo kill $(ps -efw | grep ovsdb-server | grep -v grep | awk '{print $2}')
 
 sudo rm -f /usr/local/etc/openvswitch/conf.db
 
