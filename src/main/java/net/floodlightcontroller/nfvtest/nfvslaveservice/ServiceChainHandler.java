@@ -494,9 +494,14 @@ public class ServiceChainHandler extends MessageProcessor {
 						" chain: "+node.vmInstance.serviceChainConfig.name+
 						" is error, added to destroy node.!");
 				NFVNode errorNode = serviceChain.getNode(errorIp);
-				serviceChain.removeWorkingNode(errorNode);
-				serviceChain.addDestroyNode(errorNode);
-				serviceChain.removeFromServiceChain(errorNode);
+				boolean flag = serviceChain.removeWorkingNode(errorNode);
+				if(flag == true){
+					serviceChain.addDestroyNode(errorNode);
+					serviceChain.removeFromServiceChain(errorNode);
+				}
+				else{
+					logger.error("FATAL ERROR, the error node handling has errors.");
+				}
 			}
 			else{
 				//a reactive scaling request is finished
@@ -622,7 +627,7 @@ public class ServiceChainHandler extends MessageProcessor {
 					
 					NFVNode node = chain.getNode(managementIp);
 					if((node.getState() == NFVNode.ERROR)){
-						if(!this.errorIpMap.containsKey(node.vmInstance.managementIp)){
+						if(!this.errorIpMap.containsKey(node.vmInstance.managementIp)&&chain.isWorkingNode(node)){
 							AllocateVmRequest newRequest = new AllocateVmRequest(this.getId(),
 					                                  node.vmInstance.serviceChainConfig.name,
 					                                               node.vmInstance.stageIndex,
