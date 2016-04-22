@@ -278,7 +278,7 @@ public class NFVNode {
 	
 	public NFVNode(VmInstance vmInstance){
 		this.vmInstance = vmInstance;
-		this.property = new NFVNodeProperty(15, vmInstance.serviceChainConfig.getStageVmInfo(vmInstance.stageIndex).cpuThreshold,
+		this.property = new NFVNodeProperty(5, vmInstance.serviceChainConfig.getStageVmInfo(vmInstance.stageIndex).cpuThreshold,
 				vmInstance.serviceChainConfig.getStageVmInfo(vmInstance.stageIndex).inputBandwidth, 
 				vmInstance.serviceChainConfig.getStageVmInfo(vmInstance.stageIndex).inputPktNum);
 		this.state = NFVNode.IDLE;
