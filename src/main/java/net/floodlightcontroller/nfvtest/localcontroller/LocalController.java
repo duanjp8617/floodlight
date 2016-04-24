@@ -1161,7 +1161,7 @@ public class LocalController implements Runnable{
 		
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
 		fmb.setHardTimeout(0);
-		fmb.setIdleTimeout(15);
+		fmb.setIdleTimeout(60);
 		fmb.setBufferId(OFBufferId.NO_BUFFER);
 		fmb.setCookie(U64.of(8617));
 		fmb.setPriority(5);
@@ -1185,7 +1185,7 @@ public class LocalController implements Runnable{
 		
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
 		fmb.setHardTimeout(0);
-		fmb.setIdleTimeout(15);
+		fmb.setIdleTimeout(60);
 		fmb.setBufferId(OFBufferId.NO_BUFFER);
 		fmb.setCookie(U64.of(8617));
 		fmb.setPriority(5);
@@ -1213,7 +1213,7 @@ public class LocalController implements Runnable{
 		
 		OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowAdd();
 		fmb.setHardTimeout(0);
-		fmb.setIdleTimeout(15);
+		fmb.setIdleTimeout(60);
 		fmb.setBufferId(OFBufferId.NO_BUFFER);
 		fmb.setCookie(U64.of(8617));
 		fmb.setPriority(5);
