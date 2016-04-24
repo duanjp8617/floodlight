@@ -406,7 +406,7 @@ public class ServiceChainHandler extends MessageProcessor {
 				}
 			}
 			
-			while(arrayAllZero(scaleUpCounter)){
+			while(!arrayAllZero(scaleUpCounter)){
 				for(int i=0; i<scaleUpCounter.length; i++){
 					if(scaleUpCounter[i]>0){
 						AllocateVmRequest newReq = new AllocateVmRequest(this.getId(),
