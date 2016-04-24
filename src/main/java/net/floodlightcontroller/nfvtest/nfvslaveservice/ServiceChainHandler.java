@@ -733,15 +733,19 @@ public class ServiceChainHandler extends MessageProcessor {
 						if(reactiveStart == true){
 							Map<String, NFVNode> stageMap = chain.getStageMap(node.vmInstance.stageIndex);
 							
-							float nOverload = (float)0.0;
+							int nOverload = 0;
+							int nNotOverload = 0;
 							for(String ip : stageMap.keySet()){
 								NFVNode n = stageMap.get(ip);
 								if(n.getState() == NFVNode.OVERLOAD){
-									nOverload += (float)1.0;
+									nOverload += 1;
+								}
+								else{
+									nNotOverload += 1;
 								}
 							}
 							
-							if( (nOverload >= ((float)stageMap.size()/(float)2.0))&&
+							if( (nOverload > nNotOverload)&&
 							    (!chain.getScaleIndicator(node.vmInstance.stageIndex)) ){
 								//Here we trigger a reactive scaling condition.
 								//Create a new vm.
