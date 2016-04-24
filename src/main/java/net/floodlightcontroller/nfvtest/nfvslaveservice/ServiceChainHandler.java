@@ -292,6 +292,7 @@ public class ServiceChainHandler extends MessageProcessor {
 				print = print + " " + Integer.toString(newProvision[i]); 
 			}
 			logger.info("{}", print);
+			int[] scaleUpCounter = new int[newProvision.length];
 			
 			for(int i=0; i<oldProvision.length; i++){
 				if(newProvision[i] > oldProvision[i]){
@@ -321,13 +322,15 @@ public class ServiceChainHandler extends MessageProcessor {
 					
 					//create new vms.
 					int scaleUpNum = newProvision[i] - oldProvision[i];
-					for(int j=0; j<scaleUpNum; j++){
+					scaleUpCounter[i] = scaleUpNum;
+					//for(int j=0; j<scaleUpNum; j++){
 						
-						AllocateVmRequest newReq = new AllocateVmRequest(this.getId(),
-								serviceChain.serviceChainConfig.name, i, null);
-						this.pendingMap.put(newReq.getUUID(), newReq);
-						this.mh.sendTo("vmAllocator", newReq);
-					}
+						//AllocateVmRequest newReq = new AllocateVmRequest(this.getId(),
+						//		serviceChain.serviceChainConfig.name, i, null);
+						//this.pendingMap.put(newReq.getUUID(), newReq);
+						//this.mh.sendTo("vmAllocator", newReq);
+						
+					//}
 				}
 				else if(newProvision[i] < oldProvision[i]){
 					//we need to maintain at least newProvision[i] working node
@@ -402,7 +405,30 @@ public class ServiceChainHandler extends MessageProcessor {
 					}
 				}
 			}
+			
+			while(arrayAllZero(scaleUpCounter)){
+				for(int i=0; i<scaleUpCounter.length; i++){
+					if(scaleUpCounter[i]>0){
+						AllocateVmRequest newReq = new AllocateVmRequest(this.getId(),
+								serviceChain.serviceChainConfig.name, i, null);
+						this.pendingMap.put(newReq.getUUID(), newReq);
+						this.mh.sendTo("vmAllocator", newReq);
+						scaleUpCounter[i]-=1;
+					}
+				}
+			}
 		}
+	}
+	
+	private boolean arrayAllZero(int array[]){
+		boolean allZero = true;
+		for(int i=0; i<array.length; i++){
+			if(array[i] != 0){
+				allZero = false;
+				break;
+			}
+		}
+		return allZero;
 	}
 	
 	private void handleProactiveScalingRequest(ProactiveScalingRequest req){
