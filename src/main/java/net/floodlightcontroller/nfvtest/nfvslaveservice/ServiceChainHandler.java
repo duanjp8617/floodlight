@@ -47,8 +47,11 @@ public class ServiceChainHandler extends MessageProcessor {
 	private final HashMap<String, NFVServiceChain> serviceChainMap;
 	private NFVZmqPoller poller;
 	private final HashMap<UUID, Message> pendingMap;
+	private final HashMap<UUID, Message> reactiveMap;
 	private final HashMap<UUID, Message> errorMap;
 	private final HashMap<String, Integer> errorIpMap;
+	private int[] dpReactiveCounter;
+	private int[] cpReactiveCounter;
 	private Context context;
 	
 	private boolean reactiveStart;
@@ -75,6 +78,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		this.pendingMap = new HashMap<UUID, Message>();
 		this.errorMap = new HashMap<UUID, Message>();
 		this.errorIpMap = new HashMap<String, Integer>();
+		this.reactiveMap = new HashMap<UUID, Message>();
 		
 		disableReactive();
 		
@@ -122,6 +126,11 @@ public class ServiceChainHandler extends MessageProcessor {
 			for(int i=0; i<serviceChain.serviceChainConfig.stages.size(); i++){
 				this.indexMap.add(new HashMap<Integer, Integer>());
 			}
+			
+			this.dpReactiveCounter = new int[serviceChain.serviceChainConfig.stages.size()];
+		}
+		else{
+			this.cpReactiveCounter = new int[serviceChain.serviceChainConfig.stages.size()];
 		}
 	}
 	
@@ -227,9 +236,15 @@ public class ServiceChainHandler extends MessageProcessor {
 		
 		NFVServiceChain dpServiceChain = serviceChainMap.get("DATA");
 		int dpProvision[] = dpServiceChain.getProvision();
+		for(int i=0; i<this.dpReactiveCounter.length; i++){
+			dpProvision[i]+=this.dpReactiveCounter[i];
+		}
 		
 		NFVServiceChain cpServiceChain = serviceChainMap.get("CONTROL");
 		int cpProvision[] = cpServiceChain.getProvision();
+		for(int i=0; i<this.cpReactiveCounter.length; i++){
+			cpProvision[i]+=this.cpReactiveCounter[i];
+		}
 		
 		Socket requester = context.socket(ZMQ.REQ);
 		requester.connect("inproc://schSync");
@@ -256,6 +271,16 @@ public class ServiceChainHandler extends MessageProcessor {
 	private void handleProactiveProvision(NFVServiceChain serviceChain, int newProvision[]){
 		synchronized(serviceChain){
 			int oldProvision[] = serviceChain.getProvision();
+			if(serviceChain.serviceChainConfig.name.equals("DATA")){
+				for(int i=0; i<this.dpReactiveCounter.length; i++){
+					oldProvision[i]+=this.dpReactiveCounter[i];
+				}
+			}
+			else{
+				for(int i=0; i<this.cpReactiveCounter.length; i++){
+					oldProvision[i]+=this.cpReactiveCounter[i];
+				}
+			}
 			
 			String print = serviceChain.serviceChainConfig.name + " service chain old configuration: ";
 			for(int i=0; i<oldProvision.length; i++){
@@ -446,10 +471,22 @@ public class ServiceChainHandler extends MessageProcessor {
 					logger.info("service chain handler finishes executing proactive scaling decision");
 				}
 			}
-			else{
+			else if(errorMap.containsKey(originalRequest.getUUID())){
+				errorMap.remove(originalRequest.getUUID());
+				String errorIp = originalRequest.getErrorIp();
+				errorIpMap.remove(errorIp);
+			}
+			else if(reactiveMap.containsKey(originalRequest.getUUID())){
 				NFVServiceChain serviceChain = serviceChainMap.get(originalRequest.getChainName());
 				synchronized(serviceChain){
 					serviceChain.setScaleIndicator(originalRequest.getStageIndex(), false);
+				}
+				reactiveMap.remove(originalRequest.getUUID());
+				if(originalRequest.getChainName().equals("DATA")){
+					this.dpReactiveCounter[originalRequest.getStageIndex()]-=1;
+				}
+				else{
+					this.cpReactiveCounter[originalRequest.getStageIndex()]-=1;
 				}
 			}
 		}
@@ -524,8 +561,16 @@ public class ServiceChainHandler extends MessageProcessor {
 					logger.error("FATAL ERROR, the error node handling has errors.");
 				}
 			}
-			else{
+			else if(reactiveMap.containsKey(uuid)){
 				//a reactive scaling request is finished
+				reactiveMap.remove(uuid);
+				if(node.vmInstance.serviceChainConfig.name.equals("DATA")){
+					this.dpReactiveCounter[node.vmInstance.stageIndex]-=1;
+				}
+				else{
+					this.cpReactiveCounter[node.vmInstance.stageIndex]-=1;
+				}
+				
 				logger.info("node: "+node.vmInstance.managementIp+" stage: "+new Integer(node.vmInstance.stageIndex).toString()+
 						" chain: "+node.vmInstance.serviceChainConfig.name+" is created by reactive scaling");
 				serviceChain.addToServiceChain(node);
@@ -698,6 +743,15 @@ public class ServiceChainHandler extends MessageProcessor {
 											                  node.vmInstance.serviceChainConfig.name,
 											                              node.vmInstance.stageIndex,
 											                              null);
+									
+									this.reactiveMap.put(newRequest.getUUID(), newRequest);
+									if(node.vmInstance.serviceChainConfig.name.equals("DATA")){
+										this.dpReactiveCounter[node.vmInstance.stageIndex]+=1;
+									}
+									else{
+										this.cpReactiveCounter[node.vmInstance.stageIndex]+=1;
+									}
+									
 									this.mh.sendTo("vmAllocator", newRequest);
 								}
 							}
