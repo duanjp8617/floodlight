@@ -271,7 +271,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		AddHostServerRequest m2 = new AddHostServerRequest("hehe", hostServer);
 		mh.sendTo("vmAllocator", m2);
 		try{
-			Thread.sleep(200);
+			Thread.sleep(1000);
 		}
 		catch (Exception e){
 			e.printStackTrace();
