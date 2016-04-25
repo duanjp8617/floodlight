@@ -93,7 +93,6 @@ public class VmWorker extends MessageProcessor{
 			agent.createDir(hostServer.hostServerConfig.homeDir);
 			agent.createDir(hostServer.hostServerConfig.xmlDir);
 			agent.createDir(hostServer.hostServerConfig.imgDir);
-			agent.removeFilesFromDir(hostServer.hostServerConfig.xmlDir);
 			
 			//The following loop initialize the runtime environment in host server.
 			//All used service chains will be initialized in turns.
