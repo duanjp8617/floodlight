@@ -207,7 +207,7 @@ public class VmWorker extends MessageProcessor{
 		VmInstance vmInstance = request.getVmInstance();
 		String localXmlFile = constructLocalXmlFile(vmInstance);
 		String remoteXmlFile = vmInstance.hostServerConfig.xmlDir+"/"+vmInstance.vmName;
-		String remoteImgFile = vmInstance.hostServerConfig.imgDir+"/"+vmInstance.vmName;
+		String remoteImgFile = vmInstance.hostServerConfig.imgDir+"/"+vmInstance.diskImgName;
 		String remoteBaseImgFile = vmInstance.hostServerConfig.imgDir+"/"+
 		                   vmInstance.serviceChainConfig.getImgNameForStage(vmInstance.stageIndex);
 		logger.info("finish constructing xmls");
@@ -225,12 +225,17 @@ public class VmWorker extends MessageProcessor{
 			logger.info("start creating node "+vmInstance.managementIp);
 			agent.connect();
 			agent.uploadFile(localXmlFile, remoteXmlFile);
-			for(int i=0; i<10; i++){
-				boolean successful = agent.copyFile(remoteBaseImgFile, remoteImgFile);
-				if(successful == true){
-					logger.info("the node "+vmInstance.managementIp+" is successfully created");
-					break;
+			if(vmInstance.newDiskImg){
+				for(int i=0; i<10; i++){
+					boolean successful = agent.copyFile(remoteBaseImgFile, remoteImgFile);
+					if(successful == true){
+						logger.info("the node "+vmInstance.managementIp+" is successfully created");
+						break;
+					}
 				}
+			}
+			else{
+				logger.info("the node "+vmInstance.managementIp+" is successfully created");
 			}
 			
 			Thread.sleep(1000);
@@ -382,7 +387,7 @@ public class VmWorker extends MessageProcessor{
 		StageVmInfo vmInfo = vmInstance.getStageVmInfo();
 		String xmlTemplateFile =vmInstance.controllerConfig.xmlDir+"/"+
 						        vmInstance.controllerConfig.xmlTemplateName;
-		String destImgFile = vmInstance.hostServerConfig.imgDir+"/"+vmName;
+		String destImgFile = vmInstance.hostServerConfig.imgDir+"/"+vmInstance.diskImgName;
 		String localXmlFile = vmInstance.controllerConfig.xmlDir+"/"+vmName;
 		
 		try{

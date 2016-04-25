@@ -19,6 +19,8 @@ public class HostServer {
 		public final ServiceChainConfig serviceChainConfig;
 		
 		public final String vmName;
+		public final String diskImgName;
+		public final boolean newDiskImg;
 		public final int stageIndex;
 		
 		public final List<String> macList;
@@ -34,10 +36,12 @@ public class HostServer {
 		public final HostServer hostServer;
 		
 		public VmInstance(HostServerConfig hConfig, ServiceChainConfig sConfig, ControllerConfig cConfig,
-				   int stageIndex, String vmName,String managementMac, String managementIp, 
+				   int stageIndex, String vmName,String diskImgName, boolean newDiskImg, String managementMac, String managementIp, 
 				   String operationMac, String operationIp, HostServer hostServer){
 			this.stageIndex = stageIndex;
 			this.vmName = vmName;
+			this.diskImgName = diskImgName;
+			this.newDiskImg = newDiskImg;
 			
 			this.controllerConfig = cConfig;
 			this.hostServerConfig = hConfig;
@@ -56,10 +60,12 @@ public class HostServer {
 		}
 		
 		public VmInstance(HostServerConfig hConfig, ServiceChainConfig sConfig, ControllerConfig cConfig,
-				   int stageIndex, String vmName, String managementMac, String managementIp, 
+				   int stageIndex, String vmName, String diskImgName, boolean newDiskImg, String managementMac, String managementIp, 
 				   List<String> macList, List<String> dpidList, HostServer hostServer){
 			this.stageIndex = stageIndex;
 			this.vmName = vmName;
+			this.diskImgName = diskImgName;
+			this.newDiskImg = newDiskImg;
 			
 			this.controllerConfig = cConfig;
 			this.hostServerConfig = hConfig;
@@ -262,7 +268,7 @@ public class HostServer {
 		this.rearPortName = "rear";
 	}
 	
-	public VmInstance allocateVmInstance(String chainName, int stageIndex){
+	public VmInstance allocateVmInstance(String chainName, int stageIndex, DiskImgNameBuffer diskImgNameBuffer){
 		if(allocation.allocate(serviceChainConfigMap.get(chainName), stageIndex)){
 			ServiceChainConfig chainConfig = serviceChainConfigMap.get(chainName);
 			VmInstance newVm;
@@ -276,8 +282,23 @@ public class HostServer {
 				String vmName = chainName+"-"+new Integer(stageIndex).toString()+
 								"-"+managementPair.second;
 				
+				String diskImgName = diskImgNameBuffer.getDiskImgName("CONTROL", stageIndex);
+				boolean newDiskImg = false;
+				
+				if(diskImgName.equals("noAvailableDiskImg")){
+					newDiskImg = true;
+					boolean contain = true;
+					int version = 0;
+					while(contain){
+						version+=1;
+						diskImgName = "CONTROL-"+new Integer(stageIndex).toString()+"-"+
+								managementPair.second+"-v"+new Integer(version).toString();
+						contain = diskImgNameBuffer.containName(diskImgName);
+					}
+				}
+				
 				newVm = new VmInstance(this.hostServerConfig, chainConfig, this.controllerConfig,
-						stageIndex,vmName, managementPair.first, managementPair.second, 
+						stageIndex,vmName, diskImgName, newDiskImg, managementPair.first, managementPair.second, 
 						operationPair.first, operationPair.second, this);
 			}
 			else{
@@ -291,8 +312,23 @@ public class HostServer {
 				String vmName = chainName+"-"+new Integer(stageIndex).toString()+
 								"-"+managementPair.second;
 				
+				String diskImgName = diskImgNameBuffer.getDiskImgName("DATA", stageIndex);
+				boolean newDiskImg = false;
+				
+				if(diskImgName.equals("noAvailableDiskImg")){
+					newDiskImg = true;
+					boolean contain = true;
+					int version = 0;
+					while(contain){
+						version+=1;
+						diskImgName = "DATA-"+new Integer(stageIndex).toString()+"-"+
+								managementPair.second+"-v"+new Integer(version).toString();
+						contain = diskImgNameBuffer.containName(diskImgName);
+					}
+				}
+				
 				newVm = new VmInstance(this.hostServerConfig, chainConfig, this.controllerConfig,
-						stageIndex,vmName, managementPair.first, managementPair.second,
+						stageIndex,vmName, diskImgName, newDiskImg, managementPair.first, managementPair.second,
 						macAddrList, this.serviceChainDpidMap.get(chainName), this);
 			}
 			

@@ -4,6 +4,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import net.floodlightcontroller.nfvtest.message.Message;
 import net.floodlightcontroller.nfvtest.message.MessageProcessor;
 import net.floodlightcontroller.nfvtest.message.ConcreteMessage.*;
+import net.floodlightcontroller.nfvtest.nfvutils.DiskImgNameBuffer;
 import net.floodlightcontroller.nfvtest.nfvutils.HostAgent;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer;
 import net.floodlightcontroller.nfvtest.nfvutils.HostServer.*;
@@ -27,6 +28,7 @@ public class VmAllocator extends MessageProcessor {
 	public final HashMap<DatapathId, HostServer> dpidHostServerMap;
 	public final HashMap<DatapathId, Integer> dpidStageIndexMap;
 	private final Logger logger =  LoggerFactory.getLogger(VmAllocator.class);
+	private final DiskImgNameBuffer diskImgNameBuffer;
 
 	public VmAllocator(String id, int baseVni){
 		this.id = id;
@@ -36,6 +38,9 @@ public class VmAllocator extends MessageProcessor {
 		this.vni=baseVni;
 		this.dpidHostServerMap = new HashMap<DatapathId, HostServer>();
 		this.dpidStageIndexMap = new HashMap<DatapathId, Integer>();
+		
+		diskImgNameBuffer = new DiskImgNameBuffer();
+		diskImgNameBuffer.load();
 	}
 	
 	
@@ -93,7 +98,7 @@ public class VmAllocator extends MessageProcessor {
 	private void allocateVm(AllocateVmRequest originalRequest){
 		VmInstance vmInstance = null;
 		for(HostServer hostServer : this.hostServerList){
-			vmInstance = hostServer.allocateVmInstance(originalRequest.getChainName(), originalRequest.getStageIndex());
+			vmInstance = hostServer.allocateVmInstance(originalRequest.getChainName(), originalRequest.getStageIndex(), diskImgNameBuffer);
 			if(vmInstance == null){
 				continue;
 			}
