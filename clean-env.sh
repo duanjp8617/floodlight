@@ -11,5 +11,5 @@ virsh net-destroy TEST-1
 virsh net-destroy TEST-2
 virsh net-destroy TEST-3
 rm -f ~/nfvenv/xml/*
-sudo rm -f ~/nfvenv/img/DATA*
-sudo rm -f ~/nfvenv/img/CONTROL*
+#sudo rm -f ~/nfvenv/img/DATA*
+#sudo rm -f ~/nfvenv/img/CONTROL*
