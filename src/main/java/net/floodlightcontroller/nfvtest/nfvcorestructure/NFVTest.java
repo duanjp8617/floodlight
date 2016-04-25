@@ -194,7 +194,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		ControllerConfig controllerConfig = 
 				new ControllerConfig(mIp, "/home/net/base-env", "basexml.xml", "networkxml.xml");
 		HostServerConfig hostServerConfig = 
-				new HostServerConfig(mIp, iIp, pIp, 48, 80*1024, 100*1024, 1, userName, password, "/home/net/nfvenv");
+				new HostServerConfig(mIp, iIp, pIp, 60, 80*1024, 100*1024, 1, userName, password, "/home/net/nfvenv");
 		byte[] prefix = new byte[3];
 		prefix[0] = 0x52;
 		prefix[1] = 0x54;
