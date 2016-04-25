@@ -108,7 +108,12 @@ public class SubscriberConnector extends MessageProcessor{
 			}
 			
 			logger.info("finish connecting subscriber1 for node "+ipAddress);
-	
+			try{
+				Thread.sleep(20000);
+			}
+			catch (Exception e){
+				e.printStackTrace();
+			}
 			SubConnReply reply = new SubConnReply("hehe", this.request, subscriber1, null);
     		mh.sendTo(this.request.getSourceId(), reply);
     		return;
