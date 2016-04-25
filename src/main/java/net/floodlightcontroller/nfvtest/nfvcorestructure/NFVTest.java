@@ -281,8 +281,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		localController = new LocalController(gIp, 5555, 5556, 5557, 5558, 5559, mIp, 
 				true, 2000, c, mh, zmqContext, hostServer.entryIp, chainHandler, vmAllocator, this.dpServiceChain,
 				switchService);
-		//Thread lcThread = new Thread(localController);
-		//lcThread.start();
+		Thread lcThread = new Thread(localController);
+		lcThread.start();
        
     }
  
