@@ -259,7 +259,7 @@ public class VmWorker extends MessageProcessor{
 			logger.info("finish creating node "+vmInstance.managementIp);
 			CreateVmReply reply = new CreateVmReply(this.getId(), request, true);
 			this.mh.sendTo(reply.getRequest().getSourceId(), reply);
-			Thread.sleep(5*1000);
+			//Thread.sleep(5*1000);
 			
 			/*logger.info("start creating node "+vmInstance.managementIp);
 			agent.connect();
