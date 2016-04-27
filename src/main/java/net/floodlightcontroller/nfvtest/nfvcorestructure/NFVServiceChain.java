@@ -266,6 +266,7 @@ public class NFVServiceChain {
 		else{
 			logger.info("node: "+node.vmInstance.managementIp+" with chain mismatch.");
 		}
+		logger.info("exit addWorkingNode");
 	}
 	
 	public synchronized boolean removeWorkingNode(NFVNode node){

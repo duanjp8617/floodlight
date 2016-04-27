@@ -53,6 +53,7 @@ public class ServiceChainHandler extends MessageProcessor {
 	private int[] dpReactiveCounter;
 	private int[] cpReactiveCounter;
 	private Context context;
+	private Socket requester;
 	
 	private boolean reactiveStart;
 	private boolean enableReactive;
@@ -224,11 +225,10 @@ public class ServiceChainHandler extends MessageProcessor {
 	}
 	
 	private void handleCreateInterDcTunnelMashReply(){
-		Socket requester = context.socket(ZMQ.REQ);
+		requester = context.socket(ZMQ.REQ);
 		requester.connect("inproc://schSync");
 		requester.send("TUNNELFINISH", 0);
 		requester.recv(0);
-		requester.close();
 	}
 	
 	private void proactiveScalingStart(){
@@ -246,8 +246,6 @@ public class ServiceChainHandler extends MessageProcessor {
 			cpProvision[i]+=this.cpReactiveCounter[i];
 		}
 		
-		Socket requester = context.socket(ZMQ.REQ);
-		requester.connect("inproc://schSync");
 		requester.send("PROVISION", ZMQ.SNDMORE);
 		
 		String dpProvisionStr = "";
@@ -263,8 +261,6 @@ public class ServiceChainHandler extends MessageProcessor {
 		requester.send(cpProvisionStr, 0);
 		
 		requester.recv(0);
-		requester.close();
-		
 		logger.info("ServiceChainHandler receives proactive start request, stops reactive scaling");
 	}
 	
@@ -457,11 +453,8 @@ public class ServiceChainHandler extends MessageProcessor {
 		handleProactiveProvision(cpServiceChain, newCpProvision);
 		
 		if(pendingMap.size() == 0){
-			Socket requester = context.socket(ZMQ.REQ);
-			requester.connect("inproc://schSync");
 			requester.send("COMPLETE", 0);
 			requester.recv(0);
-			requester.close();
 			enableReactive();
 			logger.info("service chain handler finishes executing proactive scaling decision");
 		}
@@ -488,11 +481,8 @@ public class ServiceChainHandler extends MessageProcessor {
 				//This is an unallocated proactive scaling result
 				pendingMap.remove(originalRequest.getUUID());
 				if(pendingMap.size() == 0){
-					Socket requester = context.socket(ZMQ.REQ);
-					requester.connect("inproc://schSync");
 					requester.send("COMPLETE", 0);
 					requester.recv(0);
-					requester.close();
 					enableReactive();
 					logger.info("service chain handler finishes executing proactive scaling decision");
 				}
@@ -528,7 +518,7 @@ public class ServiceChainHandler extends MessageProcessor {
 						" chain: "+node.vmInstance.serviceChainConfig.name+" is created by proactive scaling");
 				serviceChain.addToServiceChain(node);
 				serviceChain.addWorkingNode(node);
-				
+				logger.info("addWorkingNode finishes.");
 				if(serviceChain.serviceChainConfig.nVmInterface == 2){
 					String domainName = "";
 					if(node.vmInstance.stageIndex == 0){
@@ -543,11 +533,10 @@ public class ServiceChainHandler extends MessageProcessor {
 				}
 				pendingMap.remove(uuid);
 				if(pendingMap.size() == 0){
-					Socket requester = context.socket(ZMQ.REQ);
-					requester.connect("inproc://schSync");
 					requester.send("COMPLETE", 0);
+					logger.info("receiving ack from local controller");
 					requester.recv(0);
-					requester.close();
+					logger.info("ack is received");
 					enableReactive();
 					logger.info("service chain handler finishes executing proactive scaling decision");
 				}
