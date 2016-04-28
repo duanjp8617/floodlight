@@ -208,7 +208,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		
 		//create service chain configuration for control plane
 		StageVmInfo bonoInfo = new StageVmInfo(1,2*1024,2*1024,"bono.img", 80, 2, -1);
-		StageVmInfo sproutInfo = new StageVmInfo(1,2*1024,2*1024,"sprout.img", 80, 2, -1);
+		StageVmInfo sproutInfo = new StageVmInfo(1,2*1024,2*1024,"sprout.img", 25, -1, 500);
 		ArrayList<StageVmInfo> cpList = new ArrayList<StageVmInfo>();
 		cpList.add(bonoInfo);
 		cpList.add(sproutInfo);
