@@ -1,6 +1,7 @@
 package net.floodlightcontroller.nfvtest.message;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.zeromq.ZMQ.Socket;
 
@@ -497,11 +498,17 @@ public class ConcreteMessage {
 		
 		public final Map<String, Integer> localcIndexMap;
 		
-		public CreateInterDcTunnelMash(String sourceId, String srcIp, int globalBaseVni, Map<String, Integer> localcIndexMap){
+		public final LinkedBlockingQueue<ArrayList<String>> syncRecvQueue;
+		public final LinkedBlockingQueue<ArrayList<String>> syncSendQueue;
+		
+		public CreateInterDcTunnelMash(String sourceId, String srcIp, int globalBaseVni, Map<String, Integer> localcIndexMap,
+				LinkedBlockingQueue<ArrayList<String>> syncRecvQueue, LinkedBlockingQueue<ArrayList<String>> syncSendQueue){
 			this.sourceId = sourceId;
 			this.srcIp = srcIp;
 			this.globalBaseVni = globalBaseVni;
 			this.localcIndexMap = localcIndexMap;
+			this.syncRecvQueue = syncRecvQueue;
+			this.syncSendQueue = syncSendQueue;
 		}
 	}
 	

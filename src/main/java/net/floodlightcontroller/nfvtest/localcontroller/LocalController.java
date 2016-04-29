@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.OFFlowModFlags;
@@ -64,7 +65,9 @@ public class LocalController implements Runnable{
 	private Socket pcscfPuller;
 	private HashMap<String, Socket> pcscfPusherMap;
 	
-	private Socket schSync;
+	//private Socket schSync;
+	private LinkedBlockingQueue<ArrayList<String>> syncRecvQueue;
+	private LinkedBlockingQueue<ArrayList<String>> syncSendQueue;
 	
 	private boolean hasScscf;
 	private HashMap<String, Integer> localcIndexMap;
@@ -124,7 +127,7 @@ public class LocalController implements Runnable{
 		this.context = null;
 		this.subscriber = null;
 		this.pusher = null;
-		this.schSync = null;
+		//this.schSync = null;
 		
 		this.hasScscf = hasScscf;
 		this.localcIndexMap = new HashMap<String, Integer>();
@@ -158,6 +161,9 @@ public class LocalController implements Runnable{
 		this.dpServiceChain = dpServiceChain;
 		this.switchService = switchService;
 		this.pendingMap = new HashMap<String, Pending>();
+		
+		this.syncRecvQueue = new LinkedBlockingQueue<ArrayList<String>>();
+		this.syncSendQueue = new LinkedBlockingQueue<ArrayList<String>>();
 	}
 	
 	public int getCurrentDcIndex(){
@@ -180,8 +186,8 @@ public class LocalController implements Runnable{
 		statPuller = context.socket(ZMQ.PULL);
 		statPuller.bind("inproc://statPull");
 		
-		schSync = context.socket(ZMQ.REP);
-		schSync.bind("inproc://schSync");
+		//schSync = context.socket(ZMQ.REP);
+		//schSync.bind("inproc://schSync");
 		
 		pcscfPuller = context.socket(ZMQ.PULL);
 		pcscfPuller.bind("tcp://"+localIp+":"+Integer.toString(pcscfPort));
@@ -251,9 +257,16 @@ public class LocalController implements Runnable{
 		int dcNum = localcIndexMap.size();
 		mh.sendTo("chainHandler", new LocalControllerNotification("lc", srcIndex, dcNum));
 		
-		mh.sendTo("chainHandler", new CreateInterDcTunnelMash("chainHandler", localIp, 400, localcIndexMap));
-		schSync.recvStr();
-		schSync.send("", 0);
+		mh.sendTo("chainHandler", new CreateInterDcTunnelMash("chainHandler", localIp, 400, localcIndexMap, syncRecvQueue, syncSendQueue));
+		
+		try {
+			ArrayList<String> l = this.syncRecvQueue.take();
+			this.syncSendQueue.offer(l);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		//schSync.recvStr();
+		//schSync.send("", 0);
 		
 		Thread dpTrafficPullerThread = new Thread(dpTrafficPuller);
 		dpTrafficPullerThread.start();
@@ -267,7 +280,7 @@ public class LocalController implements Runnable{
 		ZMQ.Poller items = new ZMQ.Poller (3);
 		items.register(subscriber,  ZMQ.Poller.POLLIN);
 		items.register(statPuller,  ZMQ.Poller.POLLIN);
-		items.register(schSync,     ZMQ.Poller.POLLIN);
+		//items.register(schSync,     ZMQ.Poller.POLLIN);
 		items.register(pcscfPuller, ZMQ.Poller.POLLIN);
 		
 		long delayPollTime = System.currentTimeMillis();
@@ -286,9 +299,12 @@ public class LocalController implements Runnable{
 				processStatPuller();
 			}
 			
-			if(items.pollin(2)){
+			if(this.syncRecvQueue.peek() != null){
 				processSchSync();
 			}
+			/*if(items.pollin(2)){
+				processSchSync();
+			}*/
 			
 			if(items.pollin(3)){
 				processPcscfPuller();
@@ -561,7 +577,70 @@ public class LocalController implements Runnable{
 	
 	private void processSchSync(){
 		//Do a quick reply to the global controller
-		String result = schSync.recvStr();
+		
+		try {
+			ArrayList<String> msgList = this.syncRecvQueue.take();
+			if(msgList.get(0).equals("COMPLETE")){
+				this.syncSendQueue.offer(msgList);
+				pusher.send("PROACTIVEFINISH", 0);
+				curState = "waitNewInterval";
+			}
+			else{
+				
+				String dpProvisionStr = msgList.get(1);
+				String cpProvisionStr = msgList.get(2);
+				this.syncSendQueue.offer(msgList);
+				
+				String dpArray[] = dpProvisionStr.split("\\s+");
+				int dpProvision[] = new int[dpArray.length];
+				for(int i=0; i<dpProvision.length; i++){
+					dpProvision[i] = Integer.parseInt(dpArray[i]);
+				}
+				
+				String cpArray[] = cpProvisionStr.split("\\s+");
+				int cpProvision[] = new int[cpArray.length];
+				for(int i=0; i<cpProvision.length; i++){
+					cpProvision[i] = Integer.parseInt(cpArray[i]);
+				}
+				
+				//send data plane service chain configuration
+				pusher.send("LOCCONFIG", ZMQ.SNDMORE);
+				pusher.send("DATA", ZMQ.SNDMORE);
+				pusher.send(localcIndexMap.get(localIp).toString(), ZMQ.SNDMORE);			
+				for(int i=0; i<dpProvision.length;i++){
+					if(i==dpProvision.length-1){
+						pusher.send(Integer.toString(dpProvision[i]), 0);
+					}
+					else{
+						pusher.send(Integer.toString(dpProvision[i]), ZMQ.SNDMORE);
+					}
+				}
+				
+				//send control plane service chain configuration
+				pusher.send("LOCCONFIG", ZMQ.SNDMORE);
+				pusher.send("CONTROL", ZMQ.SNDMORE);
+				pusher.send(localcIndexMap.get(localIp).toString(), ZMQ.SNDMORE);
+				pusher.send(Integer.toString(cpProvision[0]), ZMQ.SNDMORE);
+				pusher.send(Integer.toString(cpProvision[1]), 0);
+				
+				curState = "waitNewConfigPath";
+				
+				String print = "Data plane service chain configuration: ";
+				for(int i=0; i<dpProvision.length; i++){
+					print = print + " " + Integer.toString(dpProvision[i]);
+				}
+				logger.info("{}", print);
+				print = "Control plane service chain configuration: ";
+				for(int i=0; i<cpProvision.length; i++){
+					print = print + " " + Integer.toString(cpProvision[i]);
+				}
+				logger.info("{}", print);
+			}
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
+		/*String result = schSync.recvStr();
 		if(result.equals("COMPLETE")){
 			schSync.send("", 0);
 			pusher.send("PROACTIVEFINISH", 0);
@@ -616,7 +695,7 @@ public class LocalController implements Runnable{
 				print = print + " " + Integer.toString(cpProvision[i]);
 			}
 			logger.info("{}", print);
-		}
+		}*/
 	}
 	
 	private void processSubscriber(){
