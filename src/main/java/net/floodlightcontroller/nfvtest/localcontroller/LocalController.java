@@ -306,7 +306,7 @@ public class LocalController implements Runnable{
 				processSchSync();
 			}*/
 			
-			if(items.pollin(3)){
+			if(items.pollin(2)){
 				processPcscfPuller();
 			}
 			
