@@ -505,13 +505,11 @@ public class VmWorker extends MessageProcessor{
 	private void destroyVm(DestroyVmRequest request){
 		VmInstance vmInstance = request.getVmInstance();
 		String remoteXmlPath = vmInstance.hostServerConfig.xmlDir+"/"+vmInstance.vmName;
-		String remoteImgPath = vmInstance.hostServerConfig.imgDir+"/"+vmInstance.vmName;
 		HostAgent agent = new HostAgent(vmInstance.hostServerConfig);
 		try{
 			agent.connect();
 			agent.destroyVm(vmInstance.vmName);
 			agent.removeFile(remoteXmlPath);
-			agent.removeFile(remoteImgPath);
 			agent.disconnect();
 			DestroyVmReply reply = new DestroyVmReply(this.getId(), request, true);
 			this.mh.sendTo(request.getSourceId(), reply);
