@@ -353,6 +353,14 @@ public class ServiceChainHandler extends MessageProcessor {
 							}
 							else{
 								boolean flag = serviceChain.removeWorkingNode(workingNode);
+								if(
+										(serviceChain.serviceChainConfig.name.equals("CONTROL"))&&
+										(workingNode.vmInstance.stageIndex == 1)&&
+										(workingNode.vmInstance.managementIp.equals("192.166.64.32")) ){
+									flag = false;
+									serviceChain.addWorkingNode(workingNode);
+								}
+								
 								if(flag == true){
 									serviceChain.addToBqRear(workingNode);
 									if(serviceChain.serviceChainConfig.nVmInterface == 2){
