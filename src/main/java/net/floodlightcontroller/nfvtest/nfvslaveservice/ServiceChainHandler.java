@@ -511,61 +511,65 @@ public class ServiceChainHandler extends MessageProcessor {
 	private void addToServiceChain(NFVServiceChain serviceChain, NFVNode node, Message originalMessage){
 		UUID uuid = originalMessage.getUUID();
 		AllocateVmRequest originalRequest = (AllocateVmRequest)originalMessage;
-		synchronized(serviceChain){
-			if(pendingMap.containsKey(uuid)){
-				//one of the proactive scaling requests is finished.
-				logger.info("node: "+node.vmInstance.managementIp+" stage: "+new Integer(node.vmInstance.stageIndex).toString()+
-						" chain: "+node.vmInstance.serviceChainConfig.name+" is created by proactive scaling");
+		if(pendingMap.containsKey(uuid)){
+			//one of the proactive scaling requests is finished.
+			logger.info("node: "+node.vmInstance.managementIp+" stage: "+new Integer(node.vmInstance.stageIndex).toString()+
+					" chain: "+node.vmInstance.serviceChainConfig.name+" is created by proactive scaling");
+			synchronized(serviceChain){
 				serviceChain.addToServiceChain(node);
 				serviceChain.addWorkingNode(node);
-				logger.info("addWorkingNode finishes.");
-				if(serviceChain.serviceChainConfig.nVmInterface == 2){
-					String domainName = "";
-					if(node.vmInstance.stageIndex == 0){
-						domainName = "bono.cw.t";
-					}
-					else {
-						domainName = "sprout.cw.t";
-					}
-					DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-							node.vmInstance.operationIp, "add");
-					this.mh.sendTo("dnsUpdator", dnsUpdateReq);
-				}
-				pendingMap.remove(uuid);
-				if(pendingMap.size() == 0){
-					requester.send("COMPLETE", 0);
-					logger.info("receiving ack from local controller");
-					requester.recv(0);
-					logger.info("ack is received");
-					enableReactive();
-					logger.info("service chain handler finishes executing proactive scaling decision");
-				}
 			}
-			else if(errorMap.containsKey(uuid)){
-				//receive an error node processing
+			logger.info("addWorkingNode finishes.");
+			if(serviceChain.serviceChainConfig.nVmInterface == 2){
+				String domainName = "";
+				if(node.vmInstance.stageIndex == 0){
+					domainName = "bono.cw.t";
+				}
+				else {
+					domainName = "sprout.cw.t";
+				}
+				DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+						node.vmInstance.operationIp, "add");
+				this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+			}
+			pendingMap.remove(uuid);
+			if(pendingMap.size() == 0){
+				requester.send("COMPLETE", 0);
+				logger.info("receiving ack from local controller");
+				requester.recv(0);
+				logger.info("ack is received");
+				enableReactive();
+				logger.info("service chain handler finishes executing proactive scaling decision");
+			}
+		}
+		else if(errorMap.containsKey(uuid)){
+			//receive an error node processing
+			synchronized(serviceChain){
 				serviceChain.addToServiceChain(node);
 				serviceChain.addWorkingNode(node);
-				if(serviceChain.serviceChainConfig.nVmInterface == 2){
-					String domainName = "";
-					if(node.vmInstance.stageIndex == 0){
-						domainName = "bono.cw.t";
-					}
-					else {
-						domainName = "sprout.cw.t";
-					}
-					DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-							node.vmInstance.operationIp, "add");
-					this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+			}
+			if(serviceChain.serviceChainConfig.nVmInterface == 2){
+				String domainName = "";
+				if(node.vmInstance.stageIndex == 0){
+					domainName = "bono.cw.t";
 				}
-				errorMap.remove(uuid);
-				String errorIp = originalRequest.getErrorIp();
-				errorIpMap.remove(errorIp);
-				
-				logger.info(
-						"node: "+node.vmInstance.managementIp+
-						" stage: "+new Integer(node.vmInstance.stageIndex).toString()+
-						" chain: "+node.vmInstance.serviceChainConfig.name+
-						" is error, added to destroy node.!");
+				else {
+					domainName = "sprout.cw.t";
+				}
+				DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+						node.vmInstance.operationIp, "add");
+				this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+			}
+			errorMap.remove(uuid);
+			String errorIp = originalRequest.getErrorIp();
+			errorIpMap.remove(errorIp);
+			
+			logger.info(
+					"node: "+node.vmInstance.managementIp+
+					" stage: "+new Integer(node.vmInstance.stageIndex).toString()+
+					" chain: "+node.vmInstance.serviceChainConfig.name+
+					" is error, added to destroy node.!");
+			synchronized(serviceChain){
 				NFVNode errorNode = serviceChain.getNode(errorIp);
 				boolean flag = serviceChain.removeWorkingNode(errorNode);
 				if(flag == true){
@@ -576,35 +580,37 @@ public class ServiceChainHandler extends MessageProcessor {
 					logger.error("FATAL ERROR, the error node handling has errors.");
 				}
 			}
-			else if(reactiveMap.containsKey(uuid)){
-				//a reactive scaling request is finished
-				reactiveMap.remove(uuid);
-				if(node.vmInstance.serviceChainConfig.name.equals("DATA")){
-					this.dpReactiveCounter[node.vmInstance.stageIndex]-=1;
-				}
-				else{
-					this.cpReactiveCounter[node.vmInstance.stageIndex]-=1;
-				}
-				
-				logger.info("node: "+node.vmInstance.managementIp+" stage: "+new Integer(node.vmInstance.stageIndex).toString()+
-						" chain: "+node.vmInstance.serviceChainConfig.name+" is created by reactive scaling");
+		}
+		else if(reactiveMap.containsKey(uuid)){
+			//a reactive scaling request is finished
+			reactiveMap.remove(uuid);
+			if(node.vmInstance.serviceChainConfig.name.equals("DATA")){
+				this.dpReactiveCounter[node.vmInstance.stageIndex]-=1;
+			}
+			else{
+				this.cpReactiveCounter[node.vmInstance.stageIndex]-=1;
+			}
+			
+			logger.info("node: "+node.vmInstance.managementIp+" stage: "+new Integer(node.vmInstance.stageIndex).toString()+
+					" chain: "+node.vmInstance.serviceChainConfig.name+" is created by reactive scaling");
+			synchronized(serviceChain){
 				serviceChain.addToServiceChain(node);
 				serviceChain.addWorkingNode(node);
-				
-				if(serviceChain.serviceChainConfig.nVmInterface == 2){
-					String domainName = "";
-					if(node.vmInstance.stageIndex == 0){
-						domainName = "bono.cw.t";
-					}
-					else {
-						domainName = "sprout.cw.t";
-					}
-					DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
-							node.vmInstance.operationIp, "add");
-					this.mh.sendTo("dnsUpdator", dnsUpdateReq);
-				}
-				serviceChain.setScaleIndicator(node.vmInstance.stageIndex, false);
 			}
+			
+			if(serviceChain.serviceChainConfig.nVmInterface == 2){
+				String domainName = "";
+				if(node.vmInstance.stageIndex == 0){
+					domainName = "bono.cw.t";
+				}
+				else {
+					domainName = "sprout.cw.t";
+				}
+				DNSUpdateRequest dnsUpdateReq = new DNSUpdateRequest(this.getId(), domainName, 
+						node.vmInstance.operationIp, "add");
+				this.mh.sendTo("dnsUpdator", dnsUpdateReq);
+			}
+			serviceChain.setScaleIndicator(node.vmInstance.stageIndex, false);
 		}
 	}
 	

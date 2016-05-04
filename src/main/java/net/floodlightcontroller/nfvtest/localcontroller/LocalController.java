@@ -264,7 +264,7 @@ public class LocalController implements Runnable{
 	}
 	
 	private void localLoop(){
-		ZMQ.Poller items = new ZMQ.Poller (3);
+		ZMQ.Poller items = new ZMQ.Poller (4);
 		items.register(subscriber,  ZMQ.Poller.POLLIN);
 		items.register(statPuller,  ZMQ.Poller.POLLIN);
 		items.register(schSync,     ZMQ.Poller.POLLIN);
