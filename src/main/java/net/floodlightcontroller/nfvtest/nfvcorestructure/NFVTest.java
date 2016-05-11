@@ -460,7 +460,8 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	    		srcDstPair[0] = srcIndex;
 	    		srcDstPair[1] = dstIndex;
 	    		
-	    		scalingInterval = (int)(dscpEcn&0x03);
+	    		dpPaths = this.dpServiceChain.getCurrentDpPaths(srcDstPair[0], srcDstPair[1]);
+	    		/*scalingInterval = (int)(dscpEcn&0x03);
 	    		int currentScalingInterval = this.dpServiceChain.getScalingInterval();
 	    		
 	    		if(scalingInterval == currentScalingInterval){
@@ -475,7 +476,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 	    		else{
 	    			logger.info("routing error");
 	    			return;
-	    		}
+	    		}*/
 	    	}
     	}
     	
