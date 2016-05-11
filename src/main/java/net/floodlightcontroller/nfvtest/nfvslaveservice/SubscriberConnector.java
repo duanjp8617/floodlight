@@ -81,6 +81,7 @@ public class SubscriberConnector extends MessageProcessor{
 			
 			String port1 = this.request.getPort1();
 			//String port2 = this.request.getPort2();
+			//貌似写中文评论一点问题也没有
 			Socket subscriber1 = null;
 			
 			logger.info("trying to connect subscriber1 for node "+ipAddress);
