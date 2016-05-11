@@ -491,6 +491,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
     		}
     	}
     	if(currentDcOnPath == false){
+    		if(srcPort.getPort()%2 == 0){
+    			logger.info("routing error");
+    		}
     		return;
     	}
 		
