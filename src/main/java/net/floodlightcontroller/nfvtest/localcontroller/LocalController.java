@@ -704,7 +704,39 @@ public class LocalController implements Runnable{
 		else if(curState.equals("waitNewInterval")){
 			logger.info("all local controller have finish proactive scaling, enter new proactive scaling interval");
 			curState = "initial";
+			DelayThread delayThread = new DelayThread(this.mh, this.getCurrentDcIndex());
+			Thread t = new Thread(delayThread);
+			t.start();
+		}
+	}
+	
+	public class DelayThread implements Runnable{
+		private final MessageHub mh;
+		private final int dcIndex;
+		
+		public DelayThread(MessageHub mh, int dcIndex){
+			this.mh = mh;
+			this.dcIndex = dcIndex;
+		}
+		
+		@Override
+		public void run() {
+			// TODO Auto-generated method stub
+			try{
+				if(dcIndex == 2){
+					Thread.sleep(50);
+				}
+				else{
+					Thread.sleep(800);
+				}
+			}
+			catch (Exception e){
+				e.printStackTrace();
+			}
+			
 			this.mh.sendTo("chainHandler", new NewProactiveIntervalRequest("lc"));
+			
+			return;
 		}
 	}
 	
