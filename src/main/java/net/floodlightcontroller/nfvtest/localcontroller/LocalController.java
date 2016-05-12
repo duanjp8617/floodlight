@@ -727,7 +727,7 @@ public class LocalController implements Runnable{
 					Thread.sleep(50);
 				}
 				else{
-					Thread.sleep(800);
+					Thread.sleep(400);
 				}
 			}
 			catch (Exception e){
