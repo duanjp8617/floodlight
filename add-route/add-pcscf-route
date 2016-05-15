@@ -1,0 +1,3 @@
+sudo route add -net 192.168.126.0 netmask 255.255.255.0 gw net-b6.cs.hku.hk dev eth2
+
+sudo route add -net 192.166.65.0 netmask 255.255.255.0 gw net-b6.cs.hku.hk dev eth2
