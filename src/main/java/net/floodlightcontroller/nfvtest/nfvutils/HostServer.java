@@ -29,12 +29,11 @@ public class HostServer {
 			String serverHkIp = "10.110.241.15";
 			LinkedList<Pair<String, String>> hkList = new LinkedList<Pair<String, String>>();
 			hkList.push(new Pair<String, String>(macAllocator.getMac(), "10.110.241.37"));
+			pcscfQ.put(serverHkIp, hkList);
 			
 			String serverLdIp = "10.164.78.130";
 			LinkedList<Pair<String, String>> ldList = new LinkedList<Pair<String, String>>();
-			hkList.push(new Pair<String, String>(macAllocator.getMac(), "10.164.78.131"));
-			
-			pcscfQ.put(serverHkIp, hkList);
+			ldList.push(new Pair<String, String>(macAllocator.getMac(), "10.164.78.131"));
 			pcscfQ.put(serverLdIp, ldList);
 		}
 		
@@ -42,7 +41,6 @@ public class HostServer {
 			String serverHkIp = "10.110.241.15";
 			LinkedList<Pair<String, String>> hkList = new LinkedList<Pair<String, String>>();
 			hkList.push(new Pair<String, String>(macAllocator.getMac(), "10.110.241.38"));
-			
 			scscfQ.put(serverHkIp, hkList);
 		}
 		
