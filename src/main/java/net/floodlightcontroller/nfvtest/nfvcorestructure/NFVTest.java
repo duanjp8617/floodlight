@@ -146,20 +146,23 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
         
         BufferedReader br = null;
 		boolean enableReactive = false;
-		int bladeIdx = 0;
+		String bindIp = null;
+		int initialIndex = 0;
 		int scaleDownInterval = 0;
 
 		try {
 
 			String sEnableReactive = null;
-			String sBladeIdx = null;
 			String sScaleDownInterval = null;
+			String sInitialIndex = null;
 			br = new BufferedReader(new FileReader("/home/net/floodlight/localc.cfg"));
 			sEnableReactive = br.readLine();
-			sBladeIdx = br.readLine();
+			bindIp= br.readLine();
+			sInitialIndex = br.readLine();
 			sScaleDownInterval = br.readLine();
 			System.out.println(sEnableReactive);
-			System.out.println(sBladeIdx);
+			System.out.println(bindIp);
+			System.out.println(sInitialIndex);
 			System.out.println(sScaleDownInterval);
 			if(sEnableReactive.equals("true")){
 				enableReactive = true;
@@ -167,7 +170,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			else{
 				enableReactive = false;
 			}
-			bladeIdx = new Integer(sBladeIdx);
+			initialIndex = new Integer(sInitialIndex).intValue();
 			scaleDownInterval = new Integer(sScaleDownInterval);
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -180,17 +183,16 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		}
 
         //create controller config and host server configi
-        int bladeIndex = bladeIdx;
         String userName = "*";
 		String password = "*";
-		String gIp = "202.45.128.147";
-		String mIp = "202.45.128."+new Integer(145+bladeIndex).toString();
-		String pIp = "202.45.128."+new Integer(145+bladeIndex).toString();
-		String iIp = "202.45.128."+new Integer(145+bladeIndex).toString();
-		String entryIp = "10."+new Integer(bladeIndex).toString()+".1.1";
-		String gatewayIp = "10."+new Integer(bladeIndex).toString()+".5.1";
-		String exitIp  = "10."+new Integer(bladeIndex).toString()+".9.1";
-		int middle = 160+bladeIndex;
+		String gIp = "10.110.241.15";
+		String mIp = bindIp;
+		String pIp = bindIp;
+		String iIp = bindIp;
+		String entryIp = "33."+new Integer(initialIndex).toString()+".1.1";
+		String gatewayIp = "33."+new Integer(initialIndex).toString()+".5.1";
+		String exitIp  = "33."+new Integer(initialIndex).toString()+".9.1";
+		int middle = 160+initialIndex;
 		ControllerConfig controllerConfig = 
 				new ControllerConfig(mIp, "/home/net/base-env", "basexml.xml", "networkxml.xml");
 		HostServerConfig hostServerConfig = 
@@ -246,7 +248,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		subscriberConnector = new SubscriberConnector("subscriberConnector",zmqContext);
 		subscriberConnector.registerWithMessageHub(mh);
 		
-		dnsUpdator = new DNSUpdator("dnsUpdator", "192.168.126.123", "7773", zmqContext);
+		dnsUpdator = new DNSUpdator("dnsUpdator", "10.110.241.35", "7773", zmqContext);
 		dnsUpdator.registerWithMessageHub(mh);
 		dnsUpdator.connect();
 		
