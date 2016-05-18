@@ -172,10 +172,28 @@ public class LocalController implements Runnable{
 		
 		subscriber = context.socket(ZMQ.SUB);
 		subscriber.connect("tcp://"+globalIp+":"+Integer.toString(publishPort));
+		try{
+			Thread.sleep(2000);
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
 		subscriber.subscribe("".getBytes());
+		try{
+			Thread.sleep(2000);
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
 		
 		pusher = context.socket(ZMQ.PUSH);
 		pusher.connect("tcp://"+globalIp+":"+Integer.toString(pullPort));
+		try{
+			Thread.sleep(2000);
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
 		
 		statPuller = context.socket(ZMQ.PULL);
 		statPuller.bind("inproc://statPull");
@@ -190,6 +208,13 @@ public class LocalController implements Runnable{
 		//JOIN -> IP of local controller -> whether has SCSCF servers 
 		Socket requester = context.socket(ZMQ.REQ);
 		requester.connect("tcp://"+globalIp+":"+Integer.toString(syncPort));
+		try{
+			Thread.sleep(2000);
+		}
+		catch (Exception e){
+			e.printStackTrace();
+		}
+		
 		
 		requester.send("JOIN", ZMQ.SNDMORE);
 		requester.send(localIp, ZMQ.SNDMORE);
