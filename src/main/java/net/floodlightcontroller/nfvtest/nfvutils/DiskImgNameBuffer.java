@@ -27,7 +27,7 @@ public class DiskImgNameBuffer {
 	}
 	
 	public void load(){
-		File folder = new File("/home/net/nfvenv/img/");
+		File folder = new File("/root/nfvenv/img/");
 		File[] listOfFiles = folder.listFiles();
 		
 		for (int i = 0; i < listOfFiles.length; i++) {
