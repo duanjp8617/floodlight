@@ -155,7 +155,7 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 			String sEnableReactive = null;
 			String sScaleDownInterval = null;
 			String sInitialIndex = null;
-			br = new BufferedReader(new FileReader("/home/net/floodlight/localc.cfg"));
+			br = new BufferedReader(new FileReader("/root/floodlight/localc.cfg"));
 			sEnableReactive = br.readLine();
 			bindIp= br.readLine();
 			sInitialIndex = br.readLine();
@@ -194,9 +194,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		String exitIp  = "33."+new Integer(initialIndex).toString()+".9.1";
 		int middle = 160+initialIndex;
 		ControllerConfig controllerConfig = 
-				new ControllerConfig(mIp, "/home/net/base-env", "basexml.xml", "networkxml.xml");
+				new ControllerConfig(mIp, "/root/base-env", "basexml.xml", "networkxml.xml");
 		HostServerConfig hostServerConfig = 
-				new HostServerConfig(mIp, iIp, pIp, 60, 80*1024, 100*1024, 1, userName, password, "/home/net/nfvenv");
+				new HostServerConfig(mIp, iIp, pIp, 60, 80*1024, 100*1024, 1, userName, password, "/root/nfvenv");
 		byte[] prefix = new byte[3];
 		prefix[0] = 0x52;
 		prefix[1] = 0x54;
