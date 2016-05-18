@@ -9,9 +9,72 @@ import net.floodlightcontroller.nfvtest.nfvutils.Pair;
 import java.util.Map;
 import java.util.List;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.ArrayList;
 
 public class HostServer {
+	
+	public class StaticMacIpAlloc{
+		private HashMap<String, LinkedList<Pair<String, String>>> pcscfQ;
+		private HashMap<String, LinkedList<Pair<String, String>>> scscfQ;
+		private MacAddressAllocator macAllocator;
+		
+		public StaticMacIpAlloc(MacAddressAllocator macAllocator){
+			pcscfQ = new HashMap<String, LinkedList<Pair<String, String>>>();
+			scscfQ = new HashMap<String, LinkedList<Pair<String, String>>>();
+			this.macAllocator = macAllocator;
+		}
+		
+		public void initPcscfQ(){
+			String serverHkIp = "10.110.241.15";
+			LinkedList<Pair<String, String>> hkList = new LinkedList<Pair<String, String>>();
+			hkList.push(new Pair<String, String>(macAllocator.getMac(), "10.110.241.37"));
+			
+			String serverLdIp = "10.164.78.130";
+			LinkedList<Pair<String, String>> ldList = new LinkedList<Pair<String, String>>();
+			hkList.push(new Pair<String, String>(macAllocator.getMac(), "10.164.78.131"));
+			
+			pcscfQ.put(serverHkIp, hkList);
+			pcscfQ.put(serverLdIp, ldList);
+		}
+		
+		public void initScscfQ(){
+			String serverHkIp = "10.110.241.15";
+			LinkedList<Pair<String, String>> hkList = new LinkedList<Pair<String, String>>();
+			hkList.push(new Pair<String, String>(macAllocator.getMac(), "10.110.241.38"));
+			
+			scscfQ.put(serverHkIp, hkList);
+		}
+		
+		public Pair<String, String> allocate(String serverIp, int stageIndex){
+			if(stageIndex == 0){
+				if(pcscfQ.get(serverIp).size()>0){
+					return pcscfQ.get(serverIp).pop();
+				}
+				else{
+					return null;
+				}
+			}
+			else{
+				if(scscfQ.get(serverIp).size()>0){
+					return scscfQ.get(serverIp).pop();
+				}
+				else{
+					return null;
+				}
+			}
+		}
+		
+		public void deallocate(String serverIp, int stageIndex, String mac, String ip){
+			if(stageIndex == 0){
+				pcscfQ.get(serverIp).push(new Pair<String, String>(mac, ip));
+			}
+			else{
+				scscfQ.get(serverIp).push(new Pair<String, String>(mac, ip));
+			}
+		}
+		
+	}
 	
 	public class VmInstance {
 		public final ControllerConfig controllerConfig;
@@ -193,6 +256,8 @@ public class HostServer {
 	public final int statInPort;
 	public final int statOutPort;
 	
+	private StaticMacIpAlloc staticMacIpAlloc;
+	
 	public HostServer(ControllerConfig controllerConfig,
 			   		  HostServerConfig hostServerConfig,
 			   		  Map<String, ServiceChainConfig> serviceChainConfigMap,
@@ -266,6 +331,10 @@ public class HostServer {
 		
 		this.frontPortName = "front";
 		this.rearPortName = "rear";
+		
+		this.staticMacIpAlloc = new StaticMacIpAlloc(macAllocator);
+		this.staticMacIpAlloc.initPcscfQ();
+		this.staticMacIpAlloc.initScscfQ();
 	}
 	
 	public VmInstance allocateVmInstance(String chainName, int stageIndex, DiskImgNameBuffer diskImgNameBuffer){
@@ -274,8 +343,11 @@ public class HostServer {
 			VmInstance newVm;
 			
 			if(chainConfig.nVmInterface == 2){
-				Pair<String, String> managementPair = 
-						this.serviceChainMNetworkMap.get(chainName).allocateMacIp();
+				String serverIp = this.hostServerConfig.managementIp;
+				Pair<String, String> managementPair = this.staticMacIpAlloc.allocate(serverIp, stageIndex);
+				if(managementPair == null){
+					return null;
+				}
 				Pair<String, String> operationPair = 
 						this.serviceChainONetworkMap.get(chainName).allocateMacIp();
 				

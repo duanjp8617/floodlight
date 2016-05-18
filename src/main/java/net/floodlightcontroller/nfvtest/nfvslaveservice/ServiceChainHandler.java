@@ -831,7 +831,7 @@ public class ServiceChainHandler extends MessageProcessor {
 		String regIp = "";
 		synchronized(cpServiceChain){
 			NFVNode pcscfNode = cpServiceChain.randomlyGetWorkingNode(0);
-			regIp = pcscfNode.vmInstance.operationIp;
+			regIp = pcscfNode.vmInstance.managementIp;
 		}
 		
 		return regIp;

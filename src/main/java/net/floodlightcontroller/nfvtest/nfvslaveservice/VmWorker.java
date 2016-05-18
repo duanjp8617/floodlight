@@ -443,14 +443,14 @@ public class VmWorker extends MessageProcessor{
 			}
 			
 			Element eMInterface = doc.createElement("interface");
-			eMInterface.setAttribute("type", "network");
+			eMInterface.setAttribute("type", "bridge");
 			
 			Element eMMac = doc.createElement("mac");
 			eMMac.setAttribute("address", vmInstance.managementMac);
 			eMInterface.appendChild(eMMac);
 			
 			Element eMSource = doc.createElement("source");
-			eMSource.setAttribute("network", vmInstance.serviceChainConfig.getManagementNetwork());
+			eMSource.setAttribute("bridge", "br0");
 			eMInterface.appendChild(eMSource);
 			
 			Element eMModle = doc.createElement("model");
