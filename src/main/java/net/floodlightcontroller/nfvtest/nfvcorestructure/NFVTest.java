@@ -215,9 +215,9 @@ public class NFVTest implements IOFMessageListener, IFloodlightModule {
 		ServiceChainConfig cpServiceChainConfig = new ServiceChainConfig("CONTROL", 2, cpList);
 		
 		//create data plane service chain configuration
-		StageVmInfo firewallInfo = new StageVmInfo(2, 2*1024, 2*1024, "new_firewall.img", 8, -1, 28000);
-		StageVmInfo ipsInfo = new StageVmInfo(2, 2*1024, 2*1024, "new_snort.img", 8, -1, 16000);
-		StageVmInfo transcoderInfo = new StageVmInfo(2, 2*1024, 2*1024, "new_transcoder.img", 8, -1, 12000);
+		StageVmInfo firewallInfo = new StageVmInfo(2, 2*1024, 2*1024, "new_firewall.img", 8, -1, 35000);
+		StageVmInfo ipsInfo = new StageVmInfo(2, 2*1024, 2*1024, "new_snort.img", 8, -1, 20000);
+		StageVmInfo transcoderInfo = new StageVmInfo(2, 2*1024, 2*1024, "new_transcoder.img", 8, -1, 15000);
 		ArrayList<StageVmInfo> dpList = new ArrayList<StageVmInfo>();
 		dpList.add(firewallInfo);
 		dpList.add(ipsInfo);
